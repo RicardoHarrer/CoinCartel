@@ -1,0 +1,27 @@
+{
+  "name": "vue-quasar-template",
+  "version": "0.0.3",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "@quasar/extras": "^1.16.11",
+    "quasar": "^2.15.2",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@quasar/vite-plugin": "^1.6.0",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "eslint": "^8.49.0",
+    "eslint-plugin-vue": "^9.17.0",
+    "sass": "^1.72.0",
+    "vite": "^5.1.6",
+    "vite-plugin-vue-devtools": "^7.0.18"
+  }
+}
