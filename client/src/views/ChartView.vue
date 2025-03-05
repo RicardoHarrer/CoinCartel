@@ -88,7 +88,7 @@ export default defineComponent({
       tooltip: {
         trigger: 'axis',
         formatter: (params) => {
-          let result = `${new Date(params[0].value[0]).toLocaleDateString()}<br/>`; // Fix date
+          let result = `${new Date(params[0].value[0]).toLocaleDateString()}<br/>`;
           params.forEach((item) => {
             if (item.value[1] !== 0) {
               result += `${item.marker} ${item.seriesName}: ${item.value[1]} ${filteredData.value[0]?.currency}<br/>`;
