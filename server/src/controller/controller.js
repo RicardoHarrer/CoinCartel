@@ -33,17 +33,17 @@ const registerUser = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
+    await model.resetRegisterSequence();
     const newUser = await model.createUser(username, hashedPassword);
 
-    const token = jwt.sign({ userid: newUser.userid }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, {
       expiresIn: '1h',
     });
 
     return res.status(201).json({
       message: 'User registered successfully',
       token,
-      user: { userid: newUser.userid, username: newUser.username },
+      user: { id: newUser.id, username: newUser.username },
     });
   } catch (error) {
     console.error(error.message);
@@ -67,7 +67,7 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ error: 'Wrong password' });
     }
 
-    const token = jwt.sign({ userid: user.userid }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
       expiresIn: '1h',
     });
 

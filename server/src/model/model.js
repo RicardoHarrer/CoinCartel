@@ -62,6 +62,13 @@ const resetTransactionSequence = () =>
      false);`,
   );
 
+const resetRegisterSequence = () =>
+  query(
+    `SELECT setval('users_id_seq', COALESCE((SELECT MAX(id)+1 FROM transactions),
+       1),
+       false);`,
+  );
+
 export {
   getUsers,
   getUserById,
@@ -79,4 +86,5 @@ export {
   getUserPreferencesByUser,
   deleteTransaction,
   resetTransactionSequence,
+  resetRegisterSequence,
 };
