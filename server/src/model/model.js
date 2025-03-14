@@ -38,8 +38,6 @@ const addCategory = (name, description) =>
     description,
   ]);
 
-const getTransactionsByUser = (id) => query('Select * from transactions where user_id = $1', [id]);
-
 const getTransactionByID = (id) => query('Select * from transactions where id = $1', [id]);
 
 const addTransaction = (userId, categoryId, amount, transactionType, currency, description) =>
@@ -64,10 +62,22 @@ const resetTransactionSequence = () =>
 
 const resetRegisterSequence = () =>
   query(
-    `SELECT setval('users_id_seq', COALESCE((SELECT MAX(id)+1 FROM transactions),
+    `SELECT setval('users_id_seq', COALESCE((SELECT MAX(id)+1 FROM users),
        1),
        false);`,
   );
+
+const getTransactionsByUser = (userId, startDate, endDate) => {
+  let queryText = 'SELECT * FROM transactions WHERE user_id = $1';
+  const queryParams = [userId];
+
+  if (startDate && endDate) {
+    queryText += ' AND date >= $2 AND date <= $3';
+    queryParams.push(startDate, endDate);
+  }
+
+  return query(queryText, queryParams);
+};
 
 export {
   getUsers,

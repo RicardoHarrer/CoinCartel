@@ -128,15 +128,6 @@ const addCategory = async (req, res) => {
   res.status(200).send(`Category ${name} succesfully added`);
 };
 
-const getTransactionsByUser = async (req, res) => {
-  const { id } = req.params;
-  const { rows } = await model.getTransactionsByUser(id);
-  if (!rows) {
-    res.status(400).send(`Couldn't find any Transactions for User with the id ${id}`);
-  }
-  res.status(200).json(rows);
-};
-
 const getTransactionByID = async (req, res) => {
   const { id } = req.params;
   const { rows } = await model.getTransactionByID(id);
@@ -187,6 +178,24 @@ const deleteTransaction = async (req, res) => {
     res.status(400).send(`Failed to delete Transaction with id ${id}`);
   }
   res.status(200).json(rows[0]);
+};
+
+const getTransactionsByUser = async (req, res) => {
+  const { id } = req.params;
+  const { startDate, endDate } = req.query;
+
+  try {
+    const { rows } = await model.getTransactionsByUser(id, startDate, endDate);
+
+    if (!rows || rows.length === 0) {
+      res.status(404).send(`No transactions found for user with ID ${id}`);
+    }
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    res.status(500).send('Failed to fetch transactions');
+  }
 };
 
 export {

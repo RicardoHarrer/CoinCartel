@@ -36,7 +36,6 @@ export default defineComponent({
 
       try {
         const decodedToken = jwtDecode(token);
-        console.log('Decoded Token:', decodedToken);
         return decodedToken.id || null;
       } catch (error) {
         console.error('Invalid token:', error);
@@ -45,13 +44,6 @@ export default defineComponent({
     };
 
     const userid = decodeToken();
-    console.log('User ID:', userid);
-
-    if (!userid || isNaN(userid)) {
-      console.error('Invalid or missing user ID!');
-    } else {
-      console.log('Valid user ID:', userid);
-    }
 
     const dateRange = ref(getCurrentMonthRange());
 
@@ -59,7 +51,10 @@ export default defineComponent({
       loading.value = true;
       try {
         const response = await axios.get(`http://localhost:3000/transactions/users/${userid}`, {
-          params: { startDate: dateRange.value.from, endDate: dateRange.value.to },
+          params: {
+            startDate: dateRange.value.from,
+            endDate: dateRange.value.to,
+          },
         });
 
         transactions.value = response.data.map((transaction) => ({
@@ -79,49 +74,74 @@ export default defineComponent({
     };
 
     const filteredData = computed(() => {
-      return transactions.value.filter(
-        (t) => t.date >= dateRange.value.from && t.date <= dateRange.value.to,
-      );
+      const groupedData = {};
+
+      transactions.value.forEach((t) => {
+        const dateKey = new Date(t.date).toISOString().split('T')[0];
+        if (!groupedData[dateKey]) {
+          groupedData[dateKey] = { date: dateKey, income: 0, expense: 0 };
+        }
+        groupedData[dateKey].income += Number(t.income);
+        groupedData[dateKey].expense += Number(t.expense);
+      });
+
+      return Object.values(groupedData).sort((a, b) => new Date(a.date) - new Date(b.date));
     });
 
-    const chartOptions = computed(() => ({
-      tooltip: {
-        trigger: 'axis',
-        formatter: (params) => {
-          let result = `${new Date(params[0].value[0]).toLocaleDateString()}<br/>`;
-          params.forEach((item) => {
-            if (item.value[1] !== 0) {
-              result += `${item.marker} ${item.seriesName}: ${item.value[1]} ${filteredData.value[0]?.currency}<br/>`;
-            }
-          });
-          return result;
+    const chartOptions = computed(() => {
+      const currency = transactions.value.length > 0 ? transactions.value[0].currency : '';
+
+      const sortedData = [...filteredData.value].sort(
+        (a, b) => new Date(a.date) - new Date(b.date),
+      );
+
+      let cumulativeBalance = 0;
+      const balanceData = sortedData.map((t) => {
+        cumulativeBalance += t.income - t.expense;
+        return [new Date(t.date).getTime(), cumulativeBalance];
+      });
+
+      return {
+        tooltip: {
+          trigger: 'axis',
+          formatter: (params) => {
+            let result = `${new Date(params[0].value[0]).toLocaleDateString()}<br/>`;
+            params.forEach((item) => {
+              if (item.value[1] !== 0) {
+                result += `${item.marker} ${item.seriesName}: ${item.value[1]} ${currency}<br/>`;
+              }
+            });
+            return result;
+          },
         },
-      },
-      xAxis: {
-        type: 'time',
-        axisLabel: { formatter: '{yyyy}-{MM}-{dd}' },
-      },
-      yAxis: { type: 'value' },
-      series: [
-        {
-          name: 'Income',
-          type: 'line',
-          data: filteredData.value
-            .filter((t) => t.date)
-            .map((t) => [new Date(t.date).getTime(), t.income]),
-          itemStyle: { color: 'green' },
+        xAxis: {
+          type: 'time',
+          axisLabel: { formatter: '{yyyy}-{MM}-{dd}' },
         },
-        {
-          name: 'Expense',
-          type: 'line',
-          data: filteredData.value
-            .filter((t) => t.date)
-            .map((t) => [new Date(t.date).getTime(), t.expense]),
-          itemStyle: { color: 'red' },
-        },
-      ],
-      dataZoom: [{ type: 'slider', start: 0, end: 100 }],
-    }));
+        yAxis: { type: 'value', name: `Amount (${currency})` },
+        series: [
+          {
+            name: 'Income',
+            type: 'line',
+            data: sortedData.map((t) => [new Date(t.date).getTime(), t.income]),
+            itemStyle: { color: 'green' },
+          },
+          {
+            name: 'Expense',
+            type: 'line',
+            data: sortedData.map((t) => [new Date(t.date).getTime(), t.expense]),
+            itemStyle: { color: 'red' },
+          },
+          {
+            name: 'Total Balance',
+            type: 'line',
+            data: balanceData,
+            itemStyle: { color: 'blue' },
+          },
+        ],
+        dataZoom: [{ type: 'slider', start: 0, end: 100 }],
+      };
+    });
 
     onMounted(fetchTransactions);
 
@@ -143,12 +163,7 @@ export default defineComponent({
   <div class="q-pa-md">
     <q-card class="q-pa-md">
       <q-card-section>
-        <q-input
-          filled
-          v-model="dateRange"
-          label="Select Date Range"
-          mask="YYYY-MM-DD - YYYY-MM-DD"
-        >
+        <q-input filled v-model="dateRange" label="Select Date Range" mask="date">
           <template v-slot:append>
             <q-icon name="event" class="cursor-pointer">
               <q-popup-proxy cover transition-show="scale" transition-hide="scale">
