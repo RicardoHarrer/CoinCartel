@@ -1,16 +1,19 @@
-<script setup>
+<script>
 import { RouterView } from 'vue-router';
+import Navbar from './components/NavBar.vue';
+
+export default {
+  components: { Navbar },
+};
 </script>
 
 <template>
-  <header>
-    <q-tabs>
-      <q-route-tab to="/home" label="Home"></q-route-tab>
-      <q-route-tab to="/about" label="About"></q-route-tab>
-    </q-tabs>
-  </header>
-
-  <RouterView />
+  <q-layout>
+    <Navbar />
+    <q-page-container>
+      <RouterView />
+    </q-page-container>
+  </q-layout>
 </template>
 
 <style>

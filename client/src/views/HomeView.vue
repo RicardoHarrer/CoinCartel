@@ -1,3 +1,21 @@
+<script>
+import { useRouter } from 'vue-router';
+
+export default {
+  setup() {
+    const router = useRouter();
+
+    const navigateToRegistry = () => {
+      router.push('/register');
+    };
+
+    return {
+      navigateToRegistry,
+    };
+  },
+};
+</script>
+
 <template>
   <div class="homepage">
     <div class="hero-section bg-primary text-white text-center q-pa-lg">
@@ -7,7 +25,7 @@
       </div>
     </div>
 
-    <div class="features-section q-pa-xl">
+    <div class="features-section q-px-xl q-pt-xl q-pb-lg">
       <div class="row q-col-gutter-md justify-center">
         <div class="col-12 col-md-4">
           <q-card class="feature-card text-center">
@@ -41,35 +59,21 @@
       </div>
     </div>
 
-    <div class="cta-section bg-grey-3 text-center q-pa-xl">
-      <div class="text-h4 q-mb-md">Ready to Take Control of Your Finances?</div>
+    <div
+      :class="['cta-section', 'text-center', 'q-px-xl', 'q-pb-xl', $q.dark.isActive ? 'bg-dark' : 'bg-grey-3']"
+    >
+      <div :class="['text-h4', 'q-mb-md', $q.dark.isActive ? 'text-white' : 'text-dark']">
+        Ready to Take Control of Your Finances?
+      </div>
       <q-btn
         label="Get Started"
-        color="primary"
+        :color="$q.dark.isActive ? 'secondary' : 'primary'"
         size="lg"
         @click="navigateToRegistry"
       />
     </div>
   </div>
 </template>
-
-<script>
-import { useRouter } from 'vue-router';
-
-export default {
-  setup() {
-    const router = useRouter();
-
-    const navigateToRegistry = () => {
-      router.push('/register');
-    };
-
-    return {
-      navigateToRegistry,
-    };
-  },
-};
-</script>
 
 <style scoped>
 .homepage {
@@ -84,6 +88,7 @@ export default {
 
 .features-section {
   flex: 1;
+  padding-bottom: 40px;
 }
 
 .feature-card {
@@ -92,6 +97,7 @@ export default {
 }
 
 .cta-section {
-  padding: 60px 20px;
+  padding-top: 40px;
+  padding-bottom: 60px;
 }
 </style>
