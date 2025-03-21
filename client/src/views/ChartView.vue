@@ -17,13 +17,12 @@ export default defineComponent({
     const loading = ref(false);
     const error = ref(null);
 
-    // Form fields for adding a new transaction
     const newTransaction = ref({
-      date: new Date().toISOString().split('T')[0], // Default to today's date
+      date: new Date().toISOString().split('T')[0],
       amount: 0,
-      transaction_type: 'Einnahme', // Default to income
+      transaction_type: 'Einnahme',
       category_id: '',
-      currency: 'EUR', // Default currency
+      currency: 'EUR',
       description: '',
     });
 
@@ -85,14 +84,12 @@ export default defineComponent({
 
     const addTransaction = async () => {
       try {
-        // Ensure the user ID is available
         const userid = decodeToken();
         if (!userid) {
           console.error('User ID not found. Please log in.');
           return;
         }
 
-        // Prepare the request payload
         const payload = {
           userId: userid,
           categoryId: newTransaction.value.category_id,
@@ -102,13 +99,10 @@ export default defineComponent({
           description: newTransaction.value.description,
         };
 
-        // Send the POST request to the backend
         const response = await axios.post('http://localhost:3000/transactions', payload);
 
-        // Handle the response
         if (response.status === 200) {
           console.log('Transaction successfully added');
-          // Clear the form
           newTransaction.value = {
             date: new Date().toISOString().split('T')[0],
             amount: 0,
@@ -118,7 +112,6 @@ export default defineComponent({
             description: '',
           };
 
-          // Refresh the chart
           fetchTransactions();
         } else {
           console.error('Failed to add transaction:', response.data);
