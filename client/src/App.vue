@@ -5,7 +5,7 @@ import { RouterView } from 'vue-router';
 <template>
   <header>
     <q-tabs>
-      <q-route-tab to="/" label="Home"></q-route-tab>
+      <q-route-tab to="/home" label="Home"></q-route-tab>
       <q-route-tab to="/about" label="About"></q-route-tab>
     </q-tabs>
   </header>

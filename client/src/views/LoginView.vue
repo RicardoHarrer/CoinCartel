@@ -1,14 +1,72 @@
+<template>
+  <q-layout class="login">
+    <q-page-container>
+      <q-page class="flex flex-center bg-grey-2">
+        <div>
+          <q-card class="login-card q-pa-xl">
+            <q-card-section class="text-center">
+              <div class="text-h4 q-mb-md text-primary">Welcome Back</div>
+              <div class="text-subtitle1 q-mb-lg text-grey-8">
+                Sign in to manage your finances.
+              </div>
+
+              <q-input
+                filled
+                v-model="username"
+                label="Username"
+                type="text"
+                placeholder="Enter your username"
+                class="q-mb-md"
+              />
+
+              <q-input
+                filled
+                v-model="password"
+                label="Password"
+                type="password"
+                placeholder="Enter your password"
+                class="q-mb-md"
+              />
+
+              <q-btn
+                label="Login"
+                color="primary"
+                class="full-width q-mb-md"
+                @click="loginUser"
+              />
+
+              <q-card-actions align="center">
+                <p class="text-body1 text-grey-8">
+                  Don't have an account?
+                  <span
+                    @click="goToRegisterPage"
+                    class="text-primary cursor-pointer"
+                    style="text-decoration: underline"
+                  >
+                    Sign Up
+                  </span>
+                </p>
+              </q-card-actions>
+            </q-card-section>
+          </q-card>
+        </div>
+      </q-page>
+    </q-page-container>
+  </q-layout>
+</template>
+
 <script>
 import { ref } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 
 export default {
-  name: 'loginPage',
+  name: 'LoginPage',
   setup() {
     const username = ref('');
     const password = ref('');
     const router = useRouter();
+
     const loginUser = async () => {
       try {
         const response = await axios.post('http://localhost:3000/login', {
@@ -39,57 +97,31 @@ export default {
 };
 </script>
 
-<template>
-  <q-layout class="login">
-    <q-page-container>
-      <q-page class="flex flex-center">
-        <div>
-          <q-card class="q-pa-xl" style="max-width: 400px; width: 100%">
-            <q-card-section>
-              <div class="text-h4 q-mb-md text-center">Login</div>
+<style scoped>
+.login {
+  background-color: #f5f5f5;
+}
 
-              <q-input
-                filled
-                v-model="username"
-                label="Username"
-                type="text"
-                :dense="true"
-                :placeholder="'Enter your username'"
-                class="q-mb-sm"
-              />
+.login-card {
+  max-width: 400px;
+  width: 100%;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
 
-              <q-input
-                filled
-                v-model="password"
-                label="Password"
-                type="password"
-                :dense="true"
-                :placeholder="'Enter your password'"
-                class="q-mb-sm"
-              />
+.text-primary {
+  color: #1976d2;
+}
 
-              <q-btn
-                style="background-color: #dcedc8; color: #1c4300"
-                label="Login"
-                class="full-width"
-                @click="loginUser"
-              />
-              <q-card-actions align="center">
-                <p>
-                  Don't have an account?
-                  <span @click="goToRegisterPage" style="color: #9ccc65; cursor: pointer"
-                    >Sign Up</span
-                  >
-                </p>
-              </q-card-actions>
-            </q-card-section>
-          </q-card>
-        </div>
-      </q-page>
-    </q-page-container>
-  </q-layout>
-</template>
+.bg-primary {
+  background-color: #1976d2;
+}
 
-<style lang="sass">
+.text-grey-8 {
+  color: #616161;
+}
 
+.cursor-pointer {
+  cursor: pointer;
+}
 </style>
