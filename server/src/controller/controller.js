@@ -153,6 +153,7 @@ const addTransaction = async (req, res) => {
   }
 
   try {
+    model.resetTransactionSequence();
     const { rows } = await model.addTransaction(
       userId,
       categoryId,
