@@ -7,24 +7,17 @@ import { GridComponent, TooltipComponent, DataZoomComponent } from 'echarts/comp
 import { CanvasRenderer } from 'echarts/renderers';
 import VChart from 'vue-echarts';
 import { jwtDecode } from 'jwt-decode';
+import AddTransaction from '../components/AddTransaction.vue';
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, DataZoomComponent]);
 
 export default defineComponent({
-  components: { VChart },
+  components: { VChart, AddTransaction },
   setup() {
     const transactions = ref([]);
     const loading = ref(false);
     const error = ref(null);
-
-    const newTransaction = ref({
-      date: new Date().toISOString().split('T')[0],
-      amount: 0,
-      transaction_type: 'Einnahme',
-      category_id: '',
-      currency: 'EUR',
-      description: '',
-    });
+    const showAddTransactionDialog = ref(false);
 
     const getCurrentMonthRange = () => {
       const today = new Date();
@@ -79,47 +72,6 @@ export default defineComponent({
         error.value = 'Failed to fetch data.';
       } finally {
         loading.value = false;
-      }
-    };
-
-    const addTransaction = async () => {
-      try {
-        const userid = decodeToken();
-        if (!userid) {
-          console.error('User ID not found. Please log in.');
-          return;
-        }
-
-        const payload = {
-          userId: userid,
-          categoryId: newTransaction.value.category_id,
-          amount: newTransaction.value.amount,
-          transactionType: newTransaction.value.transaction_type,
-          currency: newTransaction.value.currency,
-          description: newTransaction.value.description,
-        };
-
-        const response = await axios.post('http://localhost:3000/transactions', payload);
-
-        if (response.status === 200) {
-          console.log('Transaction successfully added');
-          newTransaction.value = {
-            date: new Date().toISOString().split('T')[0],
-            amount: 0,
-            transaction_type: 'Einnahme',
-            category_id: '',
-            currency: 'EUR',
-            description: '',
-          };
-
-          fetchTransactions();
-        } else {
-          console.error('Failed to add transaction:', response.data);
-          error.value = 'Failed to add transaction.';
-        }
-      } catch (err) {
-        console.error('Error adding transaction:', err);
-        error.value = 'Failed to add transaction.';
       }
     };
 
@@ -204,6 +156,11 @@ export default defineComponent({
       fetchTransactions();
     }
 
+    function handleTransactionAdded() {
+      showAddTransactionDialog.value = false;
+      fetchTransactions();
+    }
+
     return {
       dateRange,
       chartOptions,
@@ -211,8 +168,8 @@ export default defineComponent({
       resetToCurrentMonth,
       loading,
       error,
-      newTransaction,
-      addTransaction,
+      showAddTransactionDialog,
+      handleTransactionAdded,
     };
   },
 });
@@ -220,66 +177,93 @@ export default defineComponent({
 
 <template>
   <div class="q-pa-md">
-    <q-card class="q-pa-md">
-      <q-card-section>
-        <!-- Date Range Selector -->
-        <q-input filled v-model="dateRange" label="Select Date Range" mask="date">
-          <template v-slot:append>
-            <q-icon name="event" class="cursor-pointer">
-              <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                <q-date
-                  v-model="dateRange"
-                  range
-                  mask="YYYY-MM-DD"
-                  @update:model-value="updateChart"
-                />
-              </q-popup-proxy>
-            </q-icon>
-          </template>
-        </q-input>
-        <q-btn
-          label="Reset to Current Month"
-          color="primary"
-          class="q-mt-md"
-          @click="resetToCurrentMonth"
-        />
+    <!-- Main Card -->
+    <q-card class="chart-card">
+      <!-- Card Header -->
+      <q-card-section class="bg-primary text-white">
+        <div class="text-h6">Transaction Overview</div>
       </q-card-section>
 
-      <!-- Add Transaction Form -->
+      <!-- Date Range Selector and Buttons -->
       <q-card-section>
-        <q-form @submit="addTransaction">
-          <q-input filled v-model="newTransaction.date" label="Date" type="date" required />
+        <div class="row q-gutter-md">
+          <!-- Date Range Input -->
           <q-input
             filled
-            v-model="newTransaction.amount"
-            label="Amount"
-            type="number"
-            step="0.01"
-            required
+            v-model="dateRange"
+            label="Select Date Range"
+            mask="date"
+            class="col"
+          >
+            <template v-slot:append>
+              <q-icon name="event" class="cursor-pointer">
+                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                  <q-date
+                    v-model="dateRange"
+                    range
+                    mask="YYYY-MM-DD"
+                    @update:model-value="updateChart"
+                  />
+                </q-popup-proxy>
+              </q-icon>
+            </template>
+          </q-input>
+
+          <!-- Reset to Current Month Button -->
+          <q-btn
+            label="Reset to Current Month"
+            color="primary"
+            class="col-auto"
+            @click="resetToCurrentMonth"
           />
-          <q-select
-            filled
-            v-model="newTransaction.transaction_type"
-            label="Type"
-            :options="['Einnahme', 'Ausgabe']"
-            required
+
+          <!-- Add Transaction Button -->
+          <q-btn
+            label="Add Transaction"
+            color="positive"
+            class="col-auto"
+            @click="showAddTransactionDialog = true"
           />
-          <q-input filled v-model="newTransaction.category_id" label="Category" required />
-          <q-input filled v-model="newTransaction.currency" label="Currency" required />
-          <q-input filled v-model="newTransaction.description" label="Description" />
-          <q-btn label="Add Transaction" type="submit" color="primary" class="q-mt-md" />
-        </q-form>
+        </div>
       </q-card-section>
 
       <!-- Chart -->
-      <v-chart class="chart" :option="chartOptions" autoresize />
+      <q-card-section>
+        <v-chart class="chart" :option="chartOptions" autoresize />
+      </q-card-section>
     </q-card>
+
+    <!-- Add Transaction Dialog -->
+    <q-dialog v-model="showAddTransactionDialog">
+      <AddTransaction @transaction-added="handleTransactionAdded" />
+    </q-dialog>
   </div>
 </template>
 
+
+
 <style scoped>
+.chart-card {
+  width: 100%;
+  max-width: 1200px; /* Adjust the width as needed */
+  margin: auto;
+}
+
 .chart {
   width: 100%;
   height: 400px;
+}
+
+.q-card-section {
+  padding: 20px;
+}
+
+.row.q-gutter-md {
+  margin-bottom: 16px;
+}
+
+.q-input,
+.q-btn {
+  margin-bottom: 8px;
 }
 </style>
