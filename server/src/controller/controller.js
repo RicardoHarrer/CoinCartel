@@ -139,18 +139,38 @@ const getTransactionByID = async (req, res) => {
 
 const addTransaction = async (req, res) => {
   const { userId, categoryId, amount, transactionType, currency, description } = req.body;
-  const { rows } = await model.addTransaction(
-    userId,
-    categoryId,
-    amount,
-    transactionType,
-    currency,
-    description,
-  );
-  if (!rows) {
-    res.status(400).send('Could not add transaction');
+
+  if (!userId || !categoryId || !amount || !transactionType || !currency) {
+    res.status(400).send('Missing required fields');
   }
-  res.status(200).send('Transaction successfully added');
+
+  if (!['Einnahme', 'Ausgabe'].includes(transactionType)) {
+    res.status(400).send('Invalid transaction type');
+  }
+
+  if (Number.isNaN(amount)) {
+    res.status(400).send('Amount must be a number');
+  }
+
+  try {
+    const { rows } = await model.addTransaction(
+      userId,
+      categoryId,
+      amount,
+      transactionType,
+      currency,
+      description,
+    );
+
+    if (!rows) {
+      res.status(400).send('Could not add transaction');
+    }
+
+    res.status(200).send('Transaction successfully added');
+  } catch (error) {
+    console.error('Error adding transaction:', error);
+    res.status(500).send(`Internal server error: ${error.message}`);
+  }
 };
 
 const getUserPreferences = async (req, res) => {

@@ -40,13 +40,53 @@ const addCategory = (name, description) =>
 
 const getTransactionByID = (id) => query('Select * from transactions where id = $1', [id]);
 
-const addTransaction = (userId, categoryId, amount, transactionType, currency, description) =>
-  query(
-    `Insert into transactions (user_id, category_id, amount, transaction_type, currency, date,
-                          description)
-      values ($1, $2, $3, $4, $5, Now(), $6)`,
-    [userId, categoryId, amount, transactionType, currency, description],
-  );
+const addTransaction = async (userId, category, amount, transactionType, currency, description) => {
+  const findCategoryQuery = `
+    SELECT id FROM categories WHERE name = $1;
+  `;
+  const findCategoryValues = [category];
+
+  try {
+    const categoryResult = await query(findCategoryQuery, findCategoryValues);
+
+    let categoryId;
+
+    if (categoryResult.rows.length > 0) {
+      categoryId = categoryResult.rows[0].id;
+    } else {
+      const insertCategoryQuery = `
+        INSERT INTO categories (name)
+        VALUES ($1)
+        RETURNING id;
+      `;
+      const insertCategoryValues = [category];
+
+      const newCategoryResult = await query(insertCategoryQuery, insertCategoryValues);
+      categoryId = newCategoryResult.rows[0].id;
+    }
+
+    const insertTransactionQuery = `
+      INSERT INTO transactions (user_id, category_id, amount, transaction_type, currency, date, description)
+      VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+      RETURNING *;
+    `;
+    const insertTransactionValues = [
+      userId,
+      categoryId,
+      amount,
+      transactionType,
+      currency,
+      description,
+    ];
+
+    const transactionResult = await query(insertTransactionQuery, insertTransactionValues);
+
+    return transactionResult;
+  } catch (error) {
+    console.error('Error in addTransaction:', error);
+    throw error;
+  }
+};
 
 const getUserPreferencesByUser = (id) =>
   query('Select * from user_preferences where user_id = $1', [id]);

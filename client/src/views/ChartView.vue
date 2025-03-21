@@ -17,6 +17,16 @@ export default defineComponent({
     const loading = ref(false);
     const error = ref(null);
 
+    // Form fields for adding a new transaction
+    const newTransaction = ref({
+      date: new Date().toISOString().split('T')[0], // Default to today's date
+      amount: 0,
+      transaction_type: 'Einnahme', // Default to income
+      category_id: '',
+      currency: 'EUR', // Default currency
+      description: '',
+    });
+
     const getCurrentMonthRange = () => {
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -70,6 +80,53 @@ export default defineComponent({
         error.value = 'Failed to fetch data.';
       } finally {
         loading.value = false;
+      }
+    };
+
+    const addTransaction = async () => {
+      try {
+        // Ensure the user ID is available
+        const userid = decodeToken();
+        if (!userid) {
+          console.error('User ID not found. Please log in.');
+          return;
+        }
+
+        // Prepare the request payload
+        const payload = {
+          userId: userid,
+          categoryId: newTransaction.value.category_id,
+          amount: newTransaction.value.amount,
+          transactionType: newTransaction.value.transaction_type,
+          currency: newTransaction.value.currency,
+          description: newTransaction.value.description,
+        };
+
+        // Send the POST request to the backend
+        const response = await axios.post('http://localhost:3000/transactions', payload);
+
+        // Handle the response
+        if (response.status === 200) {
+          console.log('Transaction successfully added');
+          // Clear the form
+          newTransaction.value = {
+            date: new Date().toISOString().split('T')[0],
+            amount: 0,
+            transaction_type: 'Einnahme',
+            category_id: '',
+            currency: 'EUR',
+            description: '',
+          };
+
+          // Refresh the chart
+          fetchTransactions();
+        } else {
+          console.error('Failed to add transaction:', response.data);
+          error.value = 'Failed to add transaction.';
+        }
+      } catch (err) {
+        console.error('Error adding transaction:', err);
+        error.value = 'Failed to add transaction.';
       }
     };
 
@@ -154,7 +211,16 @@ export default defineComponent({
       fetchTransactions();
     }
 
-    return { dateRange, chartOptions, updateChart, resetToCurrentMonth, loading, error };
+    return {
+      dateRange,
+      chartOptions,
+      updateChart,
+      resetToCurrentMonth,
+      loading,
+      error,
+      newTransaction,
+      addTransaction,
+    };
   },
 });
 </script>
@@ -163,6 +229,7 @@ export default defineComponent({
   <div class="q-pa-md">
     <q-card class="q-pa-md">
       <q-card-section>
+        <!-- Date Range Selector -->
         <q-input filled v-model="dateRange" label="Select Date Range" mask="date">
           <template v-slot:append>
             <q-icon name="event" class="cursor-pointer">
@@ -185,6 +252,33 @@ export default defineComponent({
         />
       </q-card-section>
 
+      <!-- Add Transaction Form -->
+      <q-card-section>
+        <q-form @submit="addTransaction">
+          <q-input filled v-model="newTransaction.date" label="Date" type="date" required />
+          <q-input
+            filled
+            v-model="newTransaction.amount"
+            label="Amount"
+            type="number"
+            step="0.01"
+            required
+          />
+          <q-select
+            filled
+            v-model="newTransaction.transaction_type"
+            label="Type"
+            :options="['Einnahme', 'Ausgabe']"
+            required
+          />
+          <q-input filled v-model="newTransaction.category_id" label="Category" required />
+          <q-input filled v-model="newTransaction.currency" label="Currency" required />
+          <q-input filled v-model="newTransaction.description" label="Description" />
+          <q-btn label="Add Transaction" type="submit" color="primary" class="q-mt-md" />
+        </q-form>
+      </q-card-section>
+
+      <!-- Chart -->
       <v-chart class="chart" :option="chartOptions" autoresize />
     </q-card>
   </div>
