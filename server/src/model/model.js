@@ -40,7 +40,15 @@ const addCategory = (name, description) =>
 
 const getTransactionByID = (id) => query('Select * from transactions where id = $1', [id]);
 
-const addTransaction = async (userId, category, amount, transactionType, currency, description) => {
+const addTransaction = async (
+  userId,
+  category,
+  amount,
+  transactionType,
+  currency,
+  date,
+  description,
+) => {
   const findCategoryQuery = `
     SELECT id FROM categories WHERE name = $1;
   `;
@@ -67,7 +75,7 @@ const addTransaction = async (userId, category, amount, transactionType, currenc
 
     const insertTransactionQuery = `
       INSERT INTO transactions (user_id, category_id, amount, transaction_type, currency, date, description)
-      VALUES ($1, $2, $3, $4, $5, NOW(), $6)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *;
     `;
     const insertTransactionValues = [
@@ -76,6 +84,7 @@ const addTransaction = async (userId, category, amount, transactionType, currenc
       amount,
       transactionType,
       currency,
+      date,
       description,
     ];
 

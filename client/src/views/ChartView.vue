@@ -177,17 +177,13 @@ export default defineComponent({
 
 <template>
   <div class="q-pa-md">
-    <!-- Main Card -->
     <q-card class="chart-card">
-      <!-- Card Header -->
       <q-card-section class="bg-primary text-white">
         <div class="text-h6">Transaction Overview</div>
       </q-card-section>
 
-      <!-- Date Range Selector and Buttons -->
       <q-card-section>
         <div class="row q-gutter-md">
-          <!-- Date Range Input -->
           <q-input
             filled
             v-model="dateRange"
@@ -209,7 +205,6 @@ export default defineComponent({
             </template>
           </q-input>
 
-          <!-- Reset to Current Month Button -->
           <q-btn
             label="Reset to Current Month"
             color="primary"
@@ -217,7 +212,6 @@ export default defineComponent({
             @click="resetToCurrentMonth"
           />
 
-          <!-- Add Transaction Button -->
           <q-btn
             label="Add Transaction"
             color="positive"
@@ -227,13 +221,11 @@ export default defineComponent({
         </div>
       </q-card-section>
 
-      <!-- Chart -->
       <q-card-section>
         <v-chart class="chart" :option="chartOptions" autoresize />
       </q-card-section>
     </q-card>
 
-    <!-- Add Transaction Dialog -->
     <q-dialog v-model="showAddTransactionDialog">
       <AddTransaction @transaction-added="handleTransactionAdded" />
     </q-dialog>
@@ -245,7 +237,7 @@ export default defineComponent({
 <style scoped>
 .chart-card {
   width: 100%;
-  max-width: 1200px; /* Adjust the width as needed */
+  max-width: 1200px; 
   margin: auto;
 }
 

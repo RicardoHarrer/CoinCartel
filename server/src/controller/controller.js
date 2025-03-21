@@ -138,7 +138,7 @@ const getTransactionByID = async (req, res) => {
 };
 
 const addTransaction = async (req, res) => {
-  const { userId, categoryId, amount, transactionType, currency, description } = req.body;
+  const { userId, categoryId, amount, transactionType, currency, date, description } = req.body;
 
   if (!userId || !categoryId || !amount || !transactionType || !currency) {
     res.status(400).send('Missing required fields');
@@ -160,6 +160,7 @@ const addTransaction = async (req, res) => {
       amount,
       transactionType,
       currency,
+      date,
       description,
     );
 

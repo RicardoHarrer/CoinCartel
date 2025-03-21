@@ -45,6 +45,7 @@ export default {
         amount: newTransaction.value.amount,
         transactionType: newTransaction.value.transaction_type,
         currency: newTransaction.value.currency,
+        date: newTransaction.value.date + ' 24:00:00',
         description: newTransaction.value.description,
       };
 
