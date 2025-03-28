@@ -14,6 +14,27 @@ use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, DataZoomCompone
 export default defineComponent({
   components: { VChart, AddTransaction },
   setup() {
+    
+    // * WICHTIG * Das ist der API Call für die Exchange Rates!!! nur berühren wenn ihr an den ExchangeRates arbeitet!
+    // Für API-Call Check (also wenn ihr wissen wollt wieviele Calls wir noch haben) Fabian fragen!
+    // async function getExchange() {
+    //     const options = {
+    //       method: 'GET',
+    //       url: 'https://v6.exchangerate-api.com/v6/1bfd15eb1d48a0a8759f2adf/latest/EUR',
+    //     };
+
+    //     try {
+    //       const response = await axios.request(options);
+    //       console.log(response.data);
+    //     } catch (error) {
+    //       console.error(error);
+    //     }
+
+    //     console.log("ExchangeRate Function loaded.");
+    // }
+
+    // onMounted(getExchange);
+
     const transactions = ref([]);
     const loading = ref(false);
     const error = ref(null);
@@ -173,6 +194,7 @@ export default defineComponent({
     };
   },
 });
+
 </script>
 
 <template>
