@@ -14,31 +14,24 @@ use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, DataZoomCompone
 export default defineComponent({
   components: { VChart, AddTransaction },
   setup() {
-    
-    // * WICHTIG * Das ist der API Call für die Exchange Rates!!! nur berühren wenn ihr an den ExchangeRates arbeitet!
-    // Für API-Call Check (also wenn ihr wissen wollt wieviele Calls wir noch haben) Fabian fragen!
-    // async function getExchange() {
-    //     const options = {
-    //       method: 'GET',
-    //       url: 'https://v6.exchangerate-api.com/v6/1bfd15eb1d48a0a8759f2adf/latest/EUR',
-    //     };
-
-    //     try {
-    //       const response = await axios.request(options);
-    //       console.log(response.data);
-    //     } catch (error) {
-    //       console.error(error);
-    //     }
-
-    //     console.log("ExchangeRate Function loaded.");
-    // }
-
-    // onMounted(getExchange);
-
     const transactions = ref([]);
     const loading = ref(false);
     const error = ref(null);
     const showAddTransactionDialog = ref(false);
+
+    const exchangeRates = ref({});
+    const selectedCurrency = ref('EUR');
+
+    // const getExchangeRates = async () => {
+    //   try {
+    //     const response = await axios.get(
+    //       'https://v6.exchangerate-api.com/v6/1bfd15eb1d48a0a8759f2adf/latest/EUR',
+    //     );
+    //     exchangeRates.value = response.data.conversion_rates;
+    //   } catch (error) {
+    //     console.error('Failed to fetch exchange rates:', error);
+    //   }
+    // };
 
     const getCurrentMonthRange = () => {
       const today = new Date();
@@ -67,7 +60,6 @@ export default defineComponent({
     };
 
     const userid = decodeToken();
-
     const dateRange = ref(getCurrentMonthRange());
 
     const fetchTransactions = async () => {
@@ -112,7 +104,8 @@ export default defineComponent({
     });
 
     const chartOptions = computed(() => {
-      const currency = transactions.value.length > 0 ? transactions.value[0].currency : '';
+      const currency = selectedCurrency.value;
+      const rate = exchangeRates.value[currency] || 1;
 
       const sortedData = [...filteredData.value].sort(
         (a, b) => new Date(a.date) - new Date(b.date),
@@ -120,7 +113,7 @@ export default defineComponent({
 
       let cumulativeBalance = 0;
       const balanceData = sortedData.map((t) => {
-        cumulativeBalance += t.income - t.expense;
+        cumulativeBalance += (t.income - t.expense) * rate;
         return [new Date(t.date).getTime(), cumulativeBalance];
       });
 
@@ -131,7 +124,9 @@ export default defineComponent({
             let result = `${new Date(params[0].value[0]).toLocaleDateString()}<br/>`;
             params.forEach((item) => {
               if (item.value[1] !== 0) {
-                result += `${item.marker} ${item.seriesName}: ${item.value[1]} ${currency}<br/>`;
+                result += `${item.marker} ${item.seriesName}: ${item.value[1].toFixed(
+                  2,
+                )} ${currency}<br/>`;
               }
             });
             return result;
@@ -146,13 +141,13 @@ export default defineComponent({
           {
             name: 'Income',
             type: 'line',
-            data: sortedData.map((t) => [new Date(t.date).getTime(), t.income]),
+            data: sortedData.map((t) => [new Date(t.date).getTime(), t.income * rate]),
             itemStyle: { color: 'green' },
           },
           {
             name: 'Expense',
             type: 'line',
-            data: sortedData.map((t) => [new Date(t.date).getTime(), t.expense]),
+            data: sortedData.map((t) => [new Date(t.date).getTime(), t.expense * rate]),
             itemStyle: { color: 'red' },
           },
           {
@@ -165,8 +160,6 @@ export default defineComponent({
         dataZoom: [{ type: 'slider', start: 0, end: 100 }],
       };
     });
-
-    onMounted(fetchTransactions);
 
     function updateChart() {
       fetchTransactions();
@@ -182,6 +175,11 @@ export default defineComponent({
       fetchTransactions();
     }
 
+    onMounted(() => {
+      fetchTransactions();
+      getExchangeRates();
+    });
+
     return {
       dateRange,
       chartOptions,
@@ -191,10 +189,11 @@ export default defineComponent({
       error,
       showAddTransactionDialog,
       handleTransactionAdded,
+      selectedCurrency,
+      exchangeRates,
     };
   },
 });
-
 </script>
 
 <template>
@@ -206,13 +205,7 @@ export default defineComponent({
 
       <q-card-section>
         <div class="row q-gutter-md">
-          <q-input
-            filled
-            v-model="dateRange"
-            label="Select Date Range"
-            mask="date"
-            class="col"
-          >
+          <q-input filled v-model="dateRange" label="Select Date Range" mask="date" class="col">
             <template v-slot:append>
               <q-icon name="event" class="cursor-pointer">
                 <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -226,6 +219,14 @@ export default defineComponent({
               </q-icon>
             </template>
           </q-input>
+
+          <q-select
+            v-model="selectedCurrency"
+            :options="Object.keys(exchangeRates)"
+            label="Currency"
+            class="col"
+            @update:model-value="updateChart"
+          />
 
           <q-btn
             label="Reset to Current Month"
@@ -254,12 +255,10 @@ export default defineComponent({
   </div>
 </template>
 
-
-
 <style scoped>
 .chart-card {
   width: 100%;
-  max-width: 1200px; 
+  max-width: 1200px;
   margin: auto;
 }
 
