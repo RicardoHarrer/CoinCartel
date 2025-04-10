@@ -2,7 +2,7 @@
   <q-header elevated :class="['navbar', $q.dark.isActive ? 'bg-primary text-white' : 'bg-white text-dark']">
     <q-toolbar>
       <q-toolbar-title class="text-h5">
-        <q-btn flat label="Finance Tracker" to="/" />
+        <q-btn flat label="Coin Cartel" to="/" />
       </q-toolbar-title>
 
       <q-tabs v-model="tab" shrink stretch class="gt-sm">
