@@ -1,7 +1,16 @@
 <template>
   <q-card class="my-card" flat bordered>
     <q-card-section class="bg-primary text-white">
-      <div class="text-h6 text-center">{{ data.title }}</div>
+      <div class="row justify-between items-center">
+        <div class="text-h6 text-center q-mx-auto">{{ data.title }}</div>
+        <q-btn
+          icon="delete"
+          color="negative"
+          flat
+          dense
+          @click.stop="$emit('delete')"
+        />
+      </div>
     </q-card-section>
 
     <q-separator />
@@ -41,6 +50,8 @@ const props = defineProps({
   }
 })
 
+// const emit = defineEmits(['delete'])
+
 const amountClass = computed(() =>
   props.data.type === 'income'
     ? 'text-positive text-h6 text-bold'
@@ -58,6 +69,7 @@ const formattedAmount = computed(() =>
 .my-card {
   width: 100%;
   transition: transform 0.3s;
+  position: relative;
 }
 
 .my-card:hover {
