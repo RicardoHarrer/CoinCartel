@@ -84,6 +84,7 @@ export default {
 .navbar {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: background-color 0.3s ease, color 0.3s ease;
+  padding: 7px;
 }
 
 .q-toolbar-title {
