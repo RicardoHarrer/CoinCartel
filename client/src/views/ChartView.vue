@@ -177,7 +177,8 @@ export default defineComponent({
 
     onMounted(() => {
       fetchTransactions();
-      getExchangeRates();
+      // ExchangeRateAPI
+      //getExchangeRates();
     });
 
     return {
