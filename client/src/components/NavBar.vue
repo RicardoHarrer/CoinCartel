@@ -1,5 +1,8 @@
 <template>
-  <q-header elevated :class="['navbar', $q.dark.isActive ? 'bg-primary text-white' : 'bg-white text-dark']">
+  <q-header
+    elevated
+    :class="['navbar', $q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark']"
+  >
     <q-toolbar>
       <q-toolbar-title class="text-h5">
         <q-btn flat label="Coin Cartel" to="/" />
@@ -10,7 +13,13 @@
         <q-route-tab name="chart" label="Chart" to="/chart" exact />
         <q-route-tab name="transaction" label="Transaction" to="/transactions" exact />
         <q-route-tab name="login" label="Login" to="/login" exact v-if="!isLoggedIn" />
-        <q-route-tab name="register" label="Register" to="/register" exact v-if="!isLoggedIn" />
+        <q-route-tab
+          name="register"
+          label="Register"
+          to="/register"
+          exact
+          v-if="!isLoggedIn"
+        />
       </q-tabs>
 
       <q-btn
@@ -47,16 +56,16 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue';
-import { useQuasar } from 'quasar';
+import { ref, computed } from "vue";
+import { useQuasar } from "quasar";
 
 export default {
-  name: 'NavBar',
+  name: "NavBar",
   setup() {
     const $q = useQuasar();
-    const tab = ref('home');
+    const tab = ref("home");
     const mobileMenuOpen = ref(false);
-    const isLoggedIn = computed(() => !!localStorage.getItem('token'));
+    const isLoggedIn = computed(() => !!localStorage.getItem("token"));
 
     const isDarkMode = computed(() => $q.dark.isActive);
 
