@@ -22,16 +22,16 @@ export default defineComponent({
     const exchangeRates = ref({});
     const selectedCurrency = ref('EUR');
 
-    // const getExchangeRates = async () => {
-    //   try {
-    //     const response = await axios.get(
-    //       'https://v6.exchangerate-api.com/v6/1bfd15eb1d48a0a8759f2adf/latest/EUR',
-    //     );
-    //     exchangeRates.value = response.data.conversion_rates;
-    //   } catch (error) {
-    //     console.error('Failed to fetch exchange rates:', error);
-    //   }
-    // };
+    const getExchangeRates = async () => {
+      try {
+        const response = await axios.get(
+          'https://v6.exchangerate-api.com/v6/1bfd15eb1d48a0a8759f2adf/latest/EUR',
+        );
+        exchangeRates.value = response.data.conversion_rates;
+      } catch (error) {
+        console.error('Failed to fetch exchange rates:', error);
+      }
+    };
 
     const getCurrentMonthRange = () => {
       const today = new Date();
@@ -101,6 +101,19 @@ export default defineComponent({
       });
 
       return Object.values(groupedData).sort((a, b) => new Date(a.date) - new Date(b.date));
+    });
+
+    // Neue berechnete Eigenschaften für die Statistiken
+    const totalIncome = computed(() => {
+      return filteredData.value.reduce((sum, t) => sum + t.income, 0);
+    });
+
+    const totalExpense = computed(() => {
+      return filteredData.value.reduce((sum, t) => sum + t.expense, 0);
+    });
+
+    const totalBalance = computed(() => {
+      return totalIncome.value - totalExpense.value;
     });
 
     const chartOptions = computed(() => {
@@ -191,6 +204,9 @@ export default defineComponent({
       handleTransactionAdded,
       selectedCurrency,
       exchangeRates,
+      totalIncome,
+      totalExpense,
+      totalBalance
     };
   },
 });
@@ -249,6 +265,42 @@ export default defineComponent({
       </q-card-section>
     </q-card>
 
+    <!-- Neue Statistik-Sektion -->
+    <q-card class="stats-card q-mt-md">
+
+
+      <q-card-section>
+        <div class="row q-gutter-md">
+          <q-card class="stat-card col" flat bordered>
+            <q-card-section class="bg-green-1">
+              <div class="text-h6">Income</div>
+              <div class="text-h4 text-green">
+                {{ (totalIncome * (exchangeRates[selectedCurrency] || 1)).toFixed(2) }} {{ selectedCurrency }}
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <q-card class="stat-card col" flat bordered>
+            <q-card-section class="bg-red-1">
+              <div class="text-h6">Expenses</div>
+              <div class="text-h4 text-red">
+                {{ (totalExpense * (exchangeRates[selectedCurrency] || 1)).toFixed(2) }} {{ selectedCurrency }}
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <q-card class="stat-card col" flat bordered>
+            <q-card-section class="bg-blue-1">
+              <div class="text-h6">Balance</div>
+              <div class="text-h4" :class="totalBalance >= 0 ? 'text-green' : 'text-red'">
+                {{ (totalBalance * (exchangeRates[selectedCurrency] || 1)).toFixed(2) }} {{ selectedCurrency }}
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </q-card-section>
+    </q-card>
+
     <q-dialog v-model="showAddTransactionDialog">
       <AddTransaction @transaction-added="handleTransactionAdded" />
     </q-dialog>
@@ -256,7 +308,8 @@ export default defineComponent({
 </template>
 
 <style scoped>
-.chart-card {
+.chart-card,
+.stats-card {
   width: 100%;
   max-width: 1200px;
   margin: auto;
@@ -278,5 +331,25 @@ export default defineComponent({
 .q-input,
 .q-btn {
   margin-bottom: 8px;
+}
+
+.stat-card {
+  text-align: center;
+}
+
+.text-h4 {
+  margin-top: 8px;
+}
+
+.bg-green-1 {
+  background-color: rgba(0, 200, 83, 0.1);
+}
+
+.bg-red-1 {
+  background-color: rgba(255, 0, 0, 0.1);
+}
+
+.bg-blue-1 {
+  background-color: rgba(33, 150, 243, 0.1);
 }
 </style>
