@@ -220,6 +220,24 @@ const getTransactionsByUser = async (req, res) => {
   }
 };
 
+const updateUserPreferences = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { preferred_currency, saldo } = req.body;
+
+    if (!id || !preferred_currency || saldo === undefined) {
+      res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const updatedPreferences = await model.updateUserPreferences(id, saldo, preferred_currency);
+
+    res.status(200).json(updatedPreferences);
+  } catch (error) {
+    console.error('Error updating preferences:', error);
+    res.status(500).json({ error: 'Failed to update preferences' });
+  }
+};
+
 export {
   getUsers,
   getUserById,
@@ -236,4 +254,5 @@ export {
   getUserPreferences,
   getUserPreferencesByUser,
   deleteTransaction,
+  updateUserPreferences,
 };

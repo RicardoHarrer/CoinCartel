@@ -108,7 +108,6 @@ export default defineComponent({
       );
     });
 
-    // Neue berechnete Eigenschaften für die Statistiken
     const totalIncome = computed(() => {
       return filteredData.value.reduce((sum, t) => sum + t.income, 0);
     });

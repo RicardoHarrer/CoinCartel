@@ -10,8 +10,14 @@
 
       <q-tabs v-model="tab" shrink stretch class="gt-sm">
         <q-route-tab name="home" label="Home" to="/" exact />
-        <q-route-tab name="chart" label="Chart" to="/chart" exact />
-        <q-route-tab name="transaction" label="Transaction" to="/transactions" exact />
+        <q-route-tab name="chart" label="Chart" to="/chart" exact v-if="isLoggedIn" />
+        <q-route-tab
+          name="transaction"
+          label="Transaction"
+          to="/transactions"
+          exact
+          v-if="isLoggedIn"
+        />
         <q-route-tab name="login" label="Login" to="/login" exact v-if="!isLoggedIn" />
         <q-route-tab
           name="register"
@@ -19,6 +25,13 @@
           to="/register"
           exact
           v-if="!isLoggedIn"
+        />
+        <q-route-tab
+          name="settings"
+          label="Settings"
+          to="/settings"
+          exact
+          v-if="isLoggedIn"
         />
       </q-tabs>
 
@@ -38,10 +51,10 @@
         <q-item clickable v-ripple to="/" exact>
           <q-item-section>Home</q-item-section>
         </q-item>
-        <q-item clickable v-ripple to="/chart" exact>
+        <q-item clickable v-ripple to="/chart" exact v-if="isLoggedIn">
           <q-item-section>Chart</q-item-section>
         </q-item>
-        <q-item clickable v-ripple to="/transactions" exact>
+        <q-item clickable v-ripple to="/transactions" exact v-if="isLoggedIn">
           <q-item-section>Transaction</q-item-section>
         </q-item>
         <q-item clickable v-ripple to="/login" exact v-if="!isLoggedIn">
@@ -49,6 +62,9 @@
         </q-item>
         <q-item clickable v-ripple to="/register" exact v-if="!isLoggedIn">
           <q-item-section>Register</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple to="/settings" exact v-if="isLoggedIn">
+          <q-item-section>Settings</q-item-section>
         </q-item>
       </q-list>
     </q-drawer>

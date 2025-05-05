@@ -128,6 +128,14 @@ const getTransactionsByUser = (userId, startDate, endDate) => {
   return query(queryText, queryParams);
 };
 
+const updateUserPreferences = async (id, saldo, preferredCurrency) => {
+  const { rows } = query(
+    'UPDATE user_preferences SET preferred_currency = $1, saldo = $2 WHERE user_id = $3 RETURNING *',
+    [preferredCurrency, saldo, id],
+  );
+  return rows[0];
+};
+
 export {
   getUsers,
   getUserById,
@@ -146,4 +154,5 @@ export {
   deleteTransaction,
   resetTransactionSequence,
   resetRegisterSequence,
+  updateUserPreferences,
 };

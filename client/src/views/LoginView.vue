@@ -1,7 +1,7 @@
 <script>
 import { ref } from 'vue';
 import axios from 'axios';
-import { useRouter} from 'vue-router';
+import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 
 export default {
@@ -21,7 +21,6 @@ export default {
 
         const { token } = response.data;
         localStorage.setItem('token', token);
-
         router.push('/chart');
       } catch (error) {
         console.error(error);
@@ -43,7 +42,6 @@ export default {
 };
 </script>
 
-
 <template>
   <q-layout :class="['login', $q.dark.isActive ? 'bg-dark' : 'bg-grey-2']">
     <q-page-container>
@@ -51,10 +49,18 @@ export default {
         <div>
           <q-card class="login-card q-pa-xl">
             <q-card-section class="text-center">
-              <div :class="['text-h4', 'q-mb-md', $q.dark.isActive ? 'text-white' : 'text-primary']">
+              <div
+                :class="['text-h4', 'q-mb-md', $q.dark.isActive ? 'text-white' : 'text-primary']"
+              >
                 Welcome Back
               </div>
-              <div :class="['text-subtitle1', 'q-mb-lg', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">
+              <div
+                :class="[
+                  'text-subtitle1',
+                  'q-mb-lg',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
                 Sign in to manage your finances.
               </div>
 

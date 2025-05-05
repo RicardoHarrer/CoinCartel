@@ -21,14 +21,18 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: () => import('../views/HomeView.vue')
+      component: () => import('../views/HomeView.vue'),
     },
     {
       path: '/transactions',
       name: 'Transactions',
-      component: () => import('@/views/TransactionsView.vue')
-    }
-
+      component: () => import('@/views/TransactionsView.vue'),
+    },
+    {
+      path: '/settings',
+      name: 'Settings',
+      component: () => import('@/views/SettingsPage.vue'),
+    },
   ],
 });
 

@@ -16,6 +16,7 @@ import {
   getUserPreferences,
   getUserPreferencesByUser,
   deleteTransaction,
+  updateUserPreferences,
 } from '../../controller/controller.js';
 
 const router = express.Router();
@@ -49,5 +50,7 @@ router.get('/preferences', asyncHandler(getUserPreferences));
 router.get('/preferences/:id', asyncHandler(getUserPreferencesByUser));
 
 router.delete('/transactions/:id', asyncHandler(deleteTransaction));
+
+router.patch('/preferences/:id', asyncHandler(updateUserPreferences));
 
 export default router;
