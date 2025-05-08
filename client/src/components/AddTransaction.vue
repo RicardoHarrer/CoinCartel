@@ -1,25 +1,27 @@
 <script>
-import { ref } from 'vue';
-import axios from 'axios';
-import { jwtDecode } from 'jwt-decode';
+import { ref, onMounted } from "vue";
+import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 
 export default {
-  emits: ['transaction-added'],
+  emits: ["transaction-added"],
 
   setup(props, { emit }) {
     const newTransaction = ref({
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split("T")[0],
       amount: 0,
-      transaction_type: 'Einnahme',
-      category_id: '',
-      currency: 'EUR',
-      description: '',
+      transaction_type: "Einnahme",
+      category_id: null,
+      currency: "EUR",
+      description: "",
     });
 
+    const categories = ref([]);
+
     const decodeToken = () => {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (!token) {
-        console.error('No token found! Please log in.');
+        console.error("No token found! Please log in.");
         return null;
       }
 
@@ -27,15 +29,24 @@ export default {
         const decodedToken = jwtDecode(token);
         return decodedToken.id || null;
       } catch (error) {
-        console.error('Invalid token:', error);
+        console.error("Invalid token:", error);
         return null;
+      }
+    };
+
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get("http://localhost:3000/categories");
+        categories.value = response.data;
+      } catch (err) {
+        console.error("Fehler beim Laden der Kategorien:", err);
       }
     };
 
     const addTransaction = async () => {
       const userid = decodeToken();
       if (!userid) {
-        console.error('User ID not found. Please log in.');
+        console.error("User ID not found. Please log in.");
         return;
       }
 
@@ -45,7 +56,7 @@ export default {
         amount: newTransaction.value.amount,
         transactionType: newTransaction.value.transaction_type,
         currency: newTransaction.value.currency,
-        date: newTransaction.value.date + ' 24:00:00',
+        date: newTransaction.value.date + " 24:00:00",
         description: newTransaction.value.description,
       };
 
@@ -53,22 +64,22 @@ export default {
         const response = await axios.post(`http://localhost:3000/transactions`, payload);
 
         if (response.status === 200) {
-          console.log('Transaction successfully added');
+          console.log("Transaction successfully added");
           newTransaction.value = {
-            date: new Date().toISOString().split('T')[0],
+            date: new Date().toISOString().split("T")[0],
             amount: 0,
-            transaction_type: 'Einnahme',
-            category_id: '',
-            currency: 'EUR',
-            description: '',
+            transaction_type: "Einnahme",
+            category_id: null,
+            currency: "EUR",
+            description: "",
           };
 
-          emit('transaction-added');
+          emit("transaction-added");
         } else {
-          console.error('Failed to add transaction:', response.data);
+          console.error("Failed to add transaction:", response.data);
         }
       } catch (error) {
-        console.error('Error adding transaction:', error);
+        console.error("Error adding transaction:", error);
       }
     };
 
@@ -76,8 +87,13 @@ export default {
       addTransaction();
     };
 
+    onMounted(async () => {
+      await fetchCategories();
+    });
+
     return {
       newTransaction,
+      categories,
       onSubmit,
     };
   },
@@ -120,10 +136,15 @@ export default {
           required
         />
 
-        <q-input
+        <q-select
           filled
           v-model="newTransaction.category_id"
           label="Category"
+          :options="categories.map((c) => ({ label: c.name, value: c.id }))"
+          option-value="value"
+          option-label="label"
+          emit-value
+          map-options
           stack-label
           required
         />
@@ -144,12 +165,7 @@ export default {
         />
 
         <div class="flex justify-end">
-          <q-btn
-            label="Add Transaction"
-            type="submit"
-            color="primary"
-            class="q-mt-md"
-          />
+          <q-btn label="Add Transaction" type="submit" color="primary" class="q-mt-md" />
         </div>
       </q-form>
     </q-card-section>
