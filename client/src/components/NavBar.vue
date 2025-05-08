@@ -1,3 +1,69 @@
+<script>
+import { ref, computed, onMounted, watchEffect } from "vue";
+import { useQuasar } from "quasar";
+import { useRouter } from "vue-router";
+import { auth } from "@/utils/auth";
+
+export default {
+  name: "NavBar",
+  setup() {
+    const $q = useQuasar();
+    const router = useRouter();
+    const tab = ref("home");
+    const mobileMenuOpen = ref(false);
+    
+    // Reaktive Variable statt computed
+    const isLoggedIn = ref(auth.isAuthenticated());
+
+    // Überwacht Änderungen am Authentifizierungsstatus
+    watchEffect(() => {
+      isLoggedIn.value = auth.isAuthenticated();
+    });
+
+    // Event-Listener für Token-Änderungen
+    onMounted(() => {
+      const handleStorageChange = () => {
+        isLoggedIn.value = auth.isAuthenticated();
+      };
+      
+      window.addEventListener('storage', handleStorageChange);
+      
+      // Aufräumen beim Unmount
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+      };
+    });
+
+    const isDarkMode = computed(() => $q.dark.isActive);
+
+    const toggleDarkMode = () => {
+      $q.dark.toggle();
+    };
+
+    const toggleMobileMenu = () => {
+      mobileMenuOpen.value = !mobileMenuOpen.value;
+    };
+
+    const logout = async () => {
+      auth.removeToken();
+      isLoggedIn.value = false; // Sofortige UI-Aktualisierung
+      await router.push('/'); // Geändert von '/login' zu '/'
+      window.location.reload(); // Nur als Fallback
+    };
+
+    return {
+      tab,
+      mobileMenuOpen,
+      isLoggedIn,
+      isDarkMode,
+      toggleDarkMode,
+      toggleMobileMenu,
+      logout,
+    };
+  },
+};
+</script>
+
 <template>
   <q-header
     elevated
@@ -33,6 +99,13 @@
           exact
           v-if="isLoggedIn"
         />
+        <q-btn
+          v-if="isLoggedIn"
+          flat
+          label="Logout"
+          @click="logout"
+          class="q-ml-md"
+        />
       </q-tabs>
 
       <q-btn
@@ -66,44 +139,13 @@
         <q-item clickable v-ripple to="/settings" exact v-if="isLoggedIn">
           <q-item-section>Settings</q-item-section>
         </q-item>
+        <q-item v-if="isLoggedIn" clickable v-ripple @click="logout">
+          <q-item-section>Logout</q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
   </q-header>
 </template>
-
-<script>
-import { ref, computed } from "vue";
-import { useQuasar } from "quasar";
-
-export default {
-  name: "NavBar",
-  setup() {
-    const $q = useQuasar();
-    const tab = ref("home");
-    const mobileMenuOpen = ref(false);
-    const isLoggedIn = computed(() => !!localStorage.getItem("token"));
-
-    const isDarkMode = computed(() => $q.dark.isActive);
-
-    const toggleDarkMode = () => {
-      $q.dark.toggle();
-    };
-
-    const toggleMobileMenu = () => {
-      mobileMenuOpen.value = !mobileMenuOpen.value;
-    };
-
-    return {
-      tab,
-      mobileMenuOpen,
-      isLoggedIn,
-      isDarkMode,
-      toggleDarkMode,
-      toggleMobileMenu,
-    };
-  },
-};
-</script>
 
 <style scoped>
 .navbar {

@@ -20,7 +20,7 @@
           text-color="primary"
           size="lg"
           class="animate__animated animate__fadeInUp animate__delay-1s"
-          @click="navigateToRegistry"
+          @click="navigateToAuth"
         />
       </div>
     </section>
@@ -80,7 +80,7 @@
                   color="primary"
                   flat
                   class="q-mt-md"
-                  @click="navigateToRegistry"
+                  @click="navigateToAuth"
                 />
               </div>
             </div>
@@ -111,7 +111,7 @@
           text-color="primary"
           size="lg"
           class="cta-button"
-          @click="navigateToRegistry"
+          @click="navigateToAuth"
         />
         <p class="cta-subtitle q-mt-md text-caption">
           No credit card required · Cancel anytime
@@ -126,6 +126,7 @@ import { useRouter } from "vue-router";
 import { useQuasar, QCarousel, QCarouselSlide } from "quasar";
 import { ref, onMounted } from "vue";
 import "animate.css";
+import { auth } from '@/utils/auth';
 
 export default {
   components: {
@@ -137,8 +138,12 @@ export default {
     const $q = useQuasar();
     const slide = ref(0);
 
-    const navigateToRegistry = () => {
-      router.push("/register");
+    const navigateToAuth = () => {
+      if (auth.isAuthenticated()) {
+        router.push('/chart');
+      } else {
+        router.push('/register');
+      }
     };
 
     const stats = [
@@ -183,7 +188,7 @@ export default {
       },
     ];
 
-    // Counter animation for stats
+
     onMounted(() => {
       const counters = document.querySelectorAll(".stat-value");
       const speed = 200;
@@ -217,7 +222,7 @@ export default {
     });
 
     return {
-      navigateToRegistry,
+      navigateToAuth,
       stats,
       features,
       slide,

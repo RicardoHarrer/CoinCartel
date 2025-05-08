@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
+import { auth } from '@/utils/auth';
 
 export default {
   name: 'LoginPage',
@@ -18,12 +19,17 @@ export default {
           username: username.value,
           password: password.value,
         });
-
+      
         const { token } = response.data;
-        localStorage.setItem('token', token);
-        router.push('/chart');
+        auth.setToken(token); 
+        window.dispatchEvent(new Event('storage')); 
+        await router.push('/chart');
       } catch (error) {
         console.error(error);
+        $q.notify({
+          type: 'negative',
+          message: 'Login failed. Please check your credentials.'
+        });
       }
     };
 

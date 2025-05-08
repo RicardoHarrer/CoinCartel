@@ -18,8 +18,7 @@ export default {
         });
 
         const { token } = response.data;
-        localStorage.setItem('token', token);
-
+        localStorage.setItem('token', token); 
         this.$router.push('/chart');
       } catch (error) {
         console.error(error);

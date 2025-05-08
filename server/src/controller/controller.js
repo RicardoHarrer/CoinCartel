@@ -36,8 +36,8 @@ const registerUser = async (req, res) => {
     await model.resetRegisterSequence();
     const newUser = await model.createUser(username, hashedPassword);
 
-    const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+      expiresIn: '10s',
     });
 
     return res.status(201).json({
@@ -56,25 +56,16 @@ const loginUser = async (req, res) => {
 
   try {
     const user = await model.findUserByUsername(username);
-
-    if (!user) {
-      return res.status(400).json({ error: "User doesn't exist" });
-    }
+    if (!user) return res.status(400).json({ error: "User doesn't exist" });
 
     const validPassword = await bcrypt.compare(password, user.password);
-
-    if (!validPassword) {
-      return res.status(400).json({ error: 'Wrong password' });
-    }
+    if (!validPassword) return res.status(400).json({ error: 'Wrong password' });
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
+      expiresIn: '1h'
     });
 
-    return res.json({
-      message: 'Login successful',
-      token,
-    });
+    return res.json({ token });
   } catch (error) {
     console.error(error.message);
     return res.status(500).json({ error: 'Server error' });
