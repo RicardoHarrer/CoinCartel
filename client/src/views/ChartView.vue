@@ -52,7 +52,10 @@ export default defineComponent({
     const userid = decodeToken();
     const dateRange = ref(getCurrentMonthRange());
 
-    const userPreferences = ref(null);
+    const userPreferences = ref({
+      preferred_currency: 'EUR',
+      saldo: 1000.0,
+    });
 
     const getExchangeRates = async () => {
       try {
@@ -71,7 +74,10 @@ export default defineComponent({
       try {
         const response = await axios.get(`http://localhost:3000/preferences/${userid}`);
         if (response.data) {
-          userPreferences.value = response.data;
+          userPreferences.value = {
+            ...userPreferences.value,
+            ...response.data,
+          };
         }
       } catch (err) {
         console.error('Error fetching user preferences:', err);
