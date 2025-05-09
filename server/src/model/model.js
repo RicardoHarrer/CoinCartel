@@ -128,10 +128,10 @@ const getTransactionsByUser = (userId, startDate, endDate) => {
   return query(queryText, queryParams);
 };
 
-const updateUserPreferences = async (id, saldo, preferredCurrency) => {
-  const { rows } = query(
+const updateUserPreferences = async (id, saldo, preferred_currency) => {
+  const { rows } = await query(
     'UPDATE user_preferences SET preferred_currency = $1, saldo = $2 WHERE user_id = $3 RETURNING *',
-    [preferredCurrency, saldo, id],
+    [preferred_currency, saldo, id],
   );
   return rows[0];
 };

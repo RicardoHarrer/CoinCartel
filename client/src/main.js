@@ -1,5 +1,5 @@
 import { createApp } from 'vue';
-import { Quasar } from 'quasar';
+import { Notify, Quasar } from 'quasar';
 import quasarIconSet from 'quasar/icon-set/svg-fontawesome-v6';
 
 import '@quasar/extras/roboto-font/roboto-font.css';
@@ -14,7 +14,7 @@ import router from './router';
 
 const app = createApp(App);
 app.use(Quasar, {
-  plugins: {}, // import Quasar plugins and add here
+  plugins: { Notify }, // import Quasar plugins and add here
   iconSet: quasarIconSet,
 });
 

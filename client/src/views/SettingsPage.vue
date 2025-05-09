@@ -3,10 +3,12 @@ import { defineComponent, ref, onMounted } from 'vue';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { useQuasar } from 'quasar';
+import { useRouter } from 'vue-router';
 
 export default defineComponent({
   name: 'SettingsPage',
   setup() {
+    const router = useRouter();
     const $q = useQuasar();
     const loading = ref(false);
     const saving = ref(false);
@@ -95,6 +97,8 @@ export default defineComponent({
           type: 'positive',
           message: 'Preferences saved successfully!',
         });
+
+        router.push('/chart');
       } catch (err) {
         console.error('Error saving preferences:', err);
         $q.notify({
