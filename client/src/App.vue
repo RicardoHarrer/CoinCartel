@@ -1,9 +1,9 @@
 <script>
-import { RouterView } from 'vue-router';
-import Navbar from './components/NavBar.vue';
+import { RouterView } from "vue-router";
+import Navbar from "./components/NavBar.vue";
 
 export default {
-  components: { Navbar },
+  components: { Navbar, RouterView },
 };
 </script>
 
@@ -18,11 +18,11 @@ export default {
 
 <style>
 @font-face {
-  font-family: 'Montserrat';
-  src: url('/fonts/Montserrat/Montserrat-Regular.ttf') format('truetype');
+  font-family: "Montserrat";
+  src: url("/fonts/Montserrat/Montserrat-Regular.ttf") format("truetype");
 }
 
 * {
-  font-family: 'Montserrat';
+  font-family: "Montserrat";
 }
 </style>
