@@ -36,8 +36,8 @@ const registerUser = async (req, res) => {
     await model.resetRegisterSequence();
     const newUser = await model.createUser(username, hashedPassword);
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: '10s',
+    const token = jwt.sign({ id: newUser.id }, process.env.JWT_SECRET, {
+      expiresIn: '1h',
     });
 
     return res.status(201).json({
@@ -62,7 +62,7 @@ const loginUser = async (req, res) => {
     if (!validPassword) return res.status(400).json({ error: 'Wrong password' });
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: '1h'
+      expiresIn: '1h',
     });
 
     return res.json({ token });
@@ -214,13 +214,13 @@ const getTransactionsByUser = async (req, res) => {
 const updateUserPreferences = async (req, res) => {
   try {
     const { id } = req.params;
-    const { preferred_currency, saldo } = req.body;
+    const { preferred_currency: preferredCurrency, saldo } = req.body;
 
-    if (!id || !preferred_currency || saldo === undefined) {
+    if (!id || !preferredCurrency || saldo === undefined) {
       res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const updatedPreferences = await model.updateUserPreferences(id, saldo, preferred_currency);
+    const updatedPreferences = await model.updateUserPreferences(id, saldo, preferredCurrency);
 
     res.status(200).json(updatedPreferences);
   } catch (error) {
