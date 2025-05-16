@@ -65,10 +65,11 @@
               :min="0"
               :max="5000"
               :step="10"
-              label="Amount Range (€)"
+              :label="false"
               color="primary"
               style="width: 100%"
             />
+            <div class="text-caption text-center q-mt-xs">Amount Range (€)</div>
             <div class="row justify-between q-mt-xs">
               <div class="text-caption">{{ amountRange.min }} €</div>
               <div class="text-caption">{{ amountRange.max }} €</div>
@@ -347,7 +348,7 @@ export default defineComponent({
     const exportPDF = () => {
       try {
         const doc = new jsPDF();
-        
+
         // Title and Metadata
         doc.setFontSize(18);
         doc.text("Transaction Report", 14, 22);
@@ -355,48 +356,48 @@ export default defineComponent({
         doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
         doc.text(`User ID: ${userid}`, 14, 36);
         doc.text(`Filters: ${getActiveFilters()}`, 14, 42);
-        
+
         // Prepare table data
-        const tableData = filteredTransactions.value.map(t => [
+        const tableData = filteredTransactions.value.map((t) => [
           t.date,
           t.title,
           t.category,
-          t.type === 'income' ? 'Income' : 'Expense',
-          `${t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)} ${t.currency || '€'}`
+          t.type === "income" ? "Income" : "Expense",
+          `${t.type === "income" ? "+" : "-"}${t.amount.toFixed(2)} ${t.currency || "€"}`,
         ]);
 
         // Create table
         autoTable(doc, {
-          head: [['Date', 'Description', 'Category', 'Type', 'Amount']],
+          head: [["Date", "Description", "Category", "Type", "Amount"]],
           body: tableData,
           startY: 50,
           styles: {
             fontSize: 9,
             cellPadding: 3,
-            valign: 'middle'
+            valign: "middle",
           },
           headStyles: {
             fillColor: [41, 128, 185], // Primary color
             textColor: 255,
-            fontStyle: 'bold'
+            fontStyle: "bold",
           },
           columnStyles: {
-            0: { cellWidth: 25, halign: 'left' },
+            0: { cellWidth: 25, halign: "left" },
             1: { cellWidth: 60 },
             2: { cellWidth: 30 },
             3: { cellWidth: 20 },
-            4: { cellWidth: 25, halign: 'right' }
+            4: { cellWidth: 25, halign: "right" },
           },
           alternateRowStyles: {
-            fillColor: [245, 245, 245]
-          }
+            fillColor: [245, 245, 245],
+          },
         });
 
         // Add summary
         const finalY = doc.lastAutoTable.finalY + 10;
         doc.setFontSize(12);
         doc.text("Summary:", 14, finalY);
-        
+
         const totals = calculateTotals();
         doc.text(`Total Income: +${totals.income.toFixed(2)} €`, 14, finalY + 8);
         doc.text(`Total Expenses: -${totals.expense.toFixed(2)} €`, 14, finalY + 16);
@@ -416,52 +417,56 @@ export default defineComponent({
 
         // Save PDF
         doc.save(`transactions_${new Date().toISOString().slice(0, 10)}.pdf`);
-        
+
         $q.notify({
           type: "positive",
           message: "PDF successfully generated",
-          icon: "picture_as_pdf"
+          icon: "picture_as_pdf",
         });
       } catch (error) {
         console.error("PDF generation failed:", error);
         $q.notify({
           type: "negative",
           message: "Failed to generate PDF",
-          icon: "error"
+          icon: "error",
         });
       }
     };
 
     const exportCSV = () => {
       try {
-        const headers = ['Date', 'Description', 'Category', 'Type', 'Amount'];
-        const data = filteredTransactions.value.map(t => ({
+        const headers = ["Date", "Description", "Category", "Type", "Amount"];
+        const data = filteredTransactions.value.map((t) => ({
           date: t.date,
           description: t.title,
           category: t.category,
-          type: t.type === 'income' ? 'Income' : 'Expense',
-          amount: `${t.type === 'income' ? '+' : '-'}${t.amount} ${t.currency || '€'}`
+          type: t.type === "income" ? "Income" : "Expense",
+          amount: `${t.type === "income" ? "+" : "-"}${t.amount} ${t.currency || "€"}`,
         }));
 
-        let csv = headers.join(',') + '\n';
-        data.forEach(row => {
-          csv += Object.values(row).map(value => 
-            `"${value.toString().replace(/"/g, '""')}"`
-          ).join(',') + '\n';
+        let csv = headers.join(",") + "\n";
+        data.forEach((row) => {
+          csv +=
+            Object.values(row)
+              .map((value) => `"${value.toString().replace(/"/g, '""')}"`)
+              .join(",") + "\n";
         });
 
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
-        
-        link.setAttribute('href', url);
-        link.setAttribute('download', `transactions_${new Date().toISOString().slice(0,10)}.csv`);
-        link.style.visibility = 'hidden';
-        
+
+        link.setAttribute("href", url);
+        link.setAttribute(
+          "download",
+          `transactions_${new Date().toISOString().slice(0, 10)}.csv`
+        );
+        link.style.visibility = "hidden";
+
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         $q.notify({
           type: "positive",
           message: "CSV exported successfully",
@@ -479,17 +484,17 @@ export default defineComponent({
       const totals = {
         income: 0,
         expense: 0,
-        balance: 0
+        balance: 0,
       };
-      
-      filteredTransactions.value.forEach(t => {
-        if (t.type === 'income') {
+
+      filteredTransactions.value.forEach((t) => {
+        if (t.type === "income") {
           totals.income += t.amount;
         } else {
           totals.expense += t.amount;
         }
       });
-      
+
       totals.balance = totals.income - totals.expense;
       return totals;
     };
@@ -499,15 +504,15 @@ export default defineComponent({
       if (searchText.value) activeFilters.push(`Search: "${searchText.value}"`);
       if (transactionType.value) activeFilters.push(`Type: ${transactionType.value}`);
       if (selectedCategories.value.length > 0) {
-        const categoryNames = selectedCategories.value.map(id => 
-          categories.value.find(c => c.id === id)?.name || id
+        const categoryNames = selectedCategories.value.map(
+          (id) => categories.value.find((c) => c.id === id)?.name || id
         );
-        activeFilters.push(`Categories: ${categoryNames.join(', ')}`);
+        activeFilters.push(`Categories: ${categoryNames.join(", ")}`);
       }
       if (amountRange.value.min > 0 || amountRange.value.max < 5000) {
         activeFilters.push(`Amount: ${amountRange.value.min}€-${amountRange.value.max}€`);
       }
-      return activeFilters.length > 0 ? activeFilters.join(', ') : 'None';
+      return activeFilters.length > 0 ? activeFilters.join(", ") : "None";
     };
 
     return {
@@ -527,7 +532,7 @@ export default defineComponent({
       deleteTransaction,
       handleTransactionAdded,
       exportPDF,
-      exportCSV
+      exportCSV,
     };
   },
 });

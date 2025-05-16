@@ -42,35 +42,18 @@ const getTransactionByID = (id) => query('Select * from transactions where id = 
 
 const addTransaction = async (
   userId,
-  category,
+  categoryId,
   amount,
   transactionType,
   currency,
   date,
   description,
 ) => {
-  const findCategoryQuery = `
-    SELECT id FROM categories WHERE name = $1;
-  `;
-  const findCategoryValues = [category];
-
   try {
-    const categoryResult = await query(findCategoryQuery, findCategoryValues);
-
-    let categoryId;
-
-    if (categoryResult.rows.length > 0) {
-      categoryId = categoryResult.rows[0].id;
-    } else {
-      const insertCategoryQuery = `
-        INSERT INTO categories (name)
-        VALUES ($1)
-        RETURNING id;
-      `;
-      const insertCategoryValues = [category];
-
-      const newCategoryResult = await query(insertCategoryQuery, insertCategoryValues);
-      categoryId = newCategoryResult.rows[0].id;
+    // Überprüfen ob die Kategorie existiert
+    const categoryCheck = await query('SELECT id FROM categories WHERE id = $1', [categoryId]);
+    if (categoryCheck.rows.length === 0) {
+      throw new Error('Category does not exist');
     }
 
     const insertTransactionQuery = `

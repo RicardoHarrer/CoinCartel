@@ -131,20 +131,21 @@ const getTransactionByID = async (req, res) => {
 const addTransaction = async (req, res) => {
   const { userId, categoryId, amount, transactionType, currency, date, description } = req.body;
 
+  // Validierung
   if (!userId || !categoryId || !amount || !transactionType || !currency) {
-    res.status(400).send('Missing required fields');
+    return res.status(400).send('Missing required fields');
   }
 
   if (!['Einnahme', 'Ausgabe'].includes(transactionType)) {
-    res.status(400).send('Invalid transaction type');
+    return res.status(400).send('Invalid transaction type');
   }
 
-  if (Number.isNaN(amount)) {
-    res.status(400).send('Amount must be a number');
+  if (isNaN(amount)) {
+    return res.status(400).send('Amount must be a number');
   }
 
   try {
-    model.resetTransactionSequence();
+    await model.resetTransactionSequence();
     const { rows } = await model.addTransaction(
       userId,
       categoryId,
@@ -156,15 +157,19 @@ const addTransaction = async (req, res) => {
     );
 
     if (!rows) {
-      res.status(400).send('Could not add transaction');
+      return res.status(400).send('Could not add transaction');
     }
 
-    res.status(200).send('Transaction successfully added');
+    return res.status(201).json(rows[0]);
   } catch (error) {
     console.error('Error adding transaction:', error);
-    res.status(500).send(`Internal server error: ${error.message}`);
+    if (error.message === 'Category does not exist') {
+      return res.status(400).send(error.message);
+    }
+    return res.status(500).send(`Internal server error: ${error.message}`);
   }
 };
+
 
 const getUserPreferences = async (req, res) => {
   const { rows } = await model.getUserPreferences();

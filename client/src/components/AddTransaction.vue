@@ -2,11 +2,13 @@
 import { ref, onMounted } from "vue";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
+import { useQuasar } from "quasar";
 
 export default {
   emits: ["transaction-added"],
 
   setup(props, { emit }) {
+    const $q = useQuasar();
     const newTransaction = ref({
       date: new Date().toISOString().split("T")[0],
       amount: 0,
@@ -40,6 +42,10 @@ export default {
         categories.value = response.data;
       } catch (err) {
         console.error("Fehler beim Laden der Kategorien:", err);
+        $q.notify({
+          type: "negative",
+          message: "Failed to load categories",
+        });
       }
     };
 
@@ -47,24 +53,42 @@ export default {
       const userid = decodeToken();
       if (!userid) {
         console.error("User ID not found. Please log in.");
+        $q.notify({
+          type: "negative",
+          message: "Please log in to add transactions",
+        });
+        return;
+      }
+
+      // Validierung
+      if (!newTransaction.value.category_id) {
+        $q.notify({
+          type: "negative",
+          message: "Please select a category",
+        });
         return;
       }
 
       const payload = {
         userId: userid,
-        categoryId: newTransaction.value.category_id,
-        amount: newTransaction.value.amount,
+        categoryId: Number(newTransaction.value.category_id), // Sicherstellen, dass es eine Zahl ist
+        amount: Number(newTransaction.value.amount),
         transactionType: newTransaction.value.transaction_type,
         currency: newTransaction.value.currency,
-        date: newTransaction.value.date + " 24:00:00",
+        date: newTransaction.value.date + "T00:00:00", // Korrektes Datumsformat
         description: newTransaction.value.description,
       };
 
       try {
-        const response = await axios.post(`http://localhost:3000/transactions`, payload);
+        const response = await axios.post("http://localhost:3000/transactions", payload);
 
-        if (response.status === 200) {
-          console.log("Transaction successfully added");
+        if (response.status === 201) {
+          $q.notify({
+            type: "positive",
+            message: "Transaction successfully added",
+          });
+
+          // Formular zurücksetzen
           newTransaction.value = {
             date: new Date().toISOString().split("T")[0],
             amount: 0,
@@ -75,11 +99,13 @@ export default {
           };
 
           emit("transaction-added");
-        } else {
-          console.error("Failed to add transaction:", response.data);
         }
       } catch (error) {
         console.error("Error adding transaction:", error);
+        $q.notify({
+          type: "negative",
+          message: error.response?.data?.message || "Failed to add transaction",
+        });
       }
     };
 
@@ -107,7 +133,7 @@ export default {
     </q-card-section>
 
     <q-card-section>
-      <q-form @submit="onSubmit" class="q-gutter-md">
+      <q-form @submit.prevent="onSubmit" class="q-gutter-md">
         <q-input
           filled
           v-model="newTransaction.date"
@@ -119,7 +145,7 @@ export default {
 
         <q-input
           filled
-          v-model="newTransaction.amount"
+          v-model.number="newTransaction.amount"
           label="Amount"
           type="number"
           step="0.01"
@@ -138,9 +164,14 @@ export default {
 
         <q-select
           filled
-          v-model="newTransaction.category_id"
+          v-model.number="newTransaction.category_id"
           label="Category"
-          :options="categories.map((c) => ({ label: c.name, value: c.id }))"
+          :options="
+            categories.map((c) => ({
+              label: c.name,
+              value: c.id,
+            }))
+          "
           option-value="value"
           option-label="label"
           emit-value
