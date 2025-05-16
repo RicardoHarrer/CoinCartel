@@ -216,16 +216,29 @@ const updateUserPreferences = async (req, res) => {
     const { id } = req.params;
     const { preferred_currency, saldo } = req.body;
 
-    if (!id || !preferred_currency || saldo === undefined) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    console.log('Updating preferences:', { id, preferred_currency, saldo });
+
+    if (!id || preferred_currency === undefined || saldo === undefined) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        received: req.body,
+      });
     }
 
-    const updatedPreferences = await model.updateUserPreferences(id, saldo, preferred_currency);
+    const updatedPreferences = await model.updateUserPreferences(id, preferred_currency, saldo);
 
-    return res.status(200).json(updatedPreferences);
+    if (!updatedPreferences) {
+      return res.status(404).json({ error: 'User preferences not found' });
+    }
+
+    return res.json(updatedPreferences);
   } catch (error) {
-    console.error('Error updating preferences:', error);
-    return res.status(500).json({ error: 'Failed to update preferences' });
+    console.error('Detailed error:', error);
+    return res.status(500).json({
+      error: 'Database operation failed',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    });
   }
 };
 

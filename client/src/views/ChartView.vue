@@ -18,6 +18,8 @@ export default defineComponent({
   setup() {
     const $q = useQuasar();
     const route = useRoute();
+    const chartLoading = ref(false);
+
     const getCurrentMonthRange = () => {
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -27,10 +29,6 @@ export default defineComponent({
         to: lastDay.toISOString().split('T')[0],
       };
     };
-
-    const currentCurrency = computed(() => {
-      return userPreferences.value?.preferred_currency || 'EUR';
-    });
 
     const decodeToken = () => {
       const token = localStorage.getItem('token');
@@ -45,7 +43,7 @@ export default defineComponent({
 
     const transactions = ref([]);
     const loading = ref(false);
-    const loadingPreferences = ref(false);
+    const loadingPreferences = ref(true);
     const error = ref(null);
     const showAddTransactionDialog = ref(false);
     const exchangeRates = ref({});
@@ -57,15 +55,29 @@ export default defineComponent({
       saldo: 1000.0,
     });
 
+    const currentCurrency = computed(() => {
+      return userPreferences.value?.preferred_currency || 'EUR';
+    });
+
     const getExchangeRates = async () => {
       try {
         const response = await axios.get(
           'https://v6.exchangerate-api.com/v6/1bfd15eb1d48a0a8759f2adf/latest/EUR',
         );
         exchangeRates.value = response.data.conversion_rates;
+        if (!exchangeRates.value[currentCurrency.value]) {
+          exchangeRates.value[currentCurrency.value] = 1;
+        }
       } catch (error) {
         console.error('Failed to fetch exchange rates:', error);
         exchangeRates.value = { EUR: 1 };
+        if (currentCurrency.value !== 'EUR') {
+          exchangeRates.value[currentCurrency.value] = 1;
+        }
+        $q.notify({
+          type: 'negative',
+          message: 'Failed to update exchange rates. Using default rates.',
+        });
       }
     };
 
@@ -73,20 +85,31 @@ export default defineComponent({
       loadingPreferences.value = true;
       try {
         const response = await axios.get(`http://localhost:3000/preferences/${userid}`);
-        if (response.data) {
+        console.log('API Response:', response.data);
+
+        if (response.data && response.data.length > 0) {
+          const prefsFromServer = response.data[0];
+
           userPreferences.value = {
-            ...userPreferences.value,
-            ...response.data,
+            preferred_currency: prefsFromServer.preferred_currency || 'EUR',
+            saldo: parseFloat(prefsFromServer.saldo) || 1000.0,
           };
+
+          console.log('Merged Preferences:', userPreferences.value);
         }
+        await getExchangeRates();
       } catch (err) {
         console.error('Error fetching user preferences:', err);
+        userPreferences.value.preferred_currency = 'EUR';
+        await getExchangeRates();
       } finally {
         loadingPreferences.value = false;
       }
     };
 
     const fetchTransactions = async () => {
+      if (loadingPreferences.value) return;
+
       loading.value = true;
       try {
         const response = await axios.get(`http://localhost:3000/transactions/users/${userid}`, {
@@ -119,8 +142,19 @@ export default defineComponent({
         if (!groupedData[dateKey]) {
           groupedData[dateKey] = { date: dateKey, income: 0, expense: 0 };
         }
-        groupedData[dateKey].income += Number(t.income);
-        groupedData[dateKey].expense += Number(t.expense);
+        const income =
+          t.currency === currentCurrency.value
+            ? t.income
+            : t.income *
+              (exchangeRates.value[currentCurrency.value] / (exchangeRates.value[t.currency] || 1));
+        const expense =
+          t.currency === currentCurrency.value
+            ? t.expense
+            : t.expense *
+              (exchangeRates.value[currentCurrency.value] / (exchangeRates.value[t.currency] || 1));
+
+        groupedData[dateKey].income += Number(income);
+        groupedData[dateKey].expense += Number(expense);
       });
       return Object.values(groupedData).sort((a, b) => new Date(a.date) - new Date(b.date));
     });
@@ -130,29 +164,30 @@ export default defineComponent({
     const totalBalance = computed(() => totalIncome.value - totalExpense.value);
 
     const chartOptions = computed(() => {
+      if (!userPreferences.value?.preferred_currency) return {};
+
       const currency = currentCurrency.value;
-      const rate = exchangeRates.value[currency] || 1;
       const sortedData = [...filteredData.value].sort(
         (a, b) => new Date(a.date) - new Date(b.date),
       );
 
       let previousIncome = 0;
       const incomeData = sortedData.map((t) => {
-        const income = t.income * rate;
+        const income = t.income;
         previousIncome = Math.max(income, previousIncome);
         return [new Date(t.date).getTime(), previousIncome];
       });
 
       let previousExpense = 0;
       const expenseData = sortedData.map((t) => {
-        const expense = t.expense * rate;
+        const expense = t.expense;
         previousExpense = Math.max(expense, previousExpense);
         return [new Date(t.date).getTime(), previousExpense];
       });
 
       let previousBalance = 0;
       const balanceData = sortedData.map((t) => {
-        previousBalance += Math.max(0, (t.income - t.expense) * rate);
+        previousBalance += Math.max(0, t.income - t.expense);
         return [new Date(t.date).getTime(), previousBalance];
       });
 
@@ -220,13 +255,26 @@ export default defineComponent({
     });
 
     watch(
-      () => userPreferences.value.preferred_currency,
-      (newCurrency) => {
+      () => userPreferences.value?.preferred_currency,
+      async (newCurrency) => {
         if (newCurrency) {
-          getExchangeRates();
-          updateChart();
+          chartLoading.value = true;
+          try {
+            await getExchangeRates();
+            await fetchTransactions();
+          } finally {
+            chartLoading.value = false;
+          }
         }
       },
+    );
+
+    watch(
+      () => dateRange.value,
+      () => {
+        fetchTransactions();
+      },
+      { deep: true },
     );
 
     function updateChart() {
@@ -235,7 +283,6 @@ export default defineComponent({
 
     function resetToCurrentMonth() {
       dateRange.value = getCurrentMonthRange();
-      fetchTransactions();
     }
 
     function handleTransactionAdded() {
@@ -246,9 +293,6 @@ export default defineComponent({
     onMounted(async () => {
       try {
         await fetchUserPreferences();
-
-        await getExchangeRates();
-
         await fetchTransactions();
 
         if (route.query.saved) {
@@ -261,6 +305,8 @@ export default defineComponent({
         console.error('Initialization error:', error);
       }
     });
+
+    const isPreferencesLoaded = computed(() => !loadingPreferences.value);
 
     return {
       dateRange,
@@ -278,13 +324,15 @@ export default defineComponent({
       totalBalance,
       loadingPreferences,
       currentCurrency,
+      isPreferencesLoaded,
+      chartLoading,
     };
   },
 });
 </script>
 
 <template>
-  <div class="q-pa-md">
+  <div v-if="isPreferencesLoaded" class="q-pa-md">
     <q-card class="chart-card">
       <q-card-section class="bg-primary text-white">
         <div class="text-h6">Transaction Overview</div>
@@ -312,8 +360,8 @@ export default defineComponent({
             :options="Object.keys(exchangeRates)"
             label="Currency"
             class="col"
-            @update:model-value="updateChart"
             :loading="loadingPreferences"
+            @update:model-value="updateChart"
           />
 
           <q-btn
@@ -333,7 +381,12 @@ export default defineComponent({
       </q-card-section>
 
       <q-card-section>
-        <v-chart class="chart" :option="chartOptions" autoresize />
+        <v-chart
+          class="chart"
+          :option="chartOptions"
+          autoresize
+          :loading="chartLoading || loading"
+        />
       </q-card-section>
     </q-card>
 
@@ -344,15 +397,9 @@ export default defineComponent({
             <q-card-section class="bg-green-1">
               <div class="text-h6">Income</div>
               <div class="text-h4 text-green">
-                {{
-                  (totalIncome * (exchangeRates[userPreferences.preferred_currency] || 1)).toFixed(
-                    2,
-                  )
-                }}
-                {{ userPreferences.preferred_currency }}
-              </div>
-              <div v-if="userPreferences.preferred_currency !== 'EUR'" class="text-h5">
-                ≈ {{ totalIncome.toFixed(2) }} EUR
+                {{ totalIncome.toFixed(2) }}
+                <br />
+                {{ currentCurrency }}
               </div>
             </q-card-section>
           </q-card>
@@ -361,15 +408,9 @@ export default defineComponent({
             <q-card-section class="bg-red-1">
               <div class="text-h6">Expenses</div>
               <div class="text-h4 text-red">
-                {{
-                  (totalExpense * (exchangeRates[userPreferences.preferred_currency] || 1)).toFixed(
-                    2,
-                  )
-                }}
-                {{ userPreferences.preferred_currency }}
-              </div>
-              <div v-if="userPreferences.preferred_currency !== 'EUR'" class="text-h5">
-                ≈ {{ totalExpense.toFixed(2) }} EUR
+                {{ totalExpense.toFixed(2) }}
+                <br />
+                {{ currentCurrency }}
               </div>
             </q-card-section>
           </q-card>
@@ -378,15 +419,9 @@ export default defineComponent({
             <q-card-section class="bg-blue-1">
               <div class="text-h6">Balance</div>
               <div class="text-h4" :class="totalBalance >= 0 ? 'text-green' : 'text-red'">
-                {{
-                  (totalBalance * (exchangeRates[userPreferences.preferred_currency] || 1)).toFixed(
-                    2,
-                  )
-                }}
-                {{ userPreferences.preferred_currency }}
-              </div>
-              <div v-if="userPreferences.preferred_currency !== 'EUR'" class="text-h5">
-                ≈ {{ totalBalance.toFixed(2) }} EUR
+                {{ totalBalance.toFixed(2) }}
+                <br />
+                {{ currentCurrency }}
               </div>
             </q-card-section>
           </q-card>
@@ -395,8 +430,8 @@ export default defineComponent({
             <q-card-section class="bg-purple-1">
               <div class="text-h6">Monthly Budget</div>
               <div class="text-h4">
-                {{ userPreferences.saldo.toFixed(2) }}
-                {{ userPreferences.preferred_currency }}
+                {{ userPreferences.saldo * exchangeRates[currentCurrency].toFixed(2) }}
+                {{ currentCurrency }}
               </div>
               <div class="q-mt-sm">
                 <q-linear-progress
@@ -420,6 +455,10 @@ export default defineComponent({
     <q-dialog v-model="showAddTransactionDialog">
       <AddTransaction @transaction-added="handleTransactionAdded" />
     </q-dialog>
+  </div>
+  <div v-else class="q-pa-md flex flex-center" style="height: 100vh">
+    <q-spinner-gears size="xl" color="primary" />
+    <div class="q-ml-md">Loading user preferences...</div>
   </div>
 </template>
 
