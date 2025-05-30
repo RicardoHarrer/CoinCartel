@@ -16,6 +16,7 @@ import AddTransaction from '../components/AddTransaction.vue';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import CategoryPieChart from '@/components/CategoryPieChart.vue';
+import { auth } from '@/utils/auth';
 
 use([
   CanvasRenderer,
@@ -48,7 +49,6 @@ export default defineComponent({
       saldo: 1000.0,
     });
 
-    // Helper functions
     function getCurrentMonthRange() {
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -60,9 +60,10 @@ export default defineComponent({
     }
 
     function decodeToken() {
-      const token = localStorage.getItem('token');
+      const token = auth.getToken();
       if (!token) return null;
       try {
+        console.log('Decoding token:', jwtDecode(token));
         return jwtDecode(token).id;
       } catch (error) {
         console.error('Invalid token:', error);
@@ -70,7 +71,6 @@ export default defineComponent({
       }
     }
 
-    // Data fetching
     const getExchangeRates = async () => {
       try {
         const response = await axios.get(
@@ -130,7 +130,6 @@ export default defineComponent({
 
         transactions.value = response.data;
 
-        // Extract unique categories from transactions
         const categoryMap = new Map();
         response.data.forEach((t) => {
           if (t.category_id && !categoryMap.has(t.category_id)) {
@@ -154,7 +153,6 @@ export default defineComponent({
       }
     };
 
-    // Computed properties
     const currentCurrency = computed(() => {
       return userPreferences.value?.preferred_currency || 'EUR';
     });
@@ -196,7 +194,6 @@ export default defineComponent({
       return Math.min(totalExpense.value / convertedBudget.value, 1);
     });
 
-    // Chart configuration
     const chartOptions = computed(() => {
       if (!userPreferences.value?.preferred_currency) return {};
 
@@ -289,7 +286,6 @@ export default defineComponent({
       };
     });
 
-    // Watchers
     watch(
       () => userPreferences.value?.preferred_currency,
       async (newCurrency) => {
@@ -313,7 +309,6 @@ export default defineComponent({
       { deep: true },
     );
 
-    // Methods
     function updateChart() {
       fetchTransactionsWithCategories();
     }
@@ -327,7 +322,6 @@ export default defineComponent({
       fetchTransactionsWithCategories();
     }
 
-    // Lifecycle hooks
     onMounted(async () => {
       try {
         await fetchUserPreferences();
@@ -479,10 +473,10 @@ export default defineComponent({
                 <q-linear-progress
                   :value="budgetUsagePercentage"
                   :color="budgetUsagePercentage > 0.8 ? 'red' : 'primary'"
-                  size="20px"
+                  size="30px"
                 >
                   <div class="absolute-full flex flex-center">
-                    <span class="text-white">
+                    <span class="text-white" size="20px">
                       {{ (budgetUsagePercentage * 100).toFixed(1) }}% used
                     </span>
                   </div>

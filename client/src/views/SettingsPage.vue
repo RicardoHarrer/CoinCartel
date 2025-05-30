@@ -54,6 +54,7 @@ import axios from 'axios';
 import { useQuasar } from 'quasar';
 import { jwtDecode } from 'jwt-decode';
 import { useRouter } from 'vue-router';
+import { auth } from '@/utils/auth';
 
 export default defineComponent({
   name: 'SettingsPage',
@@ -70,16 +71,17 @@ export default defineComponent({
       saldo: 1000.0,
     });
 
-    const decodeToken = () => {
-      const token = localStorage.getItem('token');
+    function decodeToken() {
+      const token = auth.getToken();
       if (!token) return null;
       try {
+        console.log('Decoding token:', jwtDecode(token));
         return jwtDecode(token).id;
       } catch (error) {
         console.error('Invalid token:', error);
         return null;
       }
-    };
+    }
 
     const userId = decodeToken();
 

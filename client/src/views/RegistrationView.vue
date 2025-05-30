@@ -1,5 +1,6 @@
 <script>
 import axios from 'axios';
+import { auth } from '@/utils/auth';
 
 export default {
   name: 'RegisterPage',
@@ -18,7 +19,7 @@ export default {
         });
 
         const { token } = response.data;
-        localStorage.setItem('token', token); 
+        auth.setToken(token);
         this.$router.push('/chart');
       } catch (error) {
         console.error(error);
@@ -38,10 +39,18 @@ export default {
         <div>
           <q-card class="register-card q-pa-xl">
             <q-card-section class="text-center">
-              <div :class="['text-h4', 'q-mb-md', $q.dark.isActive ? 'text-white' : 'text-primary']">
+              <div
+                :class="['text-h4', 'q-mb-md', $q.dark.isActive ? 'text-white' : 'text-primary']"
+              >
                 Create Your Account
               </div>
-              <div :class="['text-subtitle1', 'q-mb-lg', $q.dark.isActive ? 'text-grey-4' : 'text-grey-8']">
+              <div
+                :class="[
+                  'text-subtitle1',
+                  'q-mb-lg',
+                  $q.dark.isActive ? 'text-grey-4' : 'text-grey-8',
+                ]"
+              >
                 Sign up to start managing your finances.
               </div>
 

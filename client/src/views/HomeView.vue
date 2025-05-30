@@ -1,6 +1,5 @@
 <template>
   <q-page class="homepage">
-    <!-- Hero Section with animated background -->
     <section class="hero-section text-center q-pa-xl">
       <div class="hero-background"></div>
       <div class="hero-content">
@@ -25,7 +24,6 @@
       </div>
     </section>
 
-    <!-- Stats Section with counter animation -->
     <q-card flat class="stats-section q-pa-xl">
       <div class="row justify-around items-center text-center">
         <div v-for="stat in stats" :key="stat.value" class="col-6 col-md-3 q-pa-md">
@@ -40,7 +38,6 @@
       </div>
     </q-card>
 
-    <!-- Features Section with slider -->
     <section class="features-section q-px-xl q-pt-xl q-pb-lg">
       <h2
         class="section-title text-h4 text-center text-weight-bold q-mb-xl animate__animated animate__fadeIn"
@@ -97,11 +94,8 @@
       </q-carousel>
     </section>
 
-    <!-- Final CTA with floating animation -->
     <section class="final-cta text-center q-px-xl q-py-xl">
-      <div
-        class="cta-content animate__animated animate__pulse animate__infinite animate__slower"
-      >
+      <div class="cta-content animate__animated animate__pulse animate__infinite animate__slower">
         <h2 class="cta-title text-h3 text-weight-bold q-mb-md">
           Ready to Transform Your Financial Life?
         </h2>
@@ -113,19 +107,17 @@
           class="cta-button"
           @click="navigateToAuth"
         />
-        <p class="cta-subtitle q-mt-md text-caption">
-          No credit card required · Cancel anytime
-        </p>
+        <p class="cta-subtitle q-mt-md text-caption">No credit card required · Cancel anytime</p>
       </div>
     </section>
   </q-page>
 </template>
 
 <script>
-import { useRouter } from "vue-router";
-import { useQuasar, QCarousel, QCarouselSlide } from "quasar";
-import { ref, onMounted } from "vue";
-import "animate.css";
+import { useRouter } from 'vue-router';
+import { useQuasar, QCarousel, QCarouselSlide } from 'quasar';
+import { ref, onMounted } from 'vue';
+import 'animate.css';
 import { auth } from '@/utils/auth';
 
 export default {
@@ -147,71 +139,70 @@ export default {
     };
 
     const stats = [
-      { value: "100%", initialValue: "100%", label: "Open Source" },
-      { value: "24/7", initialValue: "24/7", label: "Available" },
-      { value: "0€", initialValue: "0€", label: "Costs" },
-      { value: "A+", initialValue: "A+", label: "Security" },
+      { value: '100%', initialValue: '100%', label: 'Open Source' },
+      { value: '24/7', initialValue: '24/7', label: 'Available' },
+      { value: '0€', initialValue: '0€', label: 'Costs' },
+      { value: 'A+', initialValue: 'A+', label: 'Security' },
     ];
 
     const features = [
       {
-        title: "Financial Dashboard",
+        title: 'Financial Dashboard',
         description:
-          "Get a crystal-clear overview of your income and expenses with our interactive, real-time dashboard. Visualize your cash flow with beautiful charts and customizable widgets that help you understand your finances at a glance.",
-        icon: "insights",
+          'Get a crystal-clear overview of your income and expenses with our interactive, real-time dashboard. Visualize your cash flow with beautiful charts and customizable widgets that help you understand your finances at a glance.',
+        icon: 'insights',
         image:
-          "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
+          'https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
       },
       {
-        title: "Trend Analysis",
+        title: 'Trend Analysis',
         description:
-          "Our AI-powered analysis detects spending patterns and provides personalized recommendations. Set financial goals and let our system guide you with actionable insights to improve your financial health.",
-        icon: "trending_up",
+          'Our AI-powered analysis detects spending patterns and provides personalized recommendations. Set financial goals and let our system guide you with actionable insights to improve your financial health.',
+        icon: 'trending_up',
         image:
-          "https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
+          'https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
       },
       {
-        title: "Smart Budgeting",
+        title: 'Smart Budgeting',
         description:
-          "Create budgets that actually work. Our intelligent system learns from your spending habits and automatically adjusts your budgets. Get notified before you overspend and celebrate when you save!",
-        icon: "account_balance_wallet",
+          'Create budgets that actually work. Our intelligent system learns from your spending habits and automatically adjusts your budgets. Get notified before you overspend and celebrate when you save!',
+        icon: 'account_balance_wallet',
         image:
-          "https://images.unsplash.com/photo-1579621970795-87facc2f976d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
+          'https://images.unsplash.com/photo-1579621970795-87facc2f976d?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
       },
       {
-        title: "Data Security",
+        title: 'Data Security',
         description:
-          "Your financial data is protected with bank-level security. We use end-to-end encryption and never store your banking credentials. Sleep well knowing your information is always safe with us.",
-        icon: "lock",
+          'Your financial data is protected with bank-level security. We use end-to-end encryption and never store your banking credentials. Sleep well knowing your information is always safe with us.',
+        icon: 'lock',
         image:
-          "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80",
+          'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1000&q=80',
       },
     ];
 
-
     onMounted(() => {
-      const counters = document.querySelectorAll(".stat-value");
+      const counters = document.querySelectorAll('.stat-value');
       const speed = 200;
 
       counters.forEach((counter) => {
-        const target = +counter.getAttribute("data-target");
-        const count = +counter.innerText.replace("%", "").replace("€", "");
+        const target = +counter.getAttribute('data-target');
+        const count = +counter.innerText.replace('%', '').replace('€', '');
         const increment = target / speed;
 
         if (count < target) {
           const updateCount = () => {
-            const c = +counter.innerText.replace("%", "").replace("€", "");
+            const c = +counter.innerText.replace('%', '').replace('€', '');
             let newCount;
 
             if (c < target) {
               newCount = Math.ceil(c + increment);
               if (newCount > target) newCount = target;
-              counter.innerText = counter.getAttribute("data-target").includes("%")
-                ? newCount + "%"
-                : counter.getAttribute("data-target").includes("€")
-                ? newCount + "€"
-                : counter.getAttribute("data-target") === "A+"
-                ? "A+"
+              counter.innerText = counter.getAttribute('data-target').includes('%')
+                ? newCount + '%'
+                : counter.getAttribute('data-target').includes('€')
+                ? newCount + '€'
+                : counter.getAttribute('data-target') === 'A+'
+                ? 'A+'
                 : newCount;
               setTimeout(updateCount, 1);
             }
@@ -255,7 +246,7 @@ export default {
       z-index: -1;
 
       &::before {
-        content: "";
+        content: '';
         position: absolute;
         top: -50%;
         left: -50%;
@@ -266,7 +257,7 @@ export default {
       }
 
       &::after {
-        content: "";
+        content: '';
         position: absolute;
         bottom: 0;
         left: 0;
@@ -372,7 +363,7 @@ export default {
     overflow: hidden;
 
     &::before {
-      content: "";
+      content: '';
       position: absolute;
       top: -50%;
       left: -50%;
@@ -428,11 +419,7 @@ export default {
         background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
 
         &::before {
-          background: radial-gradient(
-            circle,
-            rgba(255, 255, 255, 0.05) 0%,
-            transparent 70%
-          );
+          background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
         }
 
         &::after {

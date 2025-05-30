@@ -131,6 +131,7 @@ import AddTransaction from '@/components/AddTransaction.vue';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useQuasar } from 'quasar';
+import { auth } from '@/utils/auth';
 
 export default defineComponent({
   components: { TransactionCard, AddTransaction },
@@ -166,16 +167,17 @@ export default defineComponent({
       }));
     });
 
-    const decodeToken = () => {
-      const token = localStorage.getItem('token');
+    function decodeToken() {
+      const token = auth.getToken();
       if (!token) return null;
       try {
+        console.log('Decoding token:', jwtDecode(token));
         return jwtDecode(token).id;
       } catch (error) {
         console.error('Invalid token:', error);
         return null;
       }
-    };
+    }
 
     const userid = decodeToken();
 

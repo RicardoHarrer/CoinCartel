@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { auth } from '@/utils/auth';
+import { jwtDecode } from 'jwt-decode';
 
 export default {
   name: 'LoginPage',
@@ -19,16 +20,15 @@ export default {
           username: username.value,
           password: password.value,
         });
-      
         const { token } = response.data;
-        auth.setToken(token); 
-        window.dispatchEvent(new Event('storage')); 
+        auth.setToken(token);
+        window.dispatchEvent(new Event('storage'));
         await router.push('/chart');
       } catch (error) {
         console.error(error);
         $q.notify({
           type: 'negative',
-          message: 'Login failed. Please check your credentials.'
+          message: 'Login failed. Please check your credentials.',
         });
       }
     };
