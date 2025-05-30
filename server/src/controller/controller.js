@@ -170,7 +170,6 @@ const addTransaction = async (req, res) => {
   }
 };
 
-
 const getUserPreferences = async (req, res) => {
   const { rows } = await model.getUserPreferences();
   if (!rows) {
@@ -247,6 +246,24 @@ const updateUserPreferences = async (req, res) => {
   }
 };
 
+const getTransactionsWithCategoriesByUser = async (req, res) => {
+  const { id } = req.params;
+  const { startDate, endDate } = req.query;
+
+  try {
+    const { rows } = await model.getTransactionsWithCategoriesByUser(id, startDate, endDate);
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ message: `No transactions found for user with ID ${id}` });
+    }
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error fetching transactions with categories:', error);
+    res.status(500).json({ error: 'Failed to fetch transactions with categories' });
+  }
+};
+
 export {
   getUsers,
   getUserById,
@@ -264,4 +281,5 @@ export {
   getUserPreferencesByUser,
   deleteTransaction,
   updateUserPreferences,
+  getTransactionsWithCategoriesByUser,
 };

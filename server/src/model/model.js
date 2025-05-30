@@ -123,6 +123,30 @@ const updateUserPreferences = async (id, preferred_currency, saldo) => {
   return rows[0];
 };
 
+const getTransactionsWithCategoriesByUser = async (userId, startDate, endDate) => {
+  let queryText = `
+    SELECT
+      t.*,
+      c.name as category_name,
+      c.description as category_description
+    FROM transactions t
+    LEFT JOIN categories c ON t.category_id = c.id
+    WHERE t.user_id = $1
+  `;
+
+  const queryParams = [userId];
+
+  if (startDate && endDate) {
+    queryText += ' AND t.date >= $2 AND t.date <= $3';
+    queryParams.push(startDate, endDate);
+  }
+
+  queryText += ' ORDER BY t.date DESC';
+
+  const result = await query(queryText, queryParams);
+  return result;
+};
+
 export {
   getUsers,
   getUserById,
@@ -142,4 +166,5 @@ export {
   resetTransactionSequence,
   resetRegisterSequence,
   updateUserPreferences,
+  getTransactionsWithCategoriesByUser,
 };

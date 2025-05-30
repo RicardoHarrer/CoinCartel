@@ -2,25 +2,54 @@
 import { defineComponent, ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
 import { use } from 'echarts/core';
-import { LineChart } from 'echarts/charts';
-import { GridComponent, TooltipComponent, DataZoomComponent } from 'echarts/components';
+import { LineChart, PieChart } from 'echarts/charts';
+import {
+  GridComponent,
+  TooltipComponent,
+  DataZoomComponent,
+  LegendComponent,
+} from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import VChart from 'vue-echarts';
 import { jwtDecode } from 'jwt-decode';
 import AddTransaction from '../components/AddTransaction.vue';
 import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
+import CategoryPieChart from '@/components/CategoryPieChart.vue';
 
-use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, DataZoomComponent]);
+use([
+  CanvasRenderer,
+  LineChart,
+  PieChart,
+  GridComponent,
+  TooltipComponent,
+  DataZoomComponent,
+  LegendComponent,
+]);
 
 export default defineComponent({
-  components: { VChart, AddTransaction },
+  components: { VChart, AddTransaction, CategoryPieChart },
   setup() {
     const $q = useQuasar();
     const route = useRoute();
     const chartLoading = ref(false);
+    const categories = ref([]);
+    const transactions = ref([]);
+    const loading = ref(false);
+    const loadingPreferences = ref(true);
+    const error = ref(null);
+    const showAddTransactionDialog = ref(false);
+    const exchangeRates = ref({});
+    const dateRange = ref(getCurrentMonthRange());
 
-    const getCurrentMonthRange = () => {
+    const userid = decodeToken();
+    const userPreferences = ref({
+      preferred_currency: 'EUR',
+      saldo: 1000.0,
+    });
+
+    // Helper functions
+    function getCurrentMonthRange() {
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
       const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
@@ -28,9 +57,9 @@ export default defineComponent({
         from: firstDay.toISOString().split('T')[0],
         to: lastDay.toISOString().split('T')[0],
       };
-    };
+    }
 
-    const decodeToken = () => {
+    function decodeToken() {
       const token = localStorage.getItem('token');
       if (!token) return null;
       try {
@@ -39,26 +68,9 @@ export default defineComponent({
         console.error('Invalid token:', error);
         return null;
       }
-    };
+    }
 
-    const transactions = ref([]);
-    const loading = ref(false);
-    const loadingPreferences = ref(true);
-    const error = ref(null);
-    const showAddTransactionDialog = ref(false);
-    const exchangeRates = ref({});
-    const userid = decodeToken();
-    const dateRange = ref(getCurrentMonthRange());
-
-    const userPreferences = ref({
-      preferred_currency: 'EUR',
-      saldo: 1000.0,
-    });
-
-    const currentCurrency = computed(() => {
-      return userPreferences.value?.preferred_currency || 'EUR';
-    });
-
+    // Data fetching
     const getExchangeRates = async () => {
       try {
         const response = await axios.get(
@@ -85,17 +97,12 @@ export default defineComponent({
       loadingPreferences.value = true;
       try {
         const response = await axios.get(`http://localhost:3000/preferences/${userid}`);
-        console.log('API Response:', response.data);
-
         if (response.data && response.data.length > 0) {
           const prefsFromServer = response.data[0];
-
           userPreferences.value = {
             preferred_currency: prefsFromServer.preferred_currency || 'EUR',
             saldo: parseFloat(prefsFromServer.saldo) || 1000.0,
           };
-
-          console.log('Merged Preferences:', userPreferences.value);
         }
         await getExchangeRates();
       } catch (err) {
@@ -107,62 +114,89 @@ export default defineComponent({
       }
     };
 
-    const fetchTransactions = async () => {
+    const fetchTransactionsWithCategories = async () => {
       if (loadingPreferences.value) return;
-
       loading.value = true;
       try {
-        const response = await axios.get(`http://localhost:3000/transactions/users/${userid}`, {
-          params: {
-            startDate: dateRange.value.from,
-            endDate: dateRange.value.to,
+        const response = await axios.get(
+          `http://localhost:3000/transactions-with-categories/users/${userid}`,
+          {
+            params: {
+              startDate: dateRange.value.from,
+              endDate: dateRange.value.to,
+            },
           },
-        });
+        );
 
-        transactions.value = response.data.map((transaction) => ({
-          date: transaction.date,
-          income: transaction.transaction_type === 'Einnahme' ? transaction.amount : 0,
-          expense: transaction.transaction_type === 'Ausgabe' ? transaction.amount : 0,
-          category: transaction.category_id,
-          currency: transaction.currency,
-          description: transaction.description,
-        }));
+        transactions.value = response.data;
+
+        // Extract unique categories from transactions
+        const categoryMap = new Map();
+        response.data.forEach((t) => {
+          if (t.category_id && !categoryMap.has(t.category_id)) {
+            categoryMap.set(t.category_id, {
+              id: t.category_id,
+              name: t.category_name,
+              description: t.category_description,
+            });
+          }
+        });
+        categories.value = Array.from(categoryMap.values());
       } catch (err) {
-        console.error('Error fetching transactions:', err);
+        console.error('Error fetching transactions with categories:', err);
         error.value = 'Failed to fetch data.';
+        $q.notify({
+          type: 'negative',
+          message: 'Failed to load transaction data',
+        });
       } finally {
         loading.value = false;
       }
     };
+
+    // Computed properties
+    const currentCurrency = computed(() => {
+      return userPreferences.value?.preferred_currency || 'EUR';
+    });
 
     const filteredData = computed(() => {
       const groupedData = {};
       transactions.value.forEach((t) => {
         const dateKey = new Date(t.date).toISOString().split('T')[0];
         if (!groupedData[dateKey]) {
-          groupedData[dateKey] = { date: dateKey, income: 0, expense: 0 };
+          groupedData[dateKey] = {
+            date: dateKey,
+            income: 0,
+            expense: 0,
+            currency: t.currency,
+          };
         }
-        const income =
-          t.currency === currentCurrency.value
-            ? t.income
-            : t.income *
-              (exchangeRates.value[currentCurrency.value] / (exchangeRates.value[t.currency] || 1));
-        const expense =
-          t.currency === currentCurrency.value
-            ? t.expense
-            : t.expense *
-              (exchangeRates.value[currentCurrency.value] / (exchangeRates.value[t.currency] || 1));
 
-        groupedData[dateKey].income += Number(income);
-        groupedData[dateKey].expense += Number(expense);
+        const rate =
+          exchangeRates.value[currentCurrency.value] / (exchangeRates.value[t.currency] || 1);
+        if (t.transaction_type === 'Einnahme') {
+          groupedData[dateKey].income += t.amount * rate;
+        } else {
+          groupedData[dateKey].expense += t.amount * rate;
+        }
       });
+
       return Object.values(groupedData).sort((a, b) => new Date(a.date) - new Date(b.date));
     });
 
     const totalIncome = computed(() => filteredData.value.reduce((sum, t) => sum + t.income, 0));
     const totalExpense = computed(() => filteredData.value.reduce((sum, t) => sum + t.expense, 0));
     const totalBalance = computed(() => totalIncome.value - totalExpense.value);
+    const convertedBudget = computed(() => {
+      if (!exchangeRates.value[currentCurrency.value]) return userPreferences.value.saldo;
+      return userPreferences.value.saldo * exchangeRates.value[currentCurrency.value];
+    });
+    const budgetUsagePercentage = computed(() => {
+      if (convertedBudget.value <= 0) return 0;
+      return Math.min(totalExpense.value / convertedBudget.value, 1);
+    });
 
+    // Chart configuration
     const chartOptions = computed(() => {
       if (!userPreferences.value?.preferred_currency) return {};
 
@@ -171,89 +205,91 @@ export default defineComponent({
         (a, b) => new Date(a.date) - new Date(b.date),
       );
 
-      let previousIncome = 0;
-      const incomeData = sortedData.map((t) => {
-        const income = t.income;
-        previousIncome = Math.max(income, previousIncome);
-        return [new Date(t.date).getTime(), previousIncome];
-      });
+      let cumulativeIncome = 0;
+      let cumulativeExpense = 0;
+      let runningBalance = 0;
 
-      let previousExpense = 0;
-      const expenseData = sortedData.map((t) => {
-        const expense = t.expense;
-        previousExpense = Math.max(expense, previousExpense);
-        return [new Date(t.date).getTime(), previousExpense];
-      });
+      const incomeData = [];
+      const expenseData = [];
+      const balanceData = [];
 
-      let previousBalance = 0;
-      const balanceData = sortedData.map((t) => {
-        previousBalance += Math.max(0, t.income - t.expense);
-        return [new Date(t.date).getTime(), previousBalance];
+      sortedData.forEach((t) => {
+        const date = new Date(t.date).getTime();
+        cumulativeIncome += t.income;
+        cumulativeExpense += t.expense;
+        runningBalance = cumulativeIncome - cumulativeExpense;
+
+        incomeData.push([date, cumulativeIncome]);
+        expenseData.push([date, cumulativeExpense]);
+        balanceData.push([date, runningBalance]);
       });
 
       return {
         tooltip: {
           trigger: 'axis',
           formatter: (params) => {
-            let result = `${new Date(params[0].value[0]).toLocaleDateString()}<br/>`;
+            const date = new Date(params[0].value[0]);
+            let result = `${date.toLocaleDateString()}<br/>`;
             params.forEach((item) => {
-              if (item.value[1] !== 0) {
-                result += `${item.marker} ${item.seriesName}: ${item.value[1].toFixed(
-                  2,
-                )} ${currency}<br/>`;
-              }
+              result += `${item.marker} ${item.seriesName}: ${item.value[1].toFixed(
+                2,
+              )} ${currency}<br/>`;
             });
             return result;
           },
         },
         xAxis: {
           type: 'time',
-          axisLabel: { formatter: '{yyyy}-{MM}-{dd}' },
+          axisLabel: {
+            formatter: (value) => {
+              const date = new Date(value);
+              return `${date.getFullYear()}-${(date.getMonth() + 1)
+                .toString()
+                .padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+            },
+          },
         },
         yAxis: {
           type: 'value',
           name: `Amount (${currency})`,
-          min: 0,
         },
         series: [
           {
-            name: 'Income',
+            name: 'Cumulative Income',
             type: 'line',
             data: incomeData,
             itemStyle: { color: 'green' },
             lineStyle: { width: 2 },
             symbol: 'circle',
             symbolSize: 6,
-            smooth: true,
+            smooth: false,
           },
           {
-            name: 'Expense',
+            name: 'Cumulative Expense',
             type: 'line',
             data: expenseData,
             itemStyle: { color: 'red' },
             lineStyle: { width: 2 },
             symbol: 'circle',
             symbolSize: 6,
-            smooth: true,
+            smooth: false,
           },
           {
-            name: 'Total Balance',
+            name: 'Running Balance',
             type: 'line',
             data: balanceData,
             itemStyle: { color: 'blue' },
             lineStyle: { width: 3 },
             symbol: 'circle',
             symbolSize: 8,
-            smooth: true,
+            smooth: false,
           },
         ],
         dataZoom: [{ type: 'slider', start: 0, end: 100 }],
-        animation: true,
-        animationDuration: 1000,
-        animationEasing: 'cubicOut',
       };
     });
 
+    // Watchers
     watch(
       () => userPreferences.value?.preferred_currency,
       async (newCurrency) => {
@@ -261,7 +297,7 @@ export default defineComponent({
           chartLoading.value = true;
           try {
             await getExchangeRates();
-            await fetchTransactions();
+            await fetchTransactionsWithCategories();
           } finally {
             chartLoading.value = false;
           }
@@ -272,13 +308,14 @@ export default defineComponent({
     watch(
       () => dateRange.value,
       () => {
-        fetchTransactions();
+        fetchTransactionsWithCategories();
       },
       { deep: true },
     );
 
+    // Methods
     function updateChart() {
-      fetchTransactions();
+      fetchTransactionsWithCategories();
     }
 
     function resetToCurrentMonth() {
@@ -287,13 +324,14 @@ export default defineComponent({
 
     function handleTransactionAdded() {
       showAddTransactionDialog.value = false;
-      fetchTransactions();
+      fetchTransactionsWithCategories();
     }
 
+    // Lifecycle hooks
     onMounted(async () => {
       try {
         await fetchUserPreferences();
-        await fetchTransactions();
+        await fetchTransactionsWithCategories();
 
         if (route.query.saved) {
           $q.notify({
@@ -322,10 +360,14 @@ export default defineComponent({
       totalIncome,
       totalExpense,
       totalBalance,
+      convertedBudget,
+      budgetUsagePercentage,
       loadingPreferences,
       currentCurrency,
       isPreferencesLoaded,
       chartLoading,
+      categories,
+      transactions,
     };
   },
 });
@@ -430,18 +472,18 @@ export default defineComponent({
             <q-card-section class="bg-purple-1">
               <div class="text-h6">Monthly Budget</div>
               <div class="text-h4">
-                {{ userPreferences.saldo * exchangeRates[currentCurrency].toFixed(2) }}
+                {{ convertedBudget.toFixed(2) }}
                 {{ currentCurrency }}
               </div>
               <div class="q-mt-sm">
                 <q-linear-progress
-                  :value="Math.min(totalExpense / userPreferences.saldo, 1)"
-                  :color="totalExpense / userPreferences.saldo > 0.8 ? 'red' : 'primary'"
+                  :value="budgetUsagePercentage"
+                  :color="budgetUsagePercentage > 0.8 ? 'red' : 'primary'"
                   size="20px"
                 >
                   <div class="absolute-full flex flex-center">
                     <span class="text-white">
-                      {{ ((totalExpense / userPreferences.saldo) * 100).toFixed(1) }}% used
+                      {{ (budgetUsagePercentage * 100).toFixed(1) }}% used
                     </span>
                   </div>
                 </q-linear-progress>
@@ -455,6 +497,14 @@ export default defineComponent({
     <q-dialog v-model="showAddTransactionDialog">
       <AddTransaction @transaction-added="handleTransactionAdded" />
     </q-dialog>
+
+    <CategoryPieChart
+      :transactions="transactions"
+      :categories="categories"
+      :date-range="dateRange"
+      :currency="userPreferences.preferred_currency"
+      :exchange-rates="exchangeRates"
+    />
   </div>
   <div v-else class="q-pa-md flex flex-center" style="height: 100vh">
     <q-spinner-gears size="xl" color="primary" />
@@ -514,5 +564,9 @@ body.body--dark .bg-red-1,
 body.body--dark .bg-blue-1,
 body.body--dark .bg-purple-1 {
   background-color: #2c2c2c !important;
+}
+
+.q-card {
+  height: 100%;
 }
 </style>
