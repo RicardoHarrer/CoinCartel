@@ -5,7 +5,6 @@ import { PieChart } from 'echarts/charts';
 import { TooltipComponent, LegendComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import VChart from 'vue-echarts';
-import { useQuasar } from 'quasar';
 
 use([CanvasRenderer, PieChart, TooltipComponent, LegendComponent]);
 
@@ -36,7 +35,6 @@ export default defineComponent({
     },
   },
   setup(props) {
-    const $q = useQuasar();
     const loading = ref(false);
 
     const getCategoryName = (categoryId) => {
