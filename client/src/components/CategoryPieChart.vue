@@ -114,6 +114,23 @@ export default defineComponent({
                 show: true,
                 fontSize: '18',
                 fontWeight: 'bold',
+                formatter: (params) => {
+                  return `{b|${params.name}}\n{per|${params.data.percentage}%}`;
+                },
+                rich: {
+                  b: {
+                    fontSize: 16,
+                    fontWeight: 'bold',
+                    lineHeight: 26,
+                    align: 'center',
+                  },
+                  per: {
+                    fontSize: 14,
+                    color: '#999',
+                    lineHeight: 20,
+                    align: 'center',
+                  },
+                },
               },
             },
             labelLine: {

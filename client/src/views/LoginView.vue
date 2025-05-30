@@ -4,7 +4,6 @@ import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { auth } from '@/utils/auth';
-import { jwtDecode } from 'jwt-decode';
 
 export default {
   name: 'LoginPage',
