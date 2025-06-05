@@ -1,3 +1,4 @@
+// ChartView.vue
 <script>
 import { defineComponent, ref, computed, onMounted, watch } from 'vue';
 import axios from 'axios';
@@ -35,29 +36,34 @@ export default defineComponent({
     const route = useRoute();
     const chartLoading = ref(false);
     const categories = ref([]);
-    const transactions = ref([]);
+    const allTransactions = ref([]); // Store all transactions
+    const filteredTransactions = ref([]); // Store filtered transactions
     const loading = ref(false);
     const loadingPreferences = ref(true);
     const error = ref(null);
     const showAddTransactionDialog = ref(false);
     const exchangeRates = ref({});
-    const dateRange = ref(getCurrentMonthRange());
+    const dateRange = ref({
+      from: null,
+      to: null
+    });
+
+    // Initialize with current month
+    function initDateRange() {
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      dateRange.value = {
+        from: firstDay.toISOString().split('T')[0],
+        to: lastDay.toISOString().split('T')[0]
+      };
+    }
 
     const userid = decodeToken();
     const userPreferences = ref({
       preferred_currency: 'EUR',
       saldo: 1000.0,
     });
-
-    function getCurrentMonthRange() {
-      const today = new Date();
-      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      return {
-        from: firstDay.toISOString().split('T')[0],
-        to: lastDay.toISOString().split('T')[0],
-      };
-    }
 
     function decodeToken() {
       const token = auth.getToken();
@@ -114,35 +120,16 @@ export default defineComponent({
       }
     };
 
-    const fetchTransactionsWithCategories = async () => {
-      if (loadingPreferences.value) return;
+    const fetchAllTransactions = async () => {
       loading.value = true;
       try {
         const response = await axios.get(
-          `http://localhost:3000/transactions-with-categories/users/${userid}`,
-          {
-            params: {
-              startDate: dateRange.value.from,
-              endDate: dateRange.value.to,
-            },
-          },
+          `http://localhost:3000/transactions-with-categories/users/${userid}`
         );
-
-        transactions.value = response.data;
-
-        const categoryMap = new Map();
-        response.data.forEach((t) => {
-          if (t.category_id && !categoryMap.has(t.category_id)) {
-            categoryMap.set(t.category_id, {
-              id: t.category_id,
-              name: t.category_name,
-              description: t.category_description,
-            });
-          }
-        });
-        categories.value = Array.from(categoryMap.values());
+        allTransactions.value = response.data;
+        applyDateFilter(); // Apply current date range filter
       } catch (err) {
-        console.error('Error fetching transactions with categories:', err);
+        console.error('Error fetching transactions:', err);
         error.value = 'Failed to fetch data.';
         $q.notify({
           type: 'negative',
@@ -153,13 +140,35 @@ export default defineComponent({
       }
     };
 
+    const applyDateFilter = () => {
+      if (!dateRange.value.from || !dateRange.value.to) return;
+      
+      filteredTransactions.value = allTransactions.value.filter(t => {
+        const transactionDate = new Date(t.date).toISOString().split('T')[0];
+        return transactionDate >= dateRange.value.from && transactionDate <= dateRange.value.to;
+      });
+
+      // Update categories based on filtered transactions
+      const categoryMap = new Map();
+      filteredTransactions.value.forEach((t) => {
+        if (t.category_id && !categoryMap.has(t.category_id)) {
+          categoryMap.set(t.category_id, {
+            id: t.category_id,
+            name: t.category_name,
+            description: t.category_description,
+          });
+        }
+      });
+      categories.value = Array.from(categoryMap.values());
+    };
+
     const currentCurrency = computed(() => {
       return userPreferences.value?.preferred_currency || 'EUR';
     });
 
     const filteredData = computed(() => {
       const groupedData = {};
-      transactions.value.forEach((t) => {
+      filteredTransactions.value.forEach((t) => {
         const dateKey = new Date(t.date).toISOString().split('T')[0];
         if (!groupedData[dateKey]) {
           groupedData[dateKey] = {
@@ -293,7 +302,7 @@ export default defineComponent({
           chartLoading.value = true;
           try {
             await getExchangeRates();
-            await fetchTransactionsWithCategories();
+            // No need to fetch transactions again, just use the existing ones
           } finally {
             chartLoading.value = false;
           }
@@ -302,30 +311,33 @@ export default defineComponent({
     );
 
     watch(
-      () => dateRange.value,
-      () => {
-        fetchTransactionsWithCategories();
+      dateRange,
+      (newRange) => {
+        if (newRange.from && newRange.to) {
+          applyDateFilter();
+        }
       },
-      { deep: true },
+      { deep: true }
     );
 
     function updateChart() {
-      fetchTransactionsWithCategories();
+      applyDateFilter();
     }
 
     function resetToCurrentMonth() {
-      dateRange.value = getCurrentMonthRange();
+      initDateRange();
     }
 
     function handleTransactionAdded() {
       showAddTransactionDialog.value = false;
-      fetchTransactionsWithCategories();
+      fetchAllTransactions(); // This will automatically apply the current date filter
     }
 
     onMounted(async () => {
       try {
+        initDateRange();
         await fetchUserPreferences();
-        await fetchTransactionsWithCategories();
+        await fetchAllTransactions();
 
         if (route.query.saved) {
           $q.notify({
@@ -361,7 +373,7 @@ export default defineComponent({
       isPreferencesLoaded,
       chartLoading,
       categories,
-      transactions,
+      transactions: filteredTransactions,
     };
   },
 });
