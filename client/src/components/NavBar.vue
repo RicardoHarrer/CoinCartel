@@ -1,22 +1,17 @@
 <script>
-import { ref, computed, onMounted, watchEffect } from "vue";
-import { useQuasar } from "quasar";
-import { useRouter } from "vue-router";
-import { auth } from "@/utils/auth";
+import { ref, computed, onMounted, watchEffect } from 'vue';
+import { useQuasar } from 'quasar';
+import { useRouter } from 'vue-router';
+import { auth } from '@/utils/auth';
 
 export default {
-  name: "NavBar",
+  name: 'NavBar',
   setup() {
     const $q = useQuasar();
     const router = useRouter();
-    const tab = ref("home");
+    const tab = ref('home');
     const mobileMenuOpen = ref(false);
-<<<<<<< Updated upstream
 
-    // Reaktive Variable statt computed
-=======
-    
->>>>>>> Stashed changes
     const isLoggedIn = ref(auth.isAuthenticated());
 
     watchEffect(() => {
@@ -27,18 +22,11 @@ export default {
       const handleStorageChange = () => {
         isLoggedIn.value = auth.isAuthenticated();
       };
-<<<<<<< Updated upstream
-
-      window.addEventListener("storage", handleStorageChange);
-
-      // Aufräumen beim Unmount
-=======
-      
       window.addEventListener('storage', handleStorageChange);
-      
->>>>>>> Stashed changes
+
+      // Cleanup on unmount
       return () => {
-        window.removeEventListener("storage", handleStorageChange);
+        window.removeEventListener('storage', handleStorageChange);
       };
     });
 
@@ -54,15 +42,9 @@ export default {
 
     const logout = async () => {
       auth.removeToken();
-<<<<<<< Updated upstream
-      isLoggedIn.value = false; // Sofortige UI-Aktualisierung
-      await router.push("/"); // Geändert von '/login' zu '/'
-      window.location.reload(); // Nur als Fallback
-=======
-      isLoggedIn.value = false; 
-      await router.push('/'); 
-      window.location.reload();
->>>>>>> Stashed changes
+      isLoggedIn.value = false; // Immediate UI update
+      await router.push('/');
+      window.location.reload(); // Fallback
     };
 
     return {
@@ -106,20 +88,8 @@ export default {
           v-if="isLoggedIn"
         />
         <q-route-tab name="login" label="Login" to="/login" exact v-if="!isLoggedIn" />
-        <q-route-tab
-          name="register"
-          label="Register"
-          to="/register"
-          exact
-          v-if="!isLoggedIn"
-        />
-        <q-route-tab
-          name="settings"
-          label="Settings"
-          to="/settings"
-          exact
-          v-if="isLoggedIn"
-        />
+        <q-route-tab name="register" label="Register" to="/register" exact v-if="!isLoggedIn" />
+        <q-route-tab name="settings" label="Settings" to="/settings" exact v-if="isLoggedIn" />
         <q-btn v-if="isLoggedIn" flat label="Logout" @click="logout" class="q-ml-md" />
       </q-tabs>
 
