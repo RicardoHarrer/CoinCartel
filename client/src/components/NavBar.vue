@@ -11,7 +11,7 @@ export default {
     const router = useRouter();
     const tab = ref("home");
     const mobileMenuOpen = ref(false);
-    
+
     // Reaktive Variable statt computed
     const isLoggedIn = ref(auth.isAuthenticated());
 
@@ -25,12 +25,12 @@ export default {
       const handleStorageChange = () => {
         isLoggedIn.value = auth.isAuthenticated();
       };
-      
-      window.addEventListener('storage', handleStorageChange);
-      
+
+      window.addEventListener("storage", handleStorageChange);
+
       // Aufräumen beim Unmount
       return () => {
-        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener("storage", handleStorageChange);
       };
     });
 
@@ -47,7 +47,7 @@ export default {
     const logout = async () => {
       auth.removeToken();
       isLoggedIn.value = false; // Sofortige UI-Aktualisierung
-      await router.push('/'); // Geändert von '/login' zu '/'
+      await router.push("/"); // Geändert von '/login' zu '/'
       window.location.reload(); // Nur als Fallback
     };
 
@@ -71,7 +71,14 @@ export default {
   >
     <q-toolbar>
       <q-toolbar-title class="text-h5">
-        <q-btn flat label="Coin Cartel" to="/" />
+        <q-btn flat to="/">
+          <q-img
+            src="../../public/logovaultly.jpg"
+            alt="Vaultly Logo"
+            width="50px"
+            height="50px"
+            class="logo-image"
+        /></q-btn>
       </q-toolbar-title>
 
       <q-tabs v-model="tab" shrink stretch class="gt-sm">
@@ -99,13 +106,7 @@ export default {
           exact
           v-if="isLoggedIn"
         />
-        <q-btn
-          v-if="isLoggedIn"
-          flat
-          label="Logout"
-          @click="logout"
-          class="q-ml-md"
-        />
+        <q-btn v-if="isLoggedIn" flat label="Logout" @click="logout" class="q-ml-md" />
       </q-tabs>
 
       <q-btn
