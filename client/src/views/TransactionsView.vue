@@ -1,3 +1,4 @@
+//TransactionView.vue
 <template>
   <q-page class="q-pa-md">
     <div class="column items-center q-mb-lg">

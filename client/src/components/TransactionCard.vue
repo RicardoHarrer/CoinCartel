@@ -50,7 +50,6 @@ const props = defineProps({
   }
 })
 
-// const emit = defineEmits(['delete'])
 
 const amountClass = computed(() =>
   props.data.type === 'income'

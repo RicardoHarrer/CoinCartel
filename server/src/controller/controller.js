@@ -1,6 +1,8 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import * as model from '../model/model.js';
+import { fetchCryptoData } from '../model/model.js';
+
 // eslint-disable-next-line import/prefer-default-export
 
 const getUsers = async (req, res) => {
@@ -257,10 +259,21 @@ const getTransactionsWithCategoriesByUser = async (req, res) => {
       return res.status(404).json({ message: `No transactions found for user with ID ${id}` });
     }
 
-    res.status(200).json(rows);
+    return res.status(200).json(rows);
   } catch (error) {
     console.error('Error fetching transactions with categories:', error);
-    res.status(500).json({ error: 'Failed to fetch transactions with categories' });
+    return res.status(500).json({ error: 'Failed to fetch transactions with categories' });
+  }
+};
+
+export const getCryptoData = async (req, res) => {
+  const { coin } = req.params;
+  try {
+    const data = await fetchCryptoData(coin);
+    res.status(200).json(data);
+  } catch (err) {
+    console.error('Server Error:', err.message);
+    res.status(500).json({ error: err.message });
   }
 };
 

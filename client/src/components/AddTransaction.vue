@@ -1,29 +1,29 @@
 <script>
-import { ref, onMounted } from "vue";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
-import { useQuasar } from "quasar";
+import { ref, onMounted } from 'vue';
+import axios from 'axios';
+import { jwtDecode } from 'jwt-decode';
+import { useQuasar } from 'quasar';
 
 export default {
-  emits: ["transaction-added"],
+  emits: ['transaction-added'],
 
   setup(props, { emit }) {
     const $q = useQuasar();
     const newTransaction = ref({
-      date: new Date().toISOString().split("T")[0],
+      date: new Date().toISOString().split('T')[0],
       amount: 0,
-      transaction_type: "Einnahme",
+      transaction_type: 'Einnahme',
       category_id: null,
-      currency: "EUR",
-      description: "",
+      currency: 'EUR',
+      description: '',
     });
 
     const categories = ref([]);
 
     const decodeToken = () => {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem('token');
       if (!token) {
-        console.error("No token found! Please log in.");
+        console.error('No token found! Please log in.');
         return null;
       }
 
@@ -31,20 +31,20 @@ export default {
         const decodedToken = jwtDecode(token);
         return decodedToken.id || null;
       } catch (error) {
-        console.error("Invalid token:", error);
+        console.error('Invalid token:', error);
         return null;
       }
     };
 
     const fetchCategories = async () => {
       try {
-        const response = await axios.get("http://localhost:3000/categories");
+        const response = await axios.get('http://localhost:3000/categories');
         categories.value = response.data;
       } catch (err) {
-        console.error("Fehler beim Laden der Kategorien:", err);
+        console.error('Fehler beim Laden der Kategorien:', err);
         $q.notify({
-          type: "negative",
-          message: "Failed to load categories",
+          type: 'negative',
+          message: 'Failed to load categories',
         });
       }
     };
@@ -52,59 +52,57 @@ export default {
     const addTransaction = async () => {
       const userid = decodeToken();
       if (!userid) {
-        console.error("User ID not found. Please log in.");
+        console.error('User ID not found. Please log in.');
         $q.notify({
-          type: "negative",
-          message: "Please log in to add transactions",
+          type: 'negative',
+          message: 'Please log in to add transactions',
         });
         return;
       }
 
-      // Validierung
       if (!newTransaction.value.category_id) {
         $q.notify({
-          type: "negative",
-          message: "Please select a category",
+          type: 'negative',
+          message: 'Please select a category',
         });
         return;
       }
 
       const payload = {
         userId: userid,
-        categoryId: Number(newTransaction.value.category_id), // Sicherstellen, dass es eine Zahl ist
+        categoryId: Number(newTransaction.value.category_id),
         amount: Number(newTransaction.value.amount),
         transactionType: newTransaction.value.transaction_type,
         currency: newTransaction.value.currency,
-        date: newTransaction.value.date + "T00:00:00", // Korrektes Datumsformat
+        date: newTransaction.value.date + 'T00:00:00',
         description: newTransaction.value.description,
       };
 
       try {
-        const response = await axios.post("http://localhost:3000/transactions", payload);
+        const response = await axios.post('http://localhost:3000/transactions', payload);
 
         if (response.status === 201) {
           $q.notify({
-            type: "positive",
-            message: "Transaction successfully added",
+            type: 'positive',
+            message: 'Transaction successfully added',
           });
 
-          // Formular zurücksetzen
           newTransaction.value = {
-            date: new Date().toISOString().split("T")[0],
+            date: new Date().toISOString().split('T')[0],
             amount: 0,
-            transaction_type: "Einnahme",
+            transaction_type: 'Einnahme',
             category_id: null,
-            currency: "EUR",
-            description: "",
+            currency: 'EUR',
+            description: '',
           };
 
-          emit("transaction-added");
+          emit('transaction-added');
         }
       } catch (error) {
-        console.error("Error adding transaction:", error);
+        console.error('Error adding transaction:', error);
         $q.notify({
-          type: "negative",
-          message: error.response?.data?.message || "Failed to add transaction",
+          type: 'negative',
+          message: error.response?.data?.message || 'Failed to add transaction',
         });
       }
     };
@@ -180,20 +178,9 @@ export default {
           required
         />
 
-        <q-input
-          filled
-          v-model="newTransaction.currency"
-          label="Currency"
-          stack-label
-          required
-        />
+        <q-input filled v-model="newTransaction.currency" label="Currency" stack-label required />
 
-        <q-input
-          filled
-          v-model="newTransaction.description"
-          label="Description"
-          stack-label
-        />
+        <q-input filled v-model="newTransaction.description" label="Description" stack-label />
 
         <div class="flex justify-end">
           <q-btn label="Add Transaction" type="submit" color="primary" class="q-mt-md" />

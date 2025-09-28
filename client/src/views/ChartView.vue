@@ -45,7 +45,7 @@ export default defineComponent({
     const exchangeRates = ref({});
     const dateRange = ref({
       from: null,
-      to: null
+      to: null,
     });
 
     // Initialize with current month
@@ -55,7 +55,7 @@ export default defineComponent({
       const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       dateRange.value = {
         from: firstDay.toISOString().split('T')[0],
-        to: lastDay.toISOString().split('T')[0]
+        to: lastDay.toISOString().split('T')[0],
       };
     }
 
@@ -124,7 +124,7 @@ export default defineComponent({
       loading.value = true;
       try {
         const response = await axios.get(
-          `http://localhost:3000/transactions-with-categories/users/${userid}`
+          `http://localhost:3000/transactions-with-categories/users/${userid}`,
         );
         allTransactions.value = response.data;
         applyDateFilter(); // Apply current date range filter
@@ -142,8 +142,8 @@ export default defineComponent({
 
     const applyDateFilter = () => {
       if (!dateRange.value.from || !dateRange.value.to) return;
-      
-      filteredTransactions.value = allTransactions.value.filter(t => {
+
+      filteredTransactions.value = allTransactions.value.filter((t) => {
         const transactionDate = new Date(t.date).toISOString().split('T')[0];
         return transactionDate >= dateRange.value.from && transactionDate <= dateRange.value.to;
       });
@@ -317,7 +317,7 @@ export default defineComponent({
           applyDateFilter();
         }
       },
-      { deep: true }
+      { deep: true },
     );
 
     function updateChart() {
@@ -424,6 +424,14 @@ export default defineComponent({
             color="positive"
             class="col-auto"
             @click="showAddTransactionDialog = true"
+          />
+
+          <q-btn
+            label="Crypto Charts"
+            color="secondary"
+            class="col-auto"
+            icon="trending_up"
+            to="/crypto"
           />
         </div>
       </q-card-section>

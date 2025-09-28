@@ -1,3 +1,4 @@
+//RegistrationView.vue
 <script>
 import axios from 'axios';
 import { auth } from '@/utils/auth';

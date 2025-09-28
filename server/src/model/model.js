@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { query } from '../../boilerplate/db/index.js';
 
 // eslint-disable-next-line import/prefer-default-export
@@ -50,7 +51,6 @@ const addTransaction = async (
   description,
 ) => {
   try {
-    // Überprüfen ob die Kategorie existiert
     const categoryCheck = await query('SELECT id FROM categories WHERE id = $1', [categoryId]);
     if (categoryCheck.rows.length === 0) {
       throw new Error('Category does not exist');
@@ -145,6 +145,24 @@ const getTransactionsWithCategoriesByUser = async (userId, startDate, endDate) =
 
   const result = await query(queryText, queryParams);
   return result;
+};
+
+export const fetchCryptoData = async (coin) => {
+  try {
+    const url = `https://api.coingecko.com/api/v3/coins/${coin}/market_chart`;
+    console.log('Fetching CoinGecko URL:', url);
+    const response = await axios.get(url, {
+      params: { vs_currency: 'eur', days: 1 },
+    });
+    return response.data;
+  } catch (err) {
+    console.error(
+      `Fehler beim Abrufen von ${coin}:`,
+      err.response?.status,
+      err.response?.data || err.message,
+    );
+    throw new Error(`Fehler beim Abrufen von ${coin}: ${err.message}`);
+  }
 };
 
 export {

@@ -18,6 +18,7 @@ import {
   deleteTransaction,
   updateUserPreferences,
   getTransactionsWithCategoriesByUser,
+  getCryptoData,
 } from '../../controller/controller.js';
 
 const router = express.Router();
@@ -58,5 +59,6 @@ router.get(
   '/transactions-with-categories/users/:id',
   asyncHandler(getTransactionsWithCategoriesByUser),
 );
+router.get('/api/crypto/:coin', asyncHandler(getCryptoData));
 
 export default router;

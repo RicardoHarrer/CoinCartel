@@ -8,51 +8,57 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
-      meta: { requiresGuest: true }
+      meta: { requiresGuest: true },
     },
     {
       path: '/register',
       name: 'registerPage',
       component: () => import('../views/RegistrationView.vue'),
-      meta: { requiresGuest: true }
+      meta: { requiresGuest: true },
     },
     {
       path: '/chart',
       name: 'chartPage',
       component: () => import('../views/ChartView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/',
       name: 'home',
-      component: () => import('../views/HomeView.vue')
+      component: () => import('../views/HomeView.vue'),
     },
     {
       path: '/transactions',
       name: 'Transactions',
       component: () => import('@/views/TransactionsView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
     },
     {
       path: '/settings',
       name: 'Settings',
       component: () => import('@/views/SettingsPage.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/crypto',
+      name: 'Crypto',
+      component: () => import('@/views/CryptoChartView.vue'),
+      meta: { requiresAuth: true },
     },
   ],
 });
 
 router.beforeEach((to, from, next) => {
   const isAuth = auth.isAuthenticated();
-  
+
   if (to.meta.requiresAuth && !isAuth) {
     return next('/login');
   }
-  
+
   if (to.meta.requiresGuest && isAuth) {
     return next('/');
   }
-  
+
   next();
 });
 

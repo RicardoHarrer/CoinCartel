@@ -1,3 +1,4 @@
+//SettingsPage.vue
 <template>
   <div class="q-pa-md">
     <q-card class="settings-card">

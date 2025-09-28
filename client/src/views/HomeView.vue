@@ -1,3 +1,4 @@
+// Homeview.vue
 <template>
   <q-page class="homepage">
     <section class="hero-section text-center q-pa-xl">
