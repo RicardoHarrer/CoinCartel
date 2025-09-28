@@ -23,17 +23,16 @@ export const auth = {
       const decoded = jwtDecode(token);
       const isValid = decoded.exp > Date.now() / 1000;
       if (!isValid) {
-        this.removeToken(); 
+        this.removeToken();
         return false;
       }
       return true;
     } catch (error) {
       console.error('Token validation error:', error);
-      this.removeToken(); 
+      this.removeToken();
       return false;
     }
   },
-
 
   onAuthChange(callback) {
     const handler = (event) => callback(event.detail.isAuthenticated);
@@ -42,5 +41,5 @@ export const auth = {
     return () => {
       window.removeEventListener('auth-change', handler);
     };
-  }
+  },
 };

@@ -1,14 +1,16 @@
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { useQuasar } from 'quasar';
+import { auth } from '../utils/auth.js';
 
 export default {
   emits: ['transaction-added'],
 
   setup(props, { emit }) {
     const $q = useQuasar();
+
     const newTransaction = ref({
       date: new Date().toISOString().split('T')[0],
       amount: 0,
@@ -20,18 +22,15 @@ export default {
 
     const categories = ref([]);
 
-    const decodeToken = () => {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.error('No token found! Please log in.');
-        return null;
-      }
+    const getUserId = () => {
+      const token = auth.getToken();
+      if (!token) return null;
 
       try {
-        const decodedToken = jwtDecode(token);
-        return decodedToken.id || null;
-      } catch (error) {
-        console.error('Invalid token:', error);
+        const decoded = jwtDecode(token);
+        return decoded.id || decoded.userId || decoded.sub || null;
+      } catch (err) {
+        console.error('Invalid token:', err);
         return null;
       }
     };
@@ -50,15 +49,16 @@ export default {
     };
 
     const addTransaction = async () => {
-      const userid = decodeToken();
-      if (!userid) {
-        console.error('User ID not found. Please log in.');
+      if (!auth.isAuthenticated()) {
         $q.notify({
           type: 'negative',
           message: 'Please log in to add transactions',
         });
         return;
       }
+
+      const userid = getUserId();
+      if (!userid) return;
 
       if (!newTransaction.value.category_id) {
         $q.notify({
@@ -107,12 +107,24 @@ export default {
       }
     };
 
-    const onSubmit = () => {
-      addTransaction();
-    };
+    const onSubmit = () => addTransaction();
 
+    let unsubscribeAuth;
     onMounted(async () => {
       await fetchCategories();
+
+      unsubscribeAuth = auth.onAuthChange((isAuthenticated) => {
+        if (!isAuthenticated) {
+          $q.notify({
+            type: 'warning',
+            message: 'You have been logged out',
+          });
+        }
+      });
+    });
+
+    onUnmounted(() => {
+      if (unsubscribeAuth) unsubscribeAuth();
     });
 
     return {
@@ -164,12 +176,7 @@ export default {
           filled
           v-model.number="newTransaction.category_id"
           label="Category"
-          :options="
-            categories.map((c) => ({
-              label: c.name,
-              value: c.id,
-            }))
-          "
+          :options="categories.map((c) => ({ label: c.name, value: c.id }))"
           option-value="value"
           option-label="label"
           emit-value

@@ -1,4 +1,3 @@
-//TransactionView.vue
 <template>
   <q-page class="q-pa-md">
     <div class="column items-center q-mb-lg">
@@ -90,35 +89,72 @@
         <q-btn
           color="secondary"
           icon="picture_as_pdf"
-          label="Export PDF"
+          label="Export PDF (Transactions)"
           @click="exportPDF"
           class="q-mr-sm"
         />
-        <q-btn color="positive" icon="text_snippet" label="Export CSV" @click="exportCSV" />
+        <q-btn
+          color="positive"
+          icon="text_snippet"
+          label="Export CSV (Transactions)"
+          @click="exportCSV"
+          class="q-mr-sm"
+        />
+        <q-btn
+          color="primary"
+          icon="picture_as_pdf"
+          label="Export PDF (Categories)"
+          @click="exportCategoryPDF"
+          class="q-mr-sm"
+        />
+        <q-btn
+          color="teal"
+          icon="text_snippet"
+          label="Export CSV (Categories)"
+          @click="exportCategoryCSV"
+        />
       </q-btn-group>
     </div>
 
     <div class="row q-col-gutter-md justify-center">
-      <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-        <q-card class="my-card add-card" flat bordered @click="showAddTransactionDialog = true">
+      <div
+        class="col-12 col-sm-6 col-md-4 col-lg-3"
+        v-for="cat in categorySummaries"
+        :key="cat.category"
+      >
+        <q-card flat bordered class="my-card" @click="openCategoryDialog(cat)">
           <q-card-section class="text-center">
-            <q-icon name="add" size="xl" color="primary" />
-            <div class="text-h6 text-primary q-mt-sm">Add Transaction</div>
+            <div class="text-h6">{{ cat.category }}</div>
+            <div class="q-mt-sm">
+              <div style="color: green">Income: +{{ cat.income.toFixed(2) }} €</div>
+              <div style="color: red">Expenses: -{{ cat.expense.toFixed(2) }} €</div>
+              <div :style="{ color: cat.income - cat.expense >= 0 ? 'green' : 'red' }">
+                Balance: {{ (cat.income - cat.expense).toFixed(2) }} €
+              </div>
+            </div>
           </q-card-section>
         </q-card>
       </div>
-
-      <div
-        v-for="item in filteredTransactions"
-        :key="item.id"
-        class="col-12 col-sm-6 col-md-4 col-lg-3"
-      >
-        <TransactionCard :data="item" @delete="deleteTransaction(item.id)" />
-      </div>
     </div>
 
-    <q-dialog v-model="showAddTransactionDialog">
-      <AddTransaction @transaction-added="handleTransactionAdded" />
+    <q-dialog v-model="showCategoryDialog">
+      <q-card style="min-width: 400px">
+        <q-card-section>
+          <div class="text-h6">{{ activeCategory?.category }}</div>
+          <q-separator class="q-my-sm" />
+          <div v-for="t in activeCategory?.transactions" :key="t.id" class="q-mb-sm">
+            <div>
+              {{ t.date }} - {{ t.title }} -
+              <span :style="{ color: t.type === 'income' ? 'green' : 'red' }">
+                {{ t.type === 'income' ? '+' : '-' }}{{ t.amount }} €
+              </span>
+            </div>
+          </div>
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Close" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
     </q-dialog>
   </q-page>
 </template>
@@ -127,21 +163,16 @@
 import { defineComponent, ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
-import TransactionCard from '@/components/TransactionCard.vue';
-import AddTransaction from '@/components/AddTransaction.vue';
+import { useQuasar } from 'quasar';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { useQuasar } from 'quasar';
 import { auth } from '@/utils/auth';
 
 export default defineComponent({
-  components: { TransactionCard, AddTransaction },
   setup() {
     const $q = useQuasar();
     const transactions = ref([]);
     const categories = ref([]);
-    const showAddTransactionDialog = ref(false);
-
     const searchText = ref('');
     const transactionType = ref(null);
     const selectedCategories = ref([]);
@@ -161,26 +192,19 @@ export default defineComponent({
       { label: 'Amount (Lowest First)', value: 'amount_asc' },
     ];
 
-    const categoryOptions = computed(() => {
-      return categories.value.map((c) => ({
-        label: c.name,
-        value: c.id,
-      }));
-    });
+    const categoryOptions = computed(() =>
+      categories.value.map((c) => ({ label: c.name, value: c.id })),
+    );
 
-    function decodeToken() {
+    const userid = (() => {
       const token = auth.getToken();
       if (!token) return null;
       try {
-        console.log('Decoding token:', jwtDecode(token));
         return jwtDecode(token).id;
-      } catch (error) {
-        console.error('Invalid token:', error);
+      } catch {
         return null;
       }
-    }
-
-    const userid = decodeToken();
+    })();
 
     onMounted(async () => {
       await fetchCategories();
@@ -189,69 +213,46 @@ export default defineComponent({
 
     async function fetchCategories() {
       try {
-        const response = await axios.get('http://localhost:3000/categories');
-        categories.value = response.data;
+        const res = await axios.get('http://localhost:3000/categories');
+        categories.value = res.data;
       } catch (err) {
-        console.error('Error loading categories:', err);
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to load categories',
-        });
+        console.error(err);
       }
     }
 
     async function fetchTransactions() {
       try {
-        const response = await axios.get(`http://localhost:3000/transactions/users/${userid}`);
-        transactions.value = response.data.map((t) => ({
+        const res = await axios.get(`http://localhost:3000/transactions/users/${userid}`);
+        transactions.value = res.data.map((t) => ({
           ...t,
           amount: Number(t.amount) || 0,
+          date: new Date(t.date).toLocaleDateString(),
         }));
       } catch (err) {
-        console.error('Error loading transactions:', err);
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to load transactions',
-        });
+        console.error(err);
       }
     }
 
     const filteredTransactions = computed(() => {
       let filtered = [...transactions.value];
-
       if (searchText.value) {
-        const search = searchText.value.toLowerCase();
+        const s = searchText.value.toLowerCase();
         filtered = filtered.filter(
           (t) =>
-            t.description?.toLowerCase().includes(search) ||
+            t.description?.toLowerCase().includes(s) ||
             categories.value
               .find((c) => c.id === t.category_id)
               ?.name.toLowerCase()
-              .includes(search),
+              .includes(s),
         );
       }
-
-      if (transactionType.value) {
+      if (transactionType.value)
         filtered = filtered.filter((t) => t.transaction_type === transactionType.value);
-      }
-
-      if (selectedCategories.value.length > 0) {
+      if (selectedCategories.value.length)
         filtered = filtered.filter((t) => selectedCategories.value.includes(t.category_id));
-      }
-
-      if (dateRange.value.from && dateRange.value.to) {
-        const fromDate = new Date(dateRange.value.from);
-        const toDate = new Date(dateRange.value.to);
-        filtered = filtered.filter((t) => {
-          const transDate = new Date(t.date);
-          return transDate >= fromDate && transDate <= toDate;
-        });
-      }
-
       filtered = filtered.filter(
         (t) => t.amount >= amountRange.value.min && t.amount <= amountRange.value.max,
       );
-
       switch (sortOption.value) {
         case 'date_asc':
           filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -265,25 +266,41 @@ export default defineComponent({
         case 'amount_desc':
           filtered.sort((a, b) => b.amount - a.amount);
           break;
-        default:
-          filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
       }
-
-      return filtered.map((transaction) => ({
-        id: transaction.id,
-        title: transaction.description || 'No description',
-        category: getCategoryName(transaction.category_id),
-        amount: Number(transaction.amount),
-        type: transaction.transaction_type === 'Einnahme' ? 'income' : 'expense',
-        currency: transaction.currency,
-        date: new Date(transaction.date).toLocaleDateString(),
+      return filtered.map((t) => ({
+        id: t.id,
+        title: t.description || 'No description',
+        category: categories.value.find((c) => c.id === t.category_id)?.name || 'Unknown',
+        amount: t.amount,
+        type: t.transaction_type === 'Einnahme' ? 'income' : 'expense',
+        currency: t.currency || '€',
+        date: t.date,
       }));
     });
 
-    const getCategoryName = (categoryId) => {
-      const category = categories.value.find((c) => c.id === categoryId);
-      return category ? category.name : 'Unknown';
-    };
+    const categorySummaries = computed(() => {
+      const summaries = {};
+      filteredTransactions.value.forEach((t) => {
+        if (!summaries[t.category])
+          summaries[t.category] = {
+            category: t.category,
+            income: 0,
+            expense: 0,
+            transactions: [],
+          };
+        if (t.type === 'income') summaries[t.category].income += t.amount;
+        else summaries[t.category].expense += t.amount;
+        summaries[t.category].transactions.push(t);
+      });
+      return Object.values(summaries);
+    });
+
+    const showCategoryDialog = ref(false);
+    const activeCategory = ref(null);
+    function openCategoryDialog(cat) {
+      activeCategory.value = cat;
+      showCategoryDialog.value = true;
+    }
 
     function resetFilters() {
       searchText.value = '';
@@ -294,147 +311,6 @@ export default defineComponent({
       sortOption.value = 'date_desc';
     }
 
-    async function deleteTransaction(id) {
-      try {
-        await axios.delete(`http://localhost:3000/transactions/${id}`);
-        await fetchTransactions();
-        $q.notify({
-          type: 'positive',
-          message: 'Transaction deleted successfully',
-        });
-      } catch (err) {
-        console.error('Error deleting transaction:', err);
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to delete transaction',
-        });
-      }
-    }
-
-    function handleTransactionAdded() {
-      showAddTransactionDialog.value = false;
-      fetchTransactions();
-      $q.notify({
-        type: 'positive',
-        message: 'Transaction added successfully',
-      });
-    }
-
-    const exportPDF = () => {
-      try {
-        const doc = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-        });
-
-        doc.setFontSize(18);
-        doc.setTextColor(41, 128, 185);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Transaction Report', 105, 20, { align: 'center' });
-
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 30);
-        doc.text(`User ID: ${userid}`, 14, 36);
-
-        const filtersText = `Active Filters: ${getActiveFilters() || 'None'}`;
-        const splitFilters = doc.splitTextToSize(filtersText, 180);
-        doc.text(splitFilters, 14, 42);
-
-        const totals = calculateTotals();
-
-        doc.setDrawColor(41, 128, 185);
-        doc.setFillColor(236, 239, 241);
-        doc.roundedRect(14, 50, 180, 30, 3, 3, 'FD');
-
-        doc.setFontSize(12);
-        doc.setTextColor(41, 128, 185);
-        doc.text('Summary', 22, 60);
-
-        doc.setFontSize(10);
-        doc.setTextColor(0, 0, 0);
-        doc.text(`Income: +${totals.income.toFixed(2)} €`, 60, 60);
-        doc.text(`Expenses: -${totals.expense.toFixed(2)} €`, 60, 68);
-        doc.text(`Balance: ${totals.balance.toFixed(2)} €`, 60, 76);
-
-        const tableData = filteredTransactions.value.map((t) => [
-          t.date,
-          t.title,
-          t.category,
-          t.type === 'income' ? 'Income' : 'Expense',
-          {
-            content: `${Number(t.amount).toFixed(2)} ${t.currency || '€'}`,
-            styles: {
-              fontStyle: t.type === 'income' ? 'bold' : 'normal',
-              textColor: t.type === 'income' ? [0, 128, 0] : [128, 0, 0],
-            },
-          },
-        ]);
-
-        autoTable(doc, {
-          startY: 90,
-          head: [['Date', 'Description', 'Category', 'Type', 'Amount']],
-          body: tableData,
-          theme: 'grid',
-          headStyles: {
-            fillColor: [41, 128, 185],
-            textColor: 255,
-            fontStyle: 'bold',
-            fontSize: 10,
-          },
-          bodyStyles: {
-            fontSize: 9,
-            cellPadding: 3,
-            valign: 'middle',
-          },
-          columnStyles: {
-            0: { cellWidth: 20, halign: 'left' },
-            1: { cellWidth: 70 },
-            2: { cellWidth: 35 },
-            3: { cellWidth: 25 },
-            4: { cellWidth: 30, halign: 'right' },
-          },
-          alternateRowStyles: {
-            fillColor: [245, 245, 245],
-          },
-          margin: { left: 14, right: 14 },
-          styles: {
-            overflow: 'linebreak',
-            lineWidth: 0.1,
-          },
-          didDrawPage: function (data) {
-            doc.setFontSize(8);
-            doc.setTextColor(100);
-            const pageCount = doc.internal.getNumberOfPages();
-            doc.text(
-              `Page ${data.pageNumber} of ${pageCount}`,
-              data.settings.margin.left,
-              doc.internal.pageSize.height - 10,
-            );
-          },
-        });
-
-        doc.save(`transactions_report_${new Date().toISOString().slice(0, 10)}.pdf`);
-
-        $q.notify({
-          type: 'positive',
-          message: 'PDF report generated successfully',
-          icon: 'picture_as_pdf',
-          position: 'top-right',
-        });
-      } catch (error) {
-        console.error('PDF generation failed:', error);
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to generate PDF report: ' + error.message,
-          icon: 'error',
-          position: 'top-right',
-          timeout: 5000,
-        });
-      }
-    };
-
     const exportCSV = () => {
       try {
         const headers = ['Date', 'Description', 'Category', 'Type', 'Amount'];
@@ -443,83 +319,102 @@ export default defineComponent({
           description: t.title,
           category: t.category,
           type: t.type === 'income' ? 'Income' : 'Expense',
-          amount: `${t.type === 'income' ? '+' : '-'}${t.amount} ${t.currency || '€'}`,
+          amount: `${t.type === 'income' ? '+' : '-'}${t.amount} ${t.currency}`,
         }));
 
         let csv = headers.join(',') + '\n';
         data.forEach((row) => {
           csv +=
             Object.values(row)
-              .map((value) => `"${value.toString().replace(/"/g, '""')}"`)
+              .map((v) => `"${v}"`)
               .join(',') + '\n';
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-
-        link.setAttribute('href', url);
-        link.setAttribute('download', `transactions_${new Date().toISOString().slice(0, 10)}.csv`);
-        link.style.visibility = 'hidden';
-
-        document.body.appendChild(link);
+        link.href = URL.createObjectURL(blob);
+        link.download = `transactions_${new Date().toISOString().slice(0, 10)}.csv`;
         link.click();
-        document.body.removeChild(link);
 
-        $q.notify({
-          type: 'positive',
-          message: 'CSV exported successfully',
-        });
-      } catch (error) {
-        console.error('CSV export failed:', error);
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to export CSV',
-        });
+        $q.notify({ type: 'positive', message: 'CSV exported successfully' });
+      } catch (err) {
+        console.error(err);
       }
     };
 
-    const calculateTotals = () => {
-      const totals = {
-        income: 0,
-        expense: 0,
-        balance: 0,
-      };
-
-      filteredTransactions.value.forEach((t) => {
-        const amount = Number(t.amount);
-
-        if (t.type === 'income') {
-          totals.income += amount;
-        } else {
-          totals.expense += amount;
-        }
-      });
-
-      totals.balance = totals.income - totals.expense;
-      return totals;
+    const exportPDF = () => {
+      try {
+        const doc = new jsPDF();
+        doc.text('Transaction Report', 105, 20, { align: 'center' });
+        const tableData = filteredTransactions.value.map((t) => [
+          t.date,
+          t.title,
+          t.category,
+          t.type === 'income' ? 'Income' : 'Expense',
+          `${t.amount} ${t.currency}`,
+        ]);
+        autoTable(doc, {
+          head: [['Date', 'Description', 'Category', 'Type', 'Amount']],
+          body: tableData,
+          startY: 30,
+        });
+        doc.save(`transactions_${new Date().toISOString().slice(0, 10)}.pdf`);
+        $q.notify({ type: 'positive', message: 'PDF report generated successfully' });
+      } catch (err) {
+        console.error(err);
+      }
     };
 
-    const getActiveFilters = () => {
-      const activeFilters = [];
-      if (searchText.value) activeFilters.push(`Search: "${searchText.value}"`);
-      if (transactionType.value) activeFilters.push(`Type: ${transactionType.value}`);
-      if (selectedCategories.value.length > 0) {
-        const categoryNames = selectedCategories.value.map(
-          (id) => categories.value.find((c) => c.id === id)?.name || id,
-        );
-        activeFilters.push(`Categories: ${categoryNames.join(', ')}`);
+    const exportCategoryCSV = () => {
+      try {
+        const headers = ['Category', 'Income', 'Expenses', 'Balance'];
+        const data = categorySummaries.value.map((cat) => ({
+          category: cat.category,
+          income: cat.income.toFixed(2),
+          expenses: cat.expense.toFixed(2),
+          balance: (cat.income - cat.expense).toFixed(2),
+        }));
+        let csv = headers.join(',') + '\n';
+        data.forEach((row) => {
+          csv +=
+            Object.values(row)
+              .map((v) => `"${v}"`)
+              .join(',') + '\n';
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `category_report_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+        $q.notify({ type: 'positive', message: 'CSV exported successfully' });
+      } catch (err) {
+        console.error(err);
       }
-      if (amountRange.value.min > 0 || amountRange.value.max < 5000) {
-        activeFilters.push(`Amount: ${amountRange.value.min}€-${amountRange.value.max}€`);
+    };
+
+    const exportCategoryPDF = () => {
+      try {
+        const doc = new jsPDF();
+        doc.text('Category Summary Report', 105, 20, { align: 'center' });
+        const tableData = categorySummaries.value.map((cat) => [
+          cat.category,
+          cat.income.toFixed(2),
+          cat.expense.toFixed(2),
+          (cat.income - cat.expense).toFixed(2),
+        ]);
+        autoTable(doc, {
+          head: [['Category', 'Income', 'Expenses', 'Balance']],
+          body: tableData,
+          startY: 30,
+        });
+        doc.save(`category_report_${new Date().toISOString().slice(0, 10)}.pdf`);
+        $q.notify({ type: 'positive', message: 'PDF report generated successfully' });
+      } catch (err) {
+        console.error(err);
       }
-      return activeFilters.length > 0 ? activeFilters.join(', ') : 'None';
     };
 
     return {
-      transactions,
-      filteredTransactions,
-      showAddTransactionDialog,
       searchText,
       transactionType,
       selectedCategories,
@@ -530,10 +425,14 @@ export default defineComponent({
       sortOptions,
       categoryOptions,
       resetFilters,
-      deleteTransaction,
-      handleTransactionAdded,
-      exportPDF,
+      categorySummaries,
+      showCategoryDialog,
+      activeCategory,
+      openCategoryDialog,
       exportCSV,
+      exportPDF,
+      exportCategoryCSV,
+      exportCategoryPDF,
     };
   },
 });
@@ -544,24 +443,10 @@ export default defineComponent({
   width: 100%;
   transition: transform 0.3s;
 }
-
 .my-card:hover {
   transform: translateY(-5px);
-}
-
-.add-card {
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 150px;
-  border: 2px dashed var(--q-primary);
 }
-
-.add-card:hover {
-  background-color: rgba(0, 0, 0, 0.03);
-}
-
 .q-btn-group {
   margin-bottom: 16px;
 }

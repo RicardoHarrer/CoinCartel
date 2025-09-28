@@ -24,7 +24,6 @@ export default {
       };
       window.addEventListener('storage', handleStorageChange);
 
-      // Cleanup on unmount
       return () => {
         window.removeEventListener('storage', handleStorageChange);
       };
@@ -42,9 +41,9 @@ export default {
 
     const logout = async () => {
       auth.removeToken();
-      isLoggedIn.value = false; // Immediate UI update
+      isLoggedIn.value = false;
       await router.push('/');
-      window.location.reload(); // Fallback
+      window.location.reload();
     };
 
     return {
