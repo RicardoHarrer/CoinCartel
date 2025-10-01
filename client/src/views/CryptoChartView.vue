@@ -1,4 +1,3 @@
-<!-- CryptoChartView.vue -->
 <script>
 import { defineComponent, ref, watch, onMounted } from 'vue';
 import axios from 'axios';
@@ -28,15 +27,42 @@ export default defineComponent({
     const chartOptions = ref({});
     const loading = ref(false);
 
-    const availableCoins = [
-      { label: 'Bitcoin (BTC)', value: 'bitcoin' },
-      { label: 'Ethereum (ETH)', value: 'ethereum' },
-      { label: 'Litecoin (LTC)', value: 'litecoin' },
-      { label: 'Dogecoin (DOGE)', value: 'dogecoin' },
-    ];
-
-    const selectedCoins = ref(['bitcoin']);
+    const availableCoins = ref([]);
+    const topCoins = ref([]);
+    const selectedCoins = ref([]);
     const cryptoData = ref({});
+
+    async function fetchTopCoins() {
+      try {
+        const { data } = await axios.get('https://api.coingecko.com/api/v3/coins/markets', {
+          params: {
+            vs_currency: 'eur',
+            order: 'market_cap_desc',
+            per_page: 10,
+            page: 1,
+          },
+        });
+        topCoins.value = data.map((coin) => ({
+          label: `${coin.name} (${coin.symbol.toUpperCase()})`,
+          value: coin.id,
+        }));
+        selectedCoins.value = [topCoins.value[0].value];
+      } catch (error) {
+        console.error('Fehler beim Laden der Top-Coins:', error);
+      }
+    }
+
+    async function fetchAllCoins() {
+      try {
+        const { data } = await axios.get('https://api.coingecko.com/api/v3/coins/list');
+        availableCoins.value = data.map((coin) => ({
+          label: `${coin.name} (${coin.symbol.toUpperCase()})`,
+          value: coin.id,
+        }));
+      } catch (error) {
+        console.error('Fehler beim Laden der Coin-Liste:', error);
+      }
+    }
 
     async function fetchData() {
       if (!selectedCoins.value.length) return;
@@ -70,7 +96,7 @@ export default defineComponent({
         data: cryptoData.value[coin],
         smooth: true,
         symbol: 'circle',
-        symbolSize: 6,
+        symbolSize: false,
       }));
 
       chartOptions.value = {
@@ -107,7 +133,8 @@ export default defineComponent({
     watch(selectedCoins, fetchData);
 
     onMounted(() => {
-      fetchData();
+      fetchTopCoins();
+      fetchAllCoins();
       setInterval(fetchData, 60000);
     });
 
@@ -115,6 +142,7 @@ export default defineComponent({
       chartOptions,
       loading,
       availableCoins,
+      topCoins,
       selectedCoins,
       cryptoData,
     };
@@ -132,7 +160,23 @@ export default defineComponent({
       <q-card-section>
         <q-select
           v-model="selectedCoins"
-          :options="availableCoins"
+          :options="topCoins"
+          :options-dense="true"
+          use-input
+          input-debounce="300"
+          :filter="
+            (val, update, abort) => {
+              if (!val) {
+                update(() => topCoins);
+                return;
+              }
+              update(() =>
+                availableCoins.filter((coin) =>
+                  coin.label.toLowerCase().includes(val.toLowerCase()),
+                ),
+              );
+            }
+          "
           multiple
           label="Wähle Kryptowährungen"
           emit-value
