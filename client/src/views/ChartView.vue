@@ -433,6 +433,15 @@ export default defineComponent({
             icon="trending_up"
             to="/crypto"
           />
+
+          <!-- In ChartView.vue, add this button to the button group: -->
+          <q-btn
+            label="Bank Import"
+            color="deep-purple"
+            class="col-auto"
+            icon="account_balance"
+            to="/bank-import"
+          />
         </div>
       </q-card-section>
 

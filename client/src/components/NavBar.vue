@@ -89,6 +89,14 @@ export default {
         <q-route-tab name="login" label="Login" to="/login" exact v-if="!isLoggedIn" />
         <q-route-tab name="register" label="Register" to="/register" exact v-if="!isLoggedIn" />
         <q-route-tab name="settings" label="Settings" to="/settings" exact v-if="isLoggedIn" />
+        <!-- In your NavBar.vue component, add this to the tabs: -->
+        <q-route-tab
+          name="bank-import"
+          label="Bank Import"
+          to="/bank-import"
+          exact
+          v-if="isLoggedIn"
+        />
         <q-btn v-if="isLoggedIn" flat label="Logout" @click="logout" class="q-ml-md" />
       </q-tabs>
 

@@ -45,9 +45,17 @@ const router = createRouter({
       component: () => import('@/views/CryptoChartView.vue'),
       meta: { requiresAuth: true },
     },
+    // ADD THIS NEW ROUTE:
+    {
+      path: '/bank-import',
+      name: 'BankImport',
+      component: () => import('@/views/BankImportView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 });
 
+// Rest of your router configuration remains the same...
 router.beforeEach((to, from, next) => {
   const isAuth = auth.isAuthenticated();
 
