@@ -98,7 +98,7 @@
             <div class="text-subtitle2 q-mb-sm">Sparplan</div>
             <div class="row justify-between items-center">
               <div>Monatliche Sparrate:</div>
-              <div class="text-h6 text-primary">€{{ monthlySaving }}</div>
+              <div class="text-h6 text-dark">€{{ monthlySaving }}</div>
             </div>
 
             <div v-if="currentProgress > 0" class="q-mt-md">
@@ -319,13 +319,118 @@ export default defineComponent({
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+/* ===================== Lightmode ===================== */
 .suggestion-card {
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
   transition: all 0.2s ease;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+  }
 }
 
-.suggestion-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+.bg-grey-2 {
+  background: #f5f5f5 !important;
+  color: #000;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 12px;
+}
+
+.text-dark {
+  color: #000;
+}
+
+.text-primary {
+  color: #007bff;
+}
+
+.q-badge {
+  background-color: #e0e0e0;
+  color: #000;
+  border-radius: 4px;
+}
+
+/* ===================== Darkmode ===================== */
+body[data-theme='dark'] {
+  .suggestion-card {
+    background: #121212;
+    color: #ffffff;
+    border: 1px solid #333;
+    border-radius: 8px;
+
+    &:hover {
+      box-shadow: 0 6px 15px rgba(255, 255, 255, 0.15);
+    }
+  }
+
+  .bg-grey-2 {
+    background: #1e1e1e !important;
+    color: #ffffff;
+    border: 1px solid #333;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.05);
+    padding: 12px;
+  }
+
+  .q-input__control,
+  .q-select__control,
+  .q-input__bottom {
+    background: #1e1e1e !important;
+    color: #ffffff !important;
+    border: 1px solid #333;
+    border-radius: 4px;
+  }
+
+  .q-linear-progress__track {
+    background-color: #333 !important;
+  }
+
+  .q-linear-progress__bar {
+    background-color: #00bcd4 !important;
+  }
+
+  .text-dark {
+    color: #ffffff !important;
+  }
+
+  .text-primary {
+    color: #00bcd4 !important;
+  }
+
+  .q-badge {
+    background-color: #333 !important;
+    color: #ffffff !important;
+  }
+
+  .q-btn {
+    &.q-btn--primary {
+      background-color: #00bcd4 !important;
+      color: #ffffff !important;
+    }
+    &.q-btn--grey {
+      background-color: #333 !important;
+      color: #ffffff !important;
+    }
+  }
+
+  input[type="date"] {
+    background: #1e1e1e !important;
+    color: #ffffff;
+    border: 1px solid #333;
+    border-radius: 4px;
+  }
+
+  /* Placeholderfarbe für Inputs/Textareas */
+  input::placeholder,
+  textarea::placeholder {
+    color: #bbb !important;
+  }
 }
 </style>

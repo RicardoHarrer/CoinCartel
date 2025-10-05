@@ -205,27 +205,28 @@ export default defineComponent({
       </div>
     </q-card-section>
 
-    <q-card-section>
-      <div v-if="hasData" class="row">
-        <div class="col-md-8">
-          <v-chart class="chart" :option="pieChartOptions" autoresize :loading="loading" />
-        </div>
-        <div class="col-md-4 q-pl-md">
-          <q-list bordered separator>
-            <q-item v-for="item in categoryBreakdown" :key="item.name">
-              <q-item-section>
-                <q-item-label>{{ item.name }}</q-item-label>
-                <q-item-label caption>
-                  {{ item.value }} {{ currency }} ({{ item.percentage }}%)
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-badge :color="getCategoryColor(item.name)" />
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </div>
-      </div>
+   <q-card-section>
+  <div v-if="hasData" class="row">
+    <div class="col-md-8">
+      <v-chart class="chart" :option="pieChartOptions" autoresize :loading="loading" />
+    </div>
+    <div class="col-md-4 q-pl-md">
+      <q-list bordered separator class="category-list">
+        <q-item v-for="item in categoryBreakdown" :key="item.name">
+          <q-item-section>
+            <q-item-label>{{ item.name }}</q-item-label>
+            <q-item-label caption>
+              {{ item.value }} {{ currency }} ({{ item.percentage }}%)
+            </q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-badge :color="getCategoryColor(item.name)" />
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </div>
+  </div>
+
 
       <div v-else class="text-center q-pa-lg">
         <q-icon name="pie_chart" size="xl" color="grey-5" />
@@ -236,10 +237,43 @@ export default defineComponent({
   </q-card>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .chart {
   width: 100%;
   height: 400px;
   min-height: 300px;
 }
+
+/* Responsiv für Mobile */
+@media (max-width: 768px) {
+  .chart {
+    height: 300px;
+  }
+
+  .q-list {
+    max-height: 250px;
+    overflow-y: auto;
+  }
+}
+
+.q-card {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+body[data-theme='dark'] {
+  .category-list {
+    q-item {
+      q-item-label,
+      q-item-label[caption] {
+        color: #fff; // Weißer Text im Darkmode
+      }
+
+      &:hover {
+        background-color: #2a2a2a; // Optional Hover-Effekt im Darkmode
+      }
+    }
+  }
+}
 </style>
+
