@@ -47,7 +47,7 @@
         <div class="row justify-between items-center q-mb-xs">
           <div class="text-caption text-grey">Fortschritt</div>
           <div class="text-caption text-weight-bold">
-            {{ Math.round(goal.progress_percentage) }}%
+            {{ progressPercentage.toFixed(2) }}%
           </div>
         </div>
         <q-linear-progress
@@ -100,6 +100,10 @@ export default defineComponent({
           return "primary";
       }
     });
+    // Falls goal.progress_percentage nicht existiert, kannst du es berechnen:
+    const progressPercentage = computed(() => {
+      return (props.goal.current_amount / props.goal.target_amount) * 100;
+    });
 
     const statusIcon = computed(() => {
       switch (props.goal.status) {
@@ -142,6 +146,7 @@ export default defineComponent({
       progressColor,
       statusClass,
       formatDate,
+      progressPercentage,
     };
   },
 });

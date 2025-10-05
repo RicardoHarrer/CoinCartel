@@ -21,7 +21,7 @@
             class="q-mb-md"
           >
             <div class="text-center">
-              <div class="text-h6 text-weight-bold">{{ Math.round(progress) }}%</div>
+              <div class="text-h6 text-weight-bold">{{ progress.toFixed(2) }}%</div>
               <div class="text-caption text-grey">erreicht</div>
             </div>
           </q-circular-progress>
@@ -166,15 +166,18 @@ export default defineComponent({
 
     const updateCurrentAmount = async () => {
       try {
-        const response = await fetch(`/api/goals/${props.goal.id}/amount`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            currentAmount: parseFloat(currentAmount.value),
-          }),
-        });
+        const response = await fetch(
+          `http://localhost:3000/api/goals/${props.goal.id}/amount`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              currentAmount: parseFloat(currentAmount.value),
+            }),
+          }
+        );
 
         if (response.ok) {
           $q.notify({
