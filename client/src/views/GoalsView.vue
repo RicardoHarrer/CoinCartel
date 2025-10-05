@@ -249,9 +249,12 @@ export default defineComponent({
 
     const deleteGoal = async () => {
       try {
-        const response = await fetch(`/api/goals/${deletingGoal.value.id}`, {
-          method: "DELETE",
-        });
+        const response = await fetch(
+          `http://localhost:3000/api/goals/${deletingGoal.value.id}`,
+          {
+            method: "DELETE",
+          }
+        );
 
         if (response.ok) {
           $q.notify({
