@@ -165,6 +165,83 @@ export const fetchCryptoData = async (coin) => {
   }
 };
 
+// Goals Funktionen
+const getGoalsByUser = (userId) =>
+  query('SELECT * FROM goals WHERE user_id = $1 ORDER BY target_date ASC', [userId]);
+
+const getGoalById = (id) => query('SELECT * FROM goals WHERE id = $1', [id]);
+
+const addGoal = async (
+  userId,
+  title,
+  targetAmount,
+  currentAmount,
+  targetDate,
+  categoryId,
+  description,
+) => {
+  const { rows } = await query(
+    `INSERT INTO goals (user_id, title, target_amount, current_amount, target_date, category_id, description)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [userId, title, targetAmount, currentAmount || 0, targetDate, categoryId, description],
+  );
+  return rows[0];
+};
+
+const updateGoal = async (
+  id,
+  title,
+  targetAmount,
+  currentAmount,
+  targetDate,
+  categoryId,
+  description,
+) => {
+  const { rows } = await query(
+    `UPDATE goals
+     SET title = $1, target_amount = $2, current_amount = $3, target_date = $4, category_id = $5, description = $6, updated_at = CURRENT_TIMESTAMP
+     WHERE id = $7
+     RETURNING *`,
+    [title, targetAmount, currentAmount, targetDate, categoryId, description, id],
+  );
+  return rows[0];
+};
+
+const updateGoalProgress = async (id, currentAmount) => {
+  const { rows } = await query(
+    'UPDATE goals SET current_amount = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+    [currentAmount, id],
+  );
+  return rows[0];
+};
+
+const deleteGoal = (id) => query('DELETE FROM goals WHERE id = $1 RETURNING *', [id]);
+
+const resetGoalSequence = () =>
+  query("SELECT setval('goals_id_seq', COALESCE((SELECT MAX(id)+1 FROM goals), 1), false)");
+
+// Goal Progress Berechnung
+const getGoalProgress = async (userId) => {
+  const { rows } = await query(
+    `SELECT
+      g.*,
+      c.name as category_name,
+      (g.current_amount / g.target_amount * 100) as progress_percentage,
+      CASE
+        WHEN g.current_amount >= g.target_amount THEN 'completed'
+        WHEN g.target_date < CURRENT_DATE THEN 'overdue'
+        ELSE 'in_progress'
+      END as status
+     FROM goals g
+     LEFT JOIN categories c ON g.category_id = c.id
+     WHERE g.user_id = $1
+     ORDER BY g.target_date ASC`,
+    [userId],
+  );
+  return rows;
+};
+
 export {
   getUsers,
   getUserById,
@@ -185,4 +262,12 @@ export {
   resetRegisterSequence,
   updateUserPreferences,
   getTransactionsWithCategoriesByUser,
+  getGoalsByUser,
+  getGoalById,
+  addGoal,
+  updateGoal,
+  updateGoalProgress,
+  deleteGoal,
+  resetGoalSequence,
+  getGoalProgress,
 };

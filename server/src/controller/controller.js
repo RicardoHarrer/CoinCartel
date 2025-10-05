@@ -1,3 +1,5 @@
+/* eslint-disable operator-linebreak */
+/* eslint-disable consistent-return */
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import * as model from '../model/model.js';
@@ -277,6 +279,128 @@ export const getCryptoData = async (req, res) => {
   }
 };
 
+// Goals Controller Funktionen
+const getGoalsByUser = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { rows } = await model.getGoalsByUser(id);
+    if (!rows) {
+      return res.status(404).send(`No goals found for user with ID ${id}`);
+    }
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error fetching goals:', error);
+    res.status(500).send('Failed to fetch goals');
+  }
+};
+
+const getGoalProgress = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const goals = await model.getGoalProgress(id);
+    if (!goals) {
+      return res.status(404).send(`No goals found for user with ID ${id}`);
+    }
+    res.status(200).json(goals);
+  } catch (error) {
+    console.error('Error fetching goal progress:', error);
+    res.status(500).send('Failed to fetch goal progress');
+  }
+};
+
+const createGoal = async (req, res) => {
+  const { userId, title, targetAmount, currentAmount, targetDate, categoryId, description } =
+    req.body;
+
+  // Validierung
+  if (!userId || !title || !targetAmount || !targetDate) {
+    return res.status(400).send('Missing required fields: userId, title, targetAmount, targetDate');
+  }
+
+  if (Number.isNaN(Number(targetAmount)) || Number(targetAmount) <= 0) {
+    return res.status(400).send('Target amount must be a positive number');
+  }
+
+  try {
+    await model.resetGoalSequence();
+    const goal = await model.addGoal(
+      userId,
+      title,
+      parseFloat(targetAmount),
+      parseFloat(currentAmount) || 0,
+      targetDate,
+      categoryId,
+      description,
+    );
+
+    res.status(201).json(goal);
+  } catch (error) {
+    console.error('Error creating goal:', error);
+    res.status(500).send(`Failed to create goal: ${error.message}`);
+  }
+};
+
+const updateGoal = async (req, res) => {
+  const { id } = req.params;
+  const { title, targetAmount, currentAmount, targetDate, categoryId, description } = req.body;
+
+  try {
+    const goal = await model.updateGoal(
+      id,
+      title,
+      parseFloat(targetAmount),
+      parseFloat(currentAmount),
+      targetDate,
+      categoryId,
+      description,
+    );
+
+    if (!goal) {
+      return res.status(404).send(`Goal with ID ${id} not found`);
+    }
+
+    res.status(200).json(goal);
+  } catch (error) {
+    console.error('Error updating goal:', error);
+    res.status(500).send(`Failed to update goal: ${error.message}`);
+  }
+};
+
+const updateGoalAmount = async (req, res) => {
+  const { id } = req.params;
+  const { currentAmount } = req.body;
+
+  if (currentAmount === undefined || Number.isNaN(Number(currentAmount))) {
+    return res.status(400).send('Current amount is required and must be a number');
+  }
+
+  try {
+    const goal = await model.updateGoalProgress(id, parseFloat(currentAmount));
+    if (!goal) {
+      return res.status(404).send(`Goal with ID ${id} not found`);
+    }
+    res.status(200).json(goal);
+  } catch (error) {
+    console.error('Error updating goal amount:', error);
+    res.status(500).send(`Failed to update goal amount: ${error.message}`);
+  }
+};
+
+const deleteGoal = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const { rows } = await model.deleteGoal(id);
+    await model.resetGoalSequence();
+    if (!rows || rows.length === 0) {
+      return res.status(404).send(`Goal with ID ${id} not found`);
+    }
+    res.status(200).json({ message: 'Goal deleted successfully', goal: rows[0] });
+  } catch (error) {
+    console.error('Error deleting goal:', error);
+    res.status(500).send(`Failed to delete goal: ${error.message}`);
+  }
+};
+
 export {
   getUsers,
   getUserById,
@@ -295,4 +419,10 @@ export {
   deleteTransaction,
   updateUserPreferences,
   getTransactionsWithCategoriesByUser,
+  getGoalsByUser,
+  getGoalProgress,
+  createGoal,
+  updateGoal,
+  updateGoalAmount,
+  deleteGoal,
 };

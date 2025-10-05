@@ -45,6 +45,11 @@ const router = createRouter({
       component: () => import('@/views/CryptoChartView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/goals',
+      name: 'goals',
+      component: () => import('../views/GoalsView.vue'),
+    },
     // ADD THIS NEW ROUTE:
     {
       path: '/bank-import',

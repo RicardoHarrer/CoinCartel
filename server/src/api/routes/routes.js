@@ -19,6 +19,12 @@ import {
   updateUserPreferences,
   getTransactionsWithCategoriesByUser,
   getCryptoData,
+  getGoalsByUser,
+  getGoalProgress,
+  createGoal,
+  updateGoal,
+  updateGoalAmount,
+  deleteGoal,
 } from '../../controller/controller.js';
 
 const router = express.Router();
@@ -60,5 +66,12 @@ router.get(
   asyncHandler(getTransactionsWithCategoriesByUser),
 );
 router.get('/api/crypto/:coin', asyncHandler(getCryptoData));
+
+router.get('/api/goals/user/:id', asyncHandler(getGoalsByUser));
+router.get('/api/goals/progress/:id', asyncHandler(getGoalProgress));
+router.post('/api/goals', asyncHandler(createGoal));
+router.put('/api/goals/:id', asyncHandler(updateGoal));
+router.patch('/api/goals/:id/amount', asyncHandler(updateGoalAmount));
+router.delete('/api/goals/:id', asyncHandler(deleteGoal));
 
 export default router;

@@ -1,15 +1,15 @@
 <script>
-import { ref, computed, onMounted, watchEffect } from 'vue';
-import { useQuasar } from 'quasar';
-import { useRouter } from 'vue-router';
-import { auth } from '@/utils/auth';
+import { ref, computed, onMounted, watchEffect } from "vue";
+import { useQuasar } from "quasar";
+import { useRouter } from "vue-router";
+import { auth } from "@/utils/auth";
 
 export default {
-  name: 'NavBar',
+  name: "NavBar",
   setup() {
     const $q = useQuasar();
     const router = useRouter();
-    const tab = ref('home');
+    const tab = ref("home");
     const mobileMenuOpen = ref(false);
 
     const isLoggedIn = ref(auth.isAuthenticated());
@@ -22,10 +22,10 @@ export default {
       const handleStorageChange = () => {
         isLoggedIn.value = auth.isAuthenticated();
       };
-      window.addEventListener('storage', handleStorageChange);
+      window.addEventListener("storage", handleStorageChange);
 
       return () => {
-        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener("storage", handleStorageChange);
       };
     });
 
@@ -42,7 +42,7 @@ export default {
     const logout = async () => {
       auth.removeToken();
       isLoggedIn.value = false;
-      await router.push('/');
+      await router.push("/");
       window.location.reload();
     };
 
@@ -86,10 +86,22 @@ export default {
           exact
           v-if="isLoggedIn"
         />
+        <q-route-tab name="goals" label="Sparziele" to="/goals" exact v-if="isLoggedIn" />
         <q-route-tab name="login" label="Login" to="/login" exact v-if="!isLoggedIn" />
-        <q-route-tab name="register" label="Register" to="/register" exact v-if="!isLoggedIn" />
-        <q-route-tab name="settings" label="Settings" to="/settings" exact v-if="isLoggedIn" />
-        <!-- In your NavBar.vue component, add this to the tabs: -->
+        <q-route-tab
+          name="register"
+          label="Register"
+          to="/register"
+          exact
+          v-if="!isLoggedIn"
+        />
+        <q-route-tab
+          name="settings"
+          label="Settings"
+          to="/settings"
+          exact
+          v-if="isLoggedIn"
+        />
         <q-route-tab
           name="bank-import"
           label="Bank Import"
@@ -122,6 +134,9 @@ export default {
         <q-item clickable v-ripple to="/transactions" exact v-if="isLoggedIn">
           <q-item-section>Transaction</q-item-section>
         </q-item>
+        <q-item clickable v-ripple to="/goals" exact v-if="isLoggedIn">
+          <q-item-section>Savinggoals</q-item-section>
+        </q-item>
         <q-item clickable v-ripple to="/login" exact v-if="!isLoggedIn">
           <q-item-section>Login</q-item-section>
         </q-item>
@@ -130,6 +145,9 @@ export default {
         </q-item>
         <q-item clickable v-ripple to="/settings" exact v-if="isLoggedIn">
           <q-item-section>Settings</q-item-section>
+        </q-item>
+        <q-item clickable v-ripple to="/bank-import" exact v-if="isLoggedIn">
+          <q-item-section>Bank Import</q-item-section>
         </q-item>
         <q-item v-if="isLoggedIn" clickable v-ripple @click="logout">
           <q-item-section>Logout</q-item-section>
