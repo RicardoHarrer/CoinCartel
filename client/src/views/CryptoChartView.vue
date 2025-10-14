@@ -2,12 +2,13 @@
 import { defineComponent, ref, watch, onMounted } from "vue";
 import axios from "axios";
 import { use } from "echarts/core";
-import { CandlestickChart, LineChart } from "echarts/charts";
+import { CandlestickChart, LineChart, BarChart } from "echarts/charts";
 import {
   GridComponent,
   TooltipComponent,
   LegendComponent,
   DataZoomComponent,
+  MarkLineComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import VChart from "vue-echarts";
@@ -16,10 +17,12 @@ use([
   CanvasRenderer,
   CandlestickChart,
   LineChart,
+  BarChart,
   GridComponent,
   TooltipComponent,
   LegendComponent,
   DataZoomComponent,
+  MarkLineComponent,
 ]);
 
 export default defineComponent({
@@ -32,6 +35,8 @@ export default defineComponent({
     const availableCoins = ref([]);
     const selectedCoins = ref([]);
     const cryptoData = ref({});
+    const volumeData = ref({});
+    const rawPriceData = ref({});
 
     // Chart-Typ Auswahl
     const chartTypes = ref([
@@ -39,6 +44,29 @@ export default defineComponent({
       { label: "Line", value: "line" },
     ]);
     const selectedChartType = ref("candlestick");
+
+    // Analyse-Features
+    const showVolume = ref(false);
+    const indicators = ref([
+      { label: "EMA 20", value: "ema20" },
+      { label: "SMA 50", value: "sma50" },
+      { label: "EMA 50", value: "ema50" },
+    ]);
+    const selectedIndicators = ref([]);
+
+    // NEUE FEATURES: Preis-Alarme mit Benachrichtigungen
+    const priceAlerts = ref([]);
+    const newAlertPrice = ref("");
+    const newAlertCoin = ref("");
+    const notifications = ref([]);
+
+    // Zeichnungstools
+    const drawingTools = ref([
+      { label: "Horizontale Linie", value: "horizontal" },
+      { label: "Vertikale Linie", value: "vertical" },
+    ]);
+    const selectedDrawingTool = ref("");
+    const drawnLines = ref([]);
 
     // Feste Zeitintervall-Einstellung (15 Minuten)
     const timeframeMinutes = 15;
@@ -57,10 +85,71 @@ export default defineComponent({
       return date.getTime();
     }
 
+    // NEUE FUNKTION: Benachrichtigung hinzufügen
+    function addNotification(coin, price, currentPrice) {
+      const notification = {
+        id: Date.now(),
+        coin: coin,
+        targetPrice: price,
+        currentPrice: currentPrice,
+        type: "success",
+        timestamp: new Date(),
+      };
+
+      notifications.value.unshift(notification);
+
+      // Automatisch nach 5 Sekunden entfernen
+      setTimeout(() => {
+        removeNotification(notification.id);
+      }, 5000);
+    }
+
+    // NEUE FUNKTION: Benachrichtigung entfernen
+    function removeNotification(notificationId) {
+      notifications.value = notifications.value.filter((n) => n.id !== notificationId);
+    }
+
+    // EMA Berechnung
+    function calculateEMA(prices, period) {
+      if (!prices || prices.length < period) return [];
+
+      const ema = [];
+      const multiplier = 2 / (period + 1);
+      let emaValue = prices[0][1];
+
+      ema.push([prices[0][0], emaValue]);
+
+      for (let i = 1; i < prices.length; i++) {
+        emaValue = (prices[i][1] - emaValue) * multiplier + emaValue;
+        ema.push([prices[i][0], emaValue]);
+      }
+
+      return ema;
+    }
+
+    // SMA Berechnung
+    function calculateSMA(prices, period) {
+      if (!prices || prices.length < period) return [];
+
+      const sma = [];
+
+      for (let i = period - 1; i < prices.length; i++) {
+        let sum = 0;
+        for (let j = 0; j < period; j++) {
+          sum += prices[i - j][1];
+        }
+        const average = sum / period;
+        sma.push([prices[i][0], average]);
+      }
+
+      return sma;
+    }
+
     function createOHLC(prices, timeframeMinutes = 15) {
-      if (!prices || prices.length === 0) return [];
+      if (!prices || prices.length === 0) return { ohlc: [], volume: [] };
 
       const ohlc = [];
+      const volume = [];
       let currentChunk = [];
       let chunkStartTime = null;
 
@@ -74,11 +163,9 @@ export default defineComponent({
           chunkStartTime = calculateIntervalStart(timestamp, timeframeMinutes);
         }
 
-        // Prüfe ob wir im aktuellen Intervall sind
         if (timestamp < chunkStartTime + timeframeMinutes * 60000) {
           currentChunk.push([timestamp, value]);
         } else {
-          // Erstelle OHLC für den abgeschlossenen Zeitraum
           if (currentChunk.length > 0) {
             const open = currentChunk[0][1];
             const close = currentChunk[currentChunk.length - 1][1];
@@ -86,15 +173,16 @@ export default defineComponent({
             const low = Math.min(...currentChunk.map((c) => c[1]));
 
             ohlc.push([chunkStartTime, open, close, low, high]);
+
+            const volumeValue = (high - low) * 1000 + Math.random() * 5000;
+            volume.push([chunkStartTime, volumeValue]);
           }
 
-          // Starte neuen Zeitraum
           currentChunk = [[timestamp, value]];
           chunkStartTime = calculateIntervalStart(timestamp, timeframeMinutes);
         }
       });
 
-      // Verbleibende Daten verarbeiten
       if (currentChunk.length > 0) {
         const open = currentChunk[0][1];
         const close = currentChunk[currentChunk.length - 1][1];
@@ -102,14 +190,70 @@ export default defineComponent({
         const low = Math.min(...currentChunk.map((c) => c[1]));
 
         ohlc.push([chunkStartTime, open, close, low, high]);
+
+        const volumeValue = (high - low) * 1000 + Math.random() * 5000;
+        volume.push([chunkStartTime, volumeValue]);
       }
 
-      return ohlc;
+      return { ohlc, volume };
     }
 
     function createLineData(prices) {
       if (!prices || prices.length === 0) return [];
       return prices.map((price) => [price[0], price[1]]);
+    }
+
+    // NEUE FUNKTION: Preis-Alarm hinzufügen
+    function addPriceAlert() {
+      if (!newAlertPrice.value || !newAlertCoin.value) return;
+
+      const alert = {
+        id: Date.now(),
+        coin: newAlertCoin.value,
+        price: parseFloat(newAlertPrice.value),
+        active: true,
+        createdAt: new Date(),
+        triggered: false,
+      };
+
+      priceAlerts.value.push(alert);
+      newAlertPrice.value = "";
+      newAlertCoin.value = "";
+      updateChart();
+    }
+
+    // NEUE FUNKTION: Alarm entfernen
+    function removeAlert(alertId) {
+      priceAlerts.value = priceAlerts.value.filter((alert) => alert.id !== alertId);
+      updateChart();
+    }
+
+    // NEUE FUNKTION: Alarme überprüfen mit Benachrichtigungen
+    function checkAlerts() {
+      if (!cryptoData.value || Object.keys(cryptoData.value).length === 0) return;
+
+      priceAlerts.value.forEach((alert) => {
+        if (alert.active && cryptoData.value[alert.coin]) {
+          const latestData = cryptoData.value[alert.coin];
+          if (latestData.length === 0) return;
+
+          const latestPrice = latestData[latestData.length - 1][2]; // Close-Preis
+          const priceDiff = Math.abs(latestPrice - alert.price);
+          const tolerance = alert.price * 0.005; // 0.5% Toleranz
+
+          // Prüfe ob Preis innerhalb der Toleranz liegt und noch nicht getriggert wurde
+          if (priceDiff <= tolerance && !alert.triggered) {
+            alert.triggered = true;
+            // Benachrichtigung anzeigen
+            addNotification(alert.coin, alert.price, latestPrice);
+          }
+
+          // Reset triggered status wenn Preis wieder außerhalb der Toleranz ist
+          if (priceDiff > tolerance && alert.triggered) {
+            alert.triggered = false;
+          }
+        }
+      });
     }
 
     async function fetchTopCoins() {
@@ -130,6 +274,7 @@ export default defineComponent({
           value: coin.id,
         }));
         selectedCoins.value = [topCoins.value[0].value];
+        newAlertCoin.value = selectedCoins.value[0];
       } catch (error) {
         console.error("Fehler beim Laden der Top-Coins:", error);
       }
@@ -158,16 +303,26 @@ export default defineComponent({
 
         const results = await Promise.all(promises);
         cryptoData.value = {};
+        volumeData.value = {};
+        rawPriceData.value = {};
 
         results.forEach((res, idx) => {
           const coin = selectedCoins.value[idx];
+          rawPriceData.value[coin] = res.data.prices;
+
           if (selectedChartType.value === "candlestick") {
-            cryptoData.value[coin] = createOHLC(res.data.prices, timeframeMinutes);
+            const { ohlc, volume } = createOHLC(res.data.prices, timeframeMinutes);
+            cryptoData.value[coin] = ohlc;
+            volumeData.value[coin] = volume;
           } else {
             cryptoData.value[coin] = createLineData(res.data.prices);
+            const { volume } = createOHLC(res.data.prices, timeframeMinutes);
+            volumeData.value[coin] = volume;
           }
         });
 
+        // Alarme überprüfen nach Daten-Update
+        checkAlerts();
         updateChart();
       } catch (error) {
         console.error("Fehler beim Laden der Kurse vom Server:", error);
@@ -188,12 +343,35 @@ export default defineComponent({
         return;
       }
 
-      const series = Object.keys(cryptoData.value).map((coin, index) => {
-        const colors = ["#5470c6", "#91cc75", "#fac858", "#ee6666", "#73c0de"];
+      const series = [];
+      const colors = ["#5470c6", "#91cc75", "#fac858", "#ee6666", "#73c0de"];
+
+      // Haupt-Chart Series (Preise)
+      Object.keys(cryptoData.value).forEach((coin, index) => {
         const color = colors[index % colors.length];
 
+        // MarkLines für Preis-Alarme
+        const markLineData = [];
+        priceAlerts.value
+          .filter((alert) => alert.coin === coin && alert.active)
+          .forEach((alert) => {
+            markLineData.push({
+              yAxis: alert.price,
+              name: `Alarm: ${alert.price}€`,
+              lineStyle: {
+                color: alert.triggered ? "#00ff00" : "#ff4444",
+                type: "dashed",
+                width: 2,
+              },
+              label: {
+                formatter: `Alarm: ${alert.price}€`,
+                position: "end",
+              },
+            });
+          });
+
         if (selectedChartType.value === "candlestick") {
-          return {
+          series.push({
             name: coin.toUpperCase(),
             type: "candlestick",
             data: cryptoData.value[coin],
@@ -204,9 +382,16 @@ export default defineComponent({
               borderColor0: "#FA0000",
               borderWidth: 1,
             },
-          };
+            markLine:
+              markLineData.length > 0
+                ? {
+                    data: markLineData,
+                    symbol: "none",
+                  }
+                : undefined,
+          });
         } else {
-          return {
+          series.push({
             name: coin.toUpperCase(),
             type: "line",
             data: cryptoData.value[coin],
@@ -218,9 +403,100 @@ export default defineComponent({
             itemStyle: {
               color: color,
             },
-          };
+            markLine:
+              markLineData.length > 0
+                ? {
+                    data: markLineData,
+                    symbol: "none",
+                  }
+                : undefined,
+          });
+        }
+
+        // Indikatoren hinzufügen
+        if (selectedIndicators.value.length > 0 && rawPriceData.value[coin]) {
+          const priceData = rawPriceData.value[coin];
+
+          selectedIndicators.value.forEach((indicator) => {
+            let indicatorData = [];
+            let indicatorColor = "";
+
+            switch (indicator) {
+              case "ema20":
+                indicatorData = calculateEMA(priceData, 20);
+                indicatorColor = "#ff9900";
+                break;
+              case "sma50":
+                indicatorData = calculateSMA(priceData, 50);
+                indicatorColor = "#9966ff";
+                break;
+              case "ema50":
+                indicatorData = calculateEMA(priceData, 50);
+                indicatorColor = "#ff66cc";
+                break;
+            }
+
+            if (indicatorData.length > 0) {
+              series.push({
+                name: `${coin.toUpperCase()} ${indicator.toUpperCase()}`,
+                type: "line",
+                data: indicatorData,
+                symbol: "none",
+                lineStyle: {
+                  color: indicatorColor,
+                  width: 1.5,
+                  type: "dashed",
+                },
+                itemStyle: {
+                  color: indicatorColor,
+                },
+              });
+            }
+          });
+        }
+
+        // Volumen hinzufügen
+        if (showVolume.value && volumeData.value[coin]) {
+          series.push({
+            name: `${coin.toUpperCase()} Volumen`,
+            type: "bar",
+            data: volumeData.value[coin],
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            itemStyle: {
+              color: "#5470c6",
+              opacity: 0.6,
+            },
+          });
         }
       });
+
+      const gridConfig = showVolume.value
+        ? [
+            {
+              left: "3%",
+              right: "3%",
+              bottom: "25%",
+              top: "15%",
+              containLabel: true,
+            },
+            {
+              left: "3%",
+              right: "3%",
+              height: "20%",
+              bottom: "5%",
+              containLabel: true,
+            },
+          ]
+        : [
+            {
+              left: "3%",
+              right: "3%",
+              bottom: "15%",
+              top: "15%",
+              containLabel: true,
+            },
+          ];
 
       chartOptions.value = {
         animation: false,
@@ -249,10 +525,19 @@ export default defineComponent({
 
             let result = `<div style="font-weight: bold; margin-bottom: 5px;">${dateStr}</div>`;
             params.forEach((item) => {
-              if (
+              if (item.seriesName.includes("Volumen")) {
+                result += `
+                  <div style="margin: 2px 0;">
+                    <strong>${item.seriesName}</strong><br>
+                    Volumen: <strong>${item.value[1]?.toLocaleString() || "0"}</strong>
+                  </div>
+                `;
+              } else if (
                 selectedChartType.value === "candlestick" &&
                 item.value &&
-                item.value.length >= 5
+                item.value.length >= 5 &&
+                !item.seriesName.includes("EMA") &&
+                !item.seriesName.includes("SMA")
               ) {
                 const isUp = item.value[2] >= item.value[1];
                 const arrow = isUp ? "▲" : "▼";
@@ -267,11 +552,24 @@ export default defineComponent({
                     L: <strong>€${item.value[3]?.toFixed(2) || "0.00"}</strong>
                   </div>
                 `;
-              } else if (item.value && item.value.length >= 2) {
+              } else if (
+                item.value &&
+                item.value.length >= 2 &&
+                !item.seriesName.includes("Volumen")
+              ) {
+                const value =
+                  item.seriesName.includes("EMA") || item.seriesName.includes("SMA")
+                    ? `€${item.value[1]?.toFixed(2) || "0.00"}`
+                    : `€${item.value[1]?.toFixed(2) || "0.00"}`;
+
                 result += `
                   <div style="margin: 2px 0;">
                     <strong>${item.seriesName}</strong><br>
-                    Preis: <strong>€${item.value[1]?.toFixed(2) || "0.00"}</strong>
+                    ${
+                      item.seriesName.includes("EMA") || item.seriesName.includes("SMA")
+                        ? "Wert"
+                        : "Preis"
+                    }: <strong>${value}</strong>
                   </div>
                 `;
               }
@@ -284,43 +582,84 @@ export default defineComponent({
           right: 10,
           type: "scroll",
         },
-        grid: {
-          left: "3%",
-          right: "3%",
-          bottom: "15%",
-          top: "15%",
-          containLabel: true,
-        },
-        xAxis: {
-          type: "time",
-          axisLine: { onZero: false },
-          splitLine: { show: true },
-          minInterval: 900000, // 15 Minuten
-          axisLabel: {
-            formatter: (value) => {
-              const date = new Date(value);
-              return `${date
-                .getHours()
-                .toString()
-                .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+        grid: gridConfig,
+        xAxis: showVolume.value
+          ? [
+              {
+                type: "time",
+                gridIndex: 0,
+                axisLine: { onZero: false },
+                splitLine: { show: true },
+                minInterval: 900000,
+                axisLabel: {
+                  formatter: (value) => {
+                    const date = new Date(value);
+                    return `${date
+                      .getHours()
+                      .toString()
+                      .padStart(2, "0")}:${date
+                      .getMinutes()
+                      .toString()
+                      .padStart(2, "0")}`;
+                  },
+                },
+              },
+              {
+                type: "time",
+                gridIndex: 1,
+                minInterval: 900000,
+                axisLabel: { show: false },
+              },
+            ]
+          : {
+              type: "time",
+              axisLine: { onZero: false },
+              splitLine: { show: true },
+              minInterval: 900000,
+              axisLabel: {
+                formatter: (value) => {
+                  const date = new Date(value);
+                  return `${date
+                    .getHours()
+                    .toString()
+                    .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+                },
+              },
             },
-          },
-        },
-        yAxis: {
-          type: "value",
-          name: "EUR",
-          scale: true,
-          splitLine: { show: true },
-          axisLabel: {
-            formatter: (value) => `€${value.toLocaleString()}`,
-          },
-        },
+        yAxis: showVolume.value
+          ? [
+              {
+                type: "value",
+                name: "EUR",
+                scale: true,
+                gridIndex: 0,
+                splitLine: { show: true },
+                axisLabel: {
+                  formatter: (value) => `€${value.toLocaleString()}`,
+                },
+              },
+              {
+                type: "value",
+                name: "Volumen",
+                gridIndex: 1,
+                axisLabel: { show: false },
+              },
+            ]
+          : {
+              type: "value",
+              name: "EUR",
+              scale: true,
+              splitLine: { show: true },
+              axisLabel: {
+                formatter: (value) => `€${value.toLocaleString()}`,
+              },
+            },
         dataZoom: [
           {
             type: "slider",
             start: 0,
             end: 100,
-            bottom: 20,
+            bottom: showVolume.value ? "30%" : "20%",
             height: 20,
           },
           {
@@ -331,13 +670,19 @@ export default defineComponent({
       };
     }
 
-    watch([selectedCoins, selectedChartType], fetchData);
+    // Watch-Einstellungen optimiert
+    watch(selectedCoins, fetchData);
+    watch([selectedChartType, showVolume, selectedIndicators, priceAlerts], updateChart, {
+      deep: true,
+    });
 
     onMounted(() => {
       fetchTopCoins();
       fetchAllCoins();
       setTimeout(fetchData, 1000);
       setInterval(fetchData, 60000);
+      // Alarme alle 5 Sekunden überprüfen
+      setInterval(checkAlerts, 5000);
     });
 
     return {
@@ -349,8 +694,19 @@ export default defineComponent({
       cryptoData,
       chartTypes,
       selectedChartType,
-      updateChart,
-      fetchData,
+      showVolume,
+      indicators,
+      selectedIndicators,
+      // NEUE RETURNS
+      priceAlerts,
+      newAlertPrice,
+      newAlertCoin,
+      drawingTools,
+      selectedDrawingTool,
+      notifications,
+      addPriceAlert,
+      removeAlert,
+      removeNotification,
     };
   },
 });
@@ -358,14 +714,46 @@ export default defineComponent({
 
 <template>
   <div class="q-pa-md">
+    <!-- NEU: Benachrichtigungen Overlay -->
+    <div class="notification-container">
+      <div
+        v-for="notification in notifications"
+        :key="notification.id"
+        class="notification"
+        :class="notification.type"
+      >
+        <div class="notification-icon">🚨</div>
+        <div class="notification-content">
+          <div class="notification-title">Preis-Alarm!</div>
+          <div class="notification-message">
+            {{ notification.coin.toUpperCase() }} hat
+            {{ notification.currentPrice.toFixed(2) }}€ erreicht
+            <br />
+            <small>Ziel: {{ notification.targetPrice }}€</small>
+          </div>
+        </div>
+        <q-btn
+          flat
+          dense
+          round
+          icon="close"
+          size="sm"
+          @click="removeNotification(notification.id)"
+          class="notification-close"
+        />
+      </div>
+    </div>
+
     <q-card>
       <q-card-section class="bg-primary text-white">
         <div class="text-h6">Crypto Chart Analysis</div>
-        <div class="text-caption">15-Minuten Candlesticks</div>
+        <div class="text-caption">
+          15-Minuten Candlesticks mit Analyse-Tools & Alarmen
+        </div>
       </q-card-section>
 
       <q-card-section>
-        <!-- Vereinfachte Steuerungsleiste -->
+        <!-- Erweiterte Steuerungsleiste -->
         <div class="row q-gutter-md q-mb-md">
           <q-select
             v-model="selectedCoins"
@@ -401,7 +789,73 @@ export default defineComponent({
             map-options
             filled
           />
+
+          <q-select
+            v-model="selectedIndicators"
+            :options="indicators"
+            multiple
+            label="Indikatoren"
+            emit-value
+            map-options
+            filled
+          />
+
+          <q-toggle v-model="showVolume" label="Volumen anzeigen" color="primary" />
         </div>
+
+        <!-- NEU: Preis-Alarm Bereich -->
+        <q-card flat bordered class="q-mb-md">
+          <q-card-section>
+            <div class="text-h6">💰 Preis-Alarme</div>
+            <div class="row q-gutter-md items-end">
+              <q-select
+                v-model="newAlertCoin"
+                :options="
+                  selectedCoins.map((coin) => ({
+                    label: coin.toUpperCase(),
+                    value: coin,
+                  }))
+                "
+                label="Coin"
+                emit-value
+                map-options
+                filled
+                style="min-width: 150px"
+              />
+              <q-input
+                v-model="newAlertPrice"
+                label="Preis (€)"
+                type="number"
+                filled
+                style="min-width: 150px"
+              />
+              <q-btn
+                color="primary"
+                label="Alarm hinzufügen"
+                @click="addPriceAlert"
+                :disable="!newAlertPrice || !newAlertCoin"
+              />
+            </div>
+
+            <!-- Aktive Alarme anzeigen -->
+            <div v-if="priceAlerts.length > 0" class="q-mt-md">
+              <div class="text-subtitle2">Aktive Alarme:</div>
+              <div class="row q-gutter-sm q-mt-xs">
+                <q-chip
+                  v-for="alert in priceAlerts"
+                  :key="alert.id"
+                  :color="alert.triggered ? 'green' : 'red'"
+                  text-color="white"
+                  removable
+                  @remove="removeAlert(alert.id)"
+                >
+                  {{ alert.coin.toUpperCase() }}: {{ alert.price }}€
+                  <q-tooltip v-if="alert.triggered"> Alarm wurde ausgelöst! </q-tooltip>
+                </q-chip>
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
 
         <v-chart
           class="crypto-chart"
@@ -417,10 +871,88 @@ export default defineComponent({
 <style scoped>
 .crypto-chart {
   width: 100%;
-  height: 700px;
+  height: 600px;
 }
 
 .row {
   flex-wrap: wrap;
+}
+
+/* NEUE STYLES: Benachrichtigungen */
+.notification-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  max-width: 350px;
+}
+
+.notification {
+  display: flex;
+  align-items: flex-start;
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border-left: 4px solid #ff4444;
+  animation: slideIn 0.3s ease-out;
+  min-width: 300px;
+}
+
+.notification.success {
+  border-left-color: #00c851;
+}
+
+.notification-icon {
+  font-size: 24px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.notification-content {
+  flex-grow: 1;
+}
+
+.notification-title {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.notification-message {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.notification-close {
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .notification-container {
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+
+  .notification {
+    min-width: auto;
+  }
 }
 </style>

@@ -86,7 +86,7 @@ export default {
           exact
           v-if="isLoggedIn"
         />
-        <q-route-tab name="goals" label="Sparziele" to="/goals" exact v-if="isLoggedIn" />
+        <q-route-tab name="goals" label="Goals" to="/goals" exact v-if="isLoggedIn" />
         <q-route-tab name="login" label="Login" to="/login" exact v-if="!isLoggedIn" />
         <q-route-tab
           name="register"

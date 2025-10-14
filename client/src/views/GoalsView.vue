@@ -1,17 +1,17 @@
 <template>
   <q-page class="q-pa-md">
     <div class="goals-view">
-      <!-- Header mit Statistiken -->
+      <!-- Header with statistics -->
       <div class="row q-mb-lg">
         <div class="col-12">
-          <h2 class="text-h4 text-primary q-mb-md">🎯 Meine Sparziele</h2>
+          <h2 class="text-h4 text-primary q-mb-md">🎯 My Savings Goals</h2>
 
           <div class="row q-col-gutter-md q-mb-lg">
             <div class="col-12 col-sm-4">
               <q-card class="bg-primary text-white text-center">
                 <q-card-section>
                   <div class="text-h4">{{ stats.active }}</div>
-                  <div>Aktive Ziele</div>
+                  <div>Active Goals</div>
                 </q-card-section>
               </q-card>
             </div>
@@ -19,7 +19,7 @@
               <q-card class="bg-positive text-white text-center">
                 <q-card-section>
                   <div class="text-h4">{{ stats.completed }}</div>
-                  <div>Erreicht</div>
+                  <div>Completed</div>
                 </q-card-section>
               </q-card>
             </div>
@@ -27,7 +27,7 @@
               <q-card class="bg-negative text-white text-center">
                 <q-card-section>
                   <div class="text-h4">{{ stats.overdue }}</div>
-                  <div>Überfällig</div>
+                  <div>Overdue</div>
                 </q-card-section>
               </q-card>
             </div>
@@ -38,18 +38,14 @@
             <q-tab
               name="active"
               icon="schedule"
-              :label="`Aktiv (${stats.active + stats.overdue})`"
+              :label="`Active (${stats.active + stats.overdue})`"
             />
             <q-tab
               name="completed"
               icon="check_circle"
-              :label="`Erreicht (${stats.completed})`"
+              :label="`Completed (${stats.completed})`"
             />
-            <q-tab
-              name="overdue"
-              icon="warning"
-              :label="`Überfällig (${stats.overdue})`"
-            />
+            <q-tab name="overdue" icon="warning" :label="`Overdue (${stats.overdue})`" />
           </q-tabs>
         </div>
       </div>
@@ -57,7 +53,7 @@
       <!-- Goals Grid -->
       <div v-if="loading" class="text-center q-py-xl">
         <q-spinner size="50px" color="primary" />
-        <div class="q-mt-md">Lade Ziele...</div>
+        <div class="q-mt-md">Loading goals...</div>
       </div>
 
       <div v-else class="row q-col-gutter-md">
@@ -83,14 +79,14 @@
         </div>
         <q-btn
           v-if="activeTab === 'active'"
-          label="Erstes Ziel erstellen"
+          label="Create your first goal"
           color="primary"
           icon="add"
           @click="showCreateDialog = true"
         />
       </q-card>
 
-      <!-- FAB für neue Goals -->
+      <!-- FAB for new goals -->
       <q-page-sticky position="bottom-right" :offset="[18, 18]">
         <q-btn fab icon="add" color="primary" @click="showCreateDialog = true" />
       </q-page-sticky>
@@ -117,17 +113,16 @@
       <q-dialog v-model="showDeleteDialog">
         <q-card>
           <q-card-section>
-            <div class="text-h6">Ziel löschen</div>
+            <div class="text-h6">Delete Goal</div>
           </q-card-section>
 
           <q-card-section>
-            Sind Sie sicher, dass Sie das Ziel "{{ deletingGoal?.title }}" löschen
-            möchten?
+            Are you sure you want to delete the goal "{{ deletingGoal?.title }}"?
           </q-card-section>
 
           <q-card-actions align="right">
-            <q-btn flat label="Abbrechen" color="primary" v-close-popup />
-            <q-btn flat label="Löschen" color="negative" @click="deleteGoal" />
+            <q-btn flat label="Cancel" color="primary" v-close-popup />
+            <q-btn flat label="Delete" color="negative" @click="deleteGoal" />
           </q-card-actions>
         </q-card>
       </q-dialog>
@@ -144,11 +139,7 @@ import GoalDetails from "../components/GoalDetails.vue";
 
 export default defineComponent({
   name: "GoalsView",
-  components: {
-    GoalCard,
-    GoalCreator,
-    GoalDetails,
-  },
+  components: { GoalCard, GoalCreator, GoalDetails },
   setup() {
     const $q = useQuasar();
 
@@ -162,14 +153,12 @@ export default defineComponent({
     const editingGoal = ref(null);
     const deletingGoal = ref(null);
 
-    // Für Demo - ersetze mit deinem echten User ID
     const userId = ref(1);
 
     const stats = computed(() => {
       const active = goals.value.filter((g) => g.status === "in_progress").length;
       const completed = goals.value.filter((g) => g.status === "completed").length;
       const overdue = goals.value.filter((g) => g.status === "overdue").length;
-
       return { active, completed, overdue };
     });
 
@@ -189,13 +178,13 @@ export default defineComponent({
     const emptyStateMessage = computed(() => {
       switch (activeTab.value) {
         case "active":
-          return "Noch keine Ziele";
+          return "No goals yet";
         case "completed":
-          return "Noch keine abgeschlossenen Ziele";
+          return "No completed goals";
         case "overdue":
-          return "Keine überfälligen Ziele";
+          return "No overdue goals";
         default:
-          return "Keine Ziele gefunden";
+          return "No goals found";
       }
     });
 
@@ -203,30 +192,17 @@ export default defineComponent({
       try {
         loading.value = true;
         const response = await fetch(`http://localhost:3000/api/goals/progress/1`);
-
-        console.log("Response status:", response.status);
-        console.log("Response content type:", response.headers.get("content-type"));
-
         const text = await response.text();
-        console.log("Raw response:", text);
 
-        // Prüfe ob es JSON ist
         if (response.headers.get("content-type")?.includes("application/json")) {
-          const data = JSON.parse(text);
-          goals.value = data;
+          goals.value = JSON.parse(text);
         } else {
           console.error("Server returned HTML instead of JSON:", text);
-          $q.notify({
-            type: "negative",
-            message: "Server-Fehler: Falsches Format",
-          });
+          $q.notify({ type: "negative", message: "Server error: wrong format" });
         }
       } catch (error) {
         console.error("Error fetching goals:", error);
-        $q.notify({
-          type: "negative",
-          message: "Fehler beim Laden der Ziele",
-        });
+        $q.notify({ type: "negative", message: "Error loading goals" });
       } finally {
         loading.value = false;
       }
@@ -251,23 +227,15 @@ export default defineComponent({
       try {
         const response = await fetch(
           `http://localhost:3000/api/goals/${deletingGoal.value.id}`,
-          {
-            method: "DELETE",
-          }
+          { method: "DELETE" }
         );
 
         if (response.ok) {
-          $q.notify({
-            type: "positive",
-            message: "Ziel erfolgreich gelöscht",
-          });
+          $q.notify({ type: "positive", message: "Goal deleted successfully" });
           fetchGoals();
         }
       } catch (error) {
-        $q.notify({
-          type: "negative",
-          message: "Fehler beim Löschen des Ziels",
-        });
+        $q.notify({ type: "negative", message: "Error deleting goal" });
       } finally {
         showDeleteDialog.value = false;
         deletingGoal.value = null;
@@ -279,7 +247,7 @@ export default defineComponent({
       fetchGoals();
       $q.notify({
         type: "positive",
-        message: editingGoal.value ? "Ziel aktualisiert" : "Ziel erstellt",
+        message: editingGoal.value ? "Goal updated" : "Goal created",
       });
     };
 
@@ -288,9 +256,7 @@ export default defineComponent({
       editingGoal.value = null;
     };
 
-    onMounted(() => {
-      fetchGoals();
-    });
+    onMounted(fetchGoals);
 
     return {
       goals,
