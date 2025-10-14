@@ -38,14 +38,12 @@ export default defineComponent({
     const volumeData = ref({});
     const rawPriceData = ref({});
 
-    // Chart-Typ Auswahl
     const chartTypes = ref([
       { label: "Candlestick", value: "candlestick" },
       { label: "Line", value: "line" },
     ]);
     const selectedChartType = ref("candlestick");
 
-    // Analyse-Features
     const showVolume = ref(false);
     const indicators = ref([
       { label: "EMA 20", value: "ema20" },
@@ -54,21 +52,12 @@ export default defineComponent({
     ]);
     const selectedIndicators = ref([]);
 
-    // NEUE FEATURES: Preis-Alarme mit Benachrichtigungen
     const priceAlerts = ref([]);
     const newAlertPrice = ref("");
     const newAlertCoin = ref("");
     const notifications = ref([]);
+    const showAlertDialog = ref(false);
 
-    // Zeichnungstools
-    const drawingTools = ref([
-      { label: "Horizontale Linie", value: "horizontal" },
-      { label: "Vertikale Linie", value: "vertical" },
-    ]);
-    const selectedDrawingTool = ref("");
-    const drawnLines = ref([]);
-
-    // Feste Zeitintervall-Einstellung (15 Minuten)
     const timeframeMinutes = 15;
 
     function calculateIntervalStart(timestamp, minutes) {
@@ -85,7 +74,6 @@ export default defineComponent({
       return date.getTime();
     }
 
-    // NEUE FUNKTION: Benachrichtigung hinzufügen
     function addNotification(coin, price, currentPrice) {
       const notification = {
         id: Date.now(),
@@ -98,18 +86,15 @@ export default defineComponent({
 
       notifications.value.unshift(notification);
 
-      // Automatisch nach 5 Sekunden entfernen
       setTimeout(() => {
         removeNotification(notification.id);
       }, 5000);
     }
 
-    // NEUE FUNKTION: Benachrichtigung entfernen
     function removeNotification(notificationId) {
       notifications.value = notifications.value.filter((n) => n.id !== notificationId);
     }
 
-    // EMA Berechnung
     function calculateEMA(prices, period) {
       if (!prices || prices.length < period) return [];
 
@@ -127,7 +112,6 @@ export default defineComponent({
       return ema;
     }
 
-    // SMA Berechnung
     function calculateSMA(prices, period) {
       if (!prices || prices.length < period) return [];
 
@@ -146,10 +130,9 @@ export default defineComponent({
     }
 
     function createOHLC(prices, timeframeMinutes = 15) {
-      if (!prices || prices.length === 0) return { ohlc: [], volume: [] };
+      if (!prices || prices.length === 0) return [];
 
       const ohlc = [];
-      const volume = [];
       let currentChunk = [];
       let chunkStartTime = null;
 
@@ -173,9 +156,6 @@ export default defineComponent({
             const low = Math.min(...currentChunk.map((c) => c[1]));
 
             ohlc.push([chunkStartTime, open, close, low, high]);
-
-            const volumeValue = (high - low) * 1000 + Math.random() * 5000;
-            volume.push([chunkStartTime, volumeValue]);
           }
 
           currentChunk = [[timestamp, value]];
@@ -190,12 +170,48 @@ export default defineComponent({
         const low = Math.min(...currentChunk.map((c) => c[1]));
 
         ohlc.push([chunkStartTime, open, close, low, high]);
-
-        const volumeValue = (high - low) * 1000 + Math.random() * 5000;
-        volume.push([chunkStartTime, volumeValue]);
       }
 
-      return { ohlc, volume };
+      return ohlc;
+    }
+
+    function createVolumeData(volumes, timeframeMinutes = 15) {
+      if (!volumes || volumes.length === 0) return [];
+
+      const aggregatedVolume = [];
+      let currentChunk = [];
+      let chunkStartTime = null;
+
+      const sortedVolumes = [...volumes].sort((a, b) => a[0] - b[0]);
+
+      sortedVolumes.forEach((volume, index) => {
+        const timestamp = volume[0];
+        const volumeValue = volume[1];
+
+        if (!chunkStartTime) {
+          chunkStartTime = calculateIntervalStart(timestamp, timeframeMinutes);
+        }
+
+        if (timestamp < chunkStartTime + timeframeMinutes * 60000) {
+          currentChunk.push([timestamp, volumeValue]);
+        } else {
+          if (currentChunk.length > 0) {
+            // Summiere alle Volumen im Intervall
+            const totalVolume = currentChunk.reduce((sum, vol) => sum + vol[1], 0);
+            aggregatedVolume.push([chunkStartTime, totalVolume]);
+          }
+
+          currentChunk = [[timestamp, volumeValue]];
+          chunkStartTime = calculateIntervalStart(timestamp, timeframeMinutes);
+        }
+      });
+
+      if (currentChunk.length > 0) {
+        const totalVolume = currentChunk.reduce((sum, vol) => sum + vol[1], 0);
+        aggregatedVolume.push([chunkStartTime, totalVolume]);
+      }
+
+      return aggregatedVolume;
     }
 
     function createLineData(prices) {
@@ -203,7 +219,6 @@ export default defineComponent({
       return prices.map((price) => [price[0], price[1]]);
     }
 
-    // NEUE FUNKTION: Preis-Alarm hinzufügen
     function addPriceAlert() {
       if (!newAlertPrice.value || !newAlertCoin.value) return;
 
@@ -219,16 +234,15 @@ export default defineComponent({
       priceAlerts.value.push(alert);
       newAlertPrice.value = "";
       newAlertCoin.value = "";
+      showAlertDialog.value = false;
       updateChart();
     }
 
-    // NEUE FUNKTION: Alarm entfernen
     function removeAlert(alertId) {
       priceAlerts.value = priceAlerts.value.filter((alert) => alert.id !== alertId);
       updateChart();
     }
 
-    // NEUE FUNKTION: Alarme überprüfen mit Benachrichtigungen
     function checkAlerts() {
       if (!cryptoData.value || Object.keys(cryptoData.value).length === 0) return;
 
@@ -237,18 +251,15 @@ export default defineComponent({
           const latestData = cryptoData.value[alert.coin];
           if (latestData.length === 0) return;
 
-          const latestPrice = latestData[latestData.length - 1][2]; // Close-Preis
+          const latestPrice = latestData[latestData.length - 1][2];
           const priceDiff = Math.abs(latestPrice - alert.price);
-          const tolerance = alert.price * 0.005; // 0.5% Toleranz
+          const tolerance = alert.price * 0.005;
 
-          // Prüfe ob Preis innerhalb der Toleranz liegt und noch nicht getriggert wurde
           if (priceDiff <= tolerance && !alert.triggered) {
             alert.triggered = true;
-            // Benachrichtigung anzeigen
             addNotification(alert.coin, alert.price, latestPrice);
           }
 
-          // Reset triggered status wenn Preis wieder außerhalb der Toleranz ist
           if (priceDiff > tolerance && alert.triggered) {
             alert.triggered = false;
           }
@@ -310,18 +321,18 @@ export default defineComponent({
           const coin = selectedCoins.value[idx];
           rawPriceData.value[coin] = res.data.prices;
 
+          // ECHTES Volumen von der API verwenden
+          const volumes = res.data.total_volumes || [];
+
           if (selectedChartType.value === "candlestick") {
-            const { ohlc, volume } = createOHLC(res.data.prices, timeframeMinutes);
-            cryptoData.value[coin] = ohlc;
-            volumeData.value[coin] = volume;
+            cryptoData.value[coin] = createOHLC(res.data.prices, timeframeMinutes);
+            volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes);
           } else {
             cryptoData.value[coin] = createLineData(res.data.prices);
-            const { volume } = createOHLC(res.data.prices, timeframeMinutes);
-            volumeData.value[coin] = volume;
+            volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes);
           }
         });
 
-        // Alarme überprüfen nach Daten-Update
         checkAlerts();
         updateChart();
       } catch (error) {
@@ -346,11 +357,9 @@ export default defineComponent({
       const series = [];
       const colors = ["#5470c6", "#91cc75", "#fac858", "#ee6666", "#73c0de"];
 
-      // Haupt-Chart Series (Preise)
       Object.keys(cryptoData.value).forEach((coin, index) => {
         const color = colors[index % colors.length];
 
-        // MarkLines für Preis-Alarme
         const markLineData = [];
         priceAlerts.value
           .filter((alert) => alert.coin === coin && alert.active)
@@ -384,10 +393,7 @@ export default defineComponent({
             },
             markLine:
               markLineData.length > 0
-                ? {
-                    data: markLineData,
-                    symbol: "none",
-                  }
+                ? { data: markLineData, symbol: "none" }
                 : undefined,
           });
         } else {
@@ -396,24 +402,15 @@ export default defineComponent({
             type: "line",
             data: cryptoData.value[coin],
             symbol: "none",
-            lineStyle: {
-              color: color,
-              width: 2,
-            },
-            itemStyle: {
-              color: color,
-            },
+            lineStyle: { color: color, width: 2 },
+            itemStyle: { color: color },
             markLine:
               markLineData.length > 0
-                ? {
-                    data: markLineData,
-                    symbol: "none",
-                  }
+                ? { data: markLineData, symbol: "none" }
                 : undefined,
           });
         }
 
-        // Indikatoren hinzufügen
         if (selectedIndicators.value.length > 0 && rawPriceData.value[coin]) {
           const priceData = rawPriceData.value[coin];
 
@@ -447,15 +444,12 @@ export default defineComponent({
                   width: 1.5,
                   type: "dashed",
                 },
-                itemStyle: {
-                  color: indicatorColor,
-                },
+                itemStyle: { color: indicatorColor },
               });
             }
           });
         }
 
-        // Volumen hinzufügen
         if (showVolume.value && volumeData.value[coin]) {
           series.push({
             name: `${coin.toUpperCase()} Volumen`,
@@ -463,10 +457,7 @@ export default defineComponent({
             data: volumeData.value[coin],
             xAxisIndex: 1,
             yAxisIndex: 1,
-            itemStyle: {
-              color: "#5470c6",
-              opacity: 0.6,
-            },
+            itemStyle: { color: "#5470c6", opacity: 0.6 },
           });
         }
       });
@@ -504,10 +495,7 @@ export default defineComponent({
           trigger: "axis",
           axisPointer: {
             type: "cross",
-            lineStyle: {
-              color: "#7581BD",
-              width: 1,
-            },
+            lineStyle: { color: "#7581BD", width: 1 },
           },
           formatter: (params) => {
             const date = new Date(params[0].value[0]);
@@ -526,12 +514,10 @@ export default defineComponent({
             let result = `<div style="font-weight: bold; margin-bottom: 5px;">${dateStr}</div>`;
             params.forEach((item) => {
               if (item.seriesName.includes("Volumen")) {
-                result += `
-                  <div style="margin: 2px 0;">
-                    <strong>${item.seriesName}</strong><br>
-                    Volumen: <strong>${item.value[1]?.toLocaleString() || "0"}</strong>
-                  </div>
-                `;
+                result += `<div style="margin: 2px 0;">
+                  <strong>${item.seriesName}</strong><br>
+                  Volumen: <strong>${(item.value[1] / 1000000).toFixed(2)} Mio. €</strong>
+                </div>`;
               } else if (
                 selectedChartType.value === "candlestick" &&
                 item.value &&
@@ -543,15 +529,13 @@ export default defineComponent({
                 const arrow = isUp ? "▲" : "▼";
                 const color = isUp ? "#06B800" : "#FA0000";
 
-                result += `
-                  <div style="color: ${color}; margin: 2px 0;">
-                    <strong>${item.seriesName}</strong> ${arrow}<br>
-                    O: <strong>€${item.value[1]?.toFixed(2) || "0.00"}</strong> |
-                    H: <strong>€${item.value[4]?.toFixed(2) || "0.00"}</strong><br>
-                    C: <strong>€${item.value[2]?.toFixed(2) || "0.00"}</strong> |
-                    L: <strong>€${item.value[3]?.toFixed(2) || "0.00"}</strong>
-                  </div>
-                `;
+                result += `<div style="color: ${color}; margin: 2px 0;">
+                  <strong>${item.seriesName}</strong> ${arrow}<br>
+                  O: <strong>€${item.value[1]?.toFixed(2) || "0.00"}</strong> |
+                  H: <strong>€${item.value[4]?.toFixed(2) || "0.00"}</strong><br>
+                  C: <strong>€${item.value[2]?.toFixed(2) || "0.00"}</strong> |
+                  L: <strong>€${item.value[3]?.toFixed(2) || "0.00"}</strong>
+                </div>`;
               } else if (
                 item.value &&
                 item.value.length >= 2 &&
@@ -562,26 +546,20 @@ export default defineComponent({
                     ? `€${item.value[1]?.toFixed(2) || "0.00"}`
                     : `€${item.value[1]?.toFixed(2) || "0.00"}`;
 
-                result += `
-                  <div style="margin: 2px 0;">
-                    <strong>${item.seriesName}</strong><br>
-                    ${
-                      item.seriesName.includes("EMA") || item.seriesName.includes("SMA")
-                        ? "Wert"
-                        : "Preis"
-                    }: <strong>${value}</strong>
-                  </div>
-                `;
+                result += `<div style="margin: 2px 0;">
+                  <strong>${item.seriesName}</strong><br>
+                  ${
+                    item.seriesName.includes("EMA") || item.seriesName.includes("SMA")
+                      ? "Wert"
+                      : "Preis"
+                  }: <strong>${value}</strong>
+                </div>`;
               }
             });
             return result;
           },
         },
-        legend: {
-          top: 10,
-          right: 10,
-          type: "scroll",
-        },
+        legend: { top: 10, right: 10, type: "scroll" },
         grid: gridConfig,
         xAxis: showVolume.value
           ? [
@@ -634,15 +612,15 @@ export default defineComponent({
                 scale: true,
                 gridIndex: 0,
                 splitLine: { show: true },
-                axisLabel: {
-                  formatter: (value) => `€${value.toLocaleString()}`,
-                },
+                axisLabel: { formatter: (value) => `€${value.toLocaleString()}` },
               },
               {
                 type: "value",
-                name: "Volumen",
+                name: "Volumen (Mio. €)",
                 gridIndex: 1,
-                axisLabel: { show: false },
+                axisLabel: {
+                  formatter: (value) => `${(value / 1000000).toFixed(1)}M`,
+                },
               },
             ]
           : {
@@ -650,9 +628,7 @@ export default defineComponent({
               name: "EUR",
               scale: true,
               splitLine: { show: true },
-              axisLabel: {
-                formatter: (value) => `€${value.toLocaleString()}`,
-              },
+              axisLabel: { formatter: (value) => `€${value.toLocaleString()}` },
             },
         dataZoom: [
           {
@@ -662,15 +638,12 @@ export default defineComponent({
             bottom: showVolume.value ? "30%" : "20%",
             height: 20,
           },
-          {
-            type: "inside",
-          },
+          { type: "inside" },
         ],
         series,
       };
     }
 
-    // Watch-Einstellungen optimiert
     watch(selectedCoins, fetchData);
     watch([selectedChartType, showVolume, selectedIndicators, priceAlerts], updateChart, {
       deep: true,
@@ -681,7 +654,6 @@ export default defineComponent({
       fetchAllCoins();
       setTimeout(fetchData, 1000);
       setInterval(fetchData, 60000);
-      // Alarme alle 5 Sekunden überprüfen
       setInterval(checkAlerts, 5000);
     });
 
@@ -697,13 +669,11 @@ export default defineComponent({
       showVolume,
       indicators,
       selectedIndicators,
-      // NEUE RETURNS
       priceAlerts,
       newAlertPrice,
       newAlertCoin,
-      drawingTools,
-      selectedDrawingTool,
       notifications,
+      showAlertDialog,
       addPriceAlert,
       removeAlert,
       removeNotification,
@@ -714,7 +684,6 @@ export default defineComponent({
 
 <template>
   <div class="q-pa-md">
-    <!-- NEU: Benachrichtigungen Overlay -->
     <div class="notification-container">
       <div
         v-for="notification in notifications"
@@ -748,12 +717,11 @@ export default defineComponent({
       <q-card-section class="bg-primary text-white">
         <div class="text-h6">Crypto Chart Analysis</div>
         <div class="text-caption">
-          15-Minuten Candlesticks mit Analyse-Tools & Alarmen
+          15-Minuten Candlesticks mit echten Volumen-Daten & Alarmen
         </div>
       </q-card-section>
 
       <q-card-section>
-        <!-- Erweiterte Steuerungsleiste -->
         <div class="row q-gutter-md q-mb-md">
           <q-select
             v-model="selectedCoins"
@@ -801,61 +769,31 @@ export default defineComponent({
           />
 
           <q-toggle v-model="showVolume" label="Volumen anzeigen" color="primary" />
+
+          <q-btn
+            color="red"
+            icon="notifications"
+            label="Alarm erstellen"
+            @click="showAlertDialog = true"
+          />
         </div>
 
-        <!-- NEU: Preis-Alarm Bereich -->
-        <q-card flat bordered class="q-mb-md">
-          <q-card-section>
-            <div class="text-h6">💰 Preis-Alarme</div>
-            <div class="row q-gutter-md items-end">
-              <q-select
-                v-model="newAlertCoin"
-                :options="
-                  selectedCoins.map((coin) => ({
-                    label: coin.toUpperCase(),
-                    value: coin,
-                  }))
-                "
-                label="Coin"
-                emit-value
-                map-options
-                filled
-                style="min-width: 150px"
-              />
-              <q-input
-                v-model="newAlertPrice"
-                label="Preis (€)"
-                type="number"
-                filled
-                style="min-width: 150px"
-              />
-              <q-btn
-                color="primary"
-                label="Alarm hinzufügen"
-                @click="addPriceAlert"
-                :disable="!newAlertPrice || !newAlertCoin"
-              />
-            </div>
-
-            <!-- Aktive Alarme anzeigen -->
-            <div v-if="priceAlerts.length > 0" class="q-mt-md">
-              <div class="text-subtitle2">Aktive Alarme:</div>
-              <div class="row q-gutter-sm q-mt-xs">
-                <q-chip
-                  v-for="alert in priceAlerts"
-                  :key="alert.id"
-                  :color="alert.triggered ? 'green' : 'red'"
-                  text-color="white"
-                  removable
-                  @remove="removeAlert(alert.id)"
-                >
-                  {{ alert.coin.toUpperCase() }}: {{ alert.price }}€
-                  <q-tooltip v-if="alert.triggered"> Alarm wurde ausgelöst! </q-tooltip>
-                </q-chip>
-              </div>
-            </div>
-          </q-card-section>
-        </q-card>
+        <div v-if="priceAlerts.length > 0" class="q-mb-md">
+          <div class="text-subtitle2 q-mb-xs">Aktive Alarme:</div>
+          <div class="row q-gutter-sm">
+            <q-chip
+              v-for="alert in priceAlerts"
+              :key="alert.id"
+              :color="alert.triggered ? 'green' : 'red'"
+              text-color="white"
+              removable
+              @remove="removeAlert(alert.id)"
+            >
+              {{ alert.coin.toUpperCase() }}: {{ alert.price }}€
+              <q-tooltip v-if="alert.triggered">Alarm wurde ausgelöst!</q-tooltip>
+            </q-chip>
+          </div>
+        </div>
 
         <v-chart
           class="crypto-chart"
@@ -865,6 +803,57 @@ export default defineComponent({
         />
       </q-card-section>
     </q-card>
+
+    <q-dialog v-model="showAlertDialog" persistent>
+      <q-card style="min-width: 400px">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Neuen Preis-Alarm erstellen</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section>
+          <div class="q-gutter-y-md">
+            <q-select
+              v-model="newAlertCoin"
+              :options="
+                selectedCoins.map((coin) => ({
+                  label: coin.toUpperCase(),
+                  value: coin,
+                }))
+              "
+              label="Coin auswählen"
+              emit-value
+              map-options
+              filled
+            />
+
+            <q-input
+              v-model="newAlertPrice"
+              label="Preis in €"
+              type="number"
+              filled
+              placeholder="z.B. 45000"
+            />
+
+            <div class="text-caption text-grey">
+              💡 Der Alarm wird ausgelöst, wenn der Kurs innerhalb von 0.5% des
+              Zielpreises liegt.
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="Abbrechen" color="primary" v-close-popup />
+          <q-btn
+            label="Alarm erstellen"
+            color="red"
+            @click="addPriceAlert"
+            :disable="!newAlertPrice || !newAlertCoin"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -878,7 +867,6 @@ export default defineComponent({
   flex-wrap: wrap;
 }
 
-/* NEUE STYLES: Benachrichtigungen */
 .notification-container {
   position: fixed;
   top: 20px;
@@ -943,7 +931,6 @@ export default defineComponent({
   }
 }
 
-/* Responsive */
 @media (max-width: 600px) {
   .notification-container {
     right: 10px;
