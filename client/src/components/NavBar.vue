@@ -79,13 +79,13 @@ export default {
       <q-tabs v-model="tab" shrink stretch class="gt-sm">
         <q-route-tab name="home" label="Home" to="/" exact />
         <q-route-tab name="chart" label="Chart" to="/chart" exact v-if="isLoggedIn" />
-        <q-route-tab
+        <!-- <q-route-tab
           name="transaction"
           label="Transaction"
           to="/transactions"
           exact
           v-if="isLoggedIn"
-        />
+        /> -->
         <q-route-tab name="goals" label="Goals" to="/goals" exact v-if="isLoggedIn" />
         <q-route-tab name="login" label="Login" to="/login" exact v-if="!isLoggedIn" />
         <q-route-tab
@@ -112,13 +112,13 @@ export default {
         <q-btn v-if="isLoggedIn" flat label="Logout" @click="logout" class="q-ml-md" />
       </q-tabs>
 
-      <q-btn
+      <!-- <q-btn
         flat
         round
         :icon="isDarkMode ? 'light_mode' : 'dark_mode'"
         @click="toggleDarkMode"
         class="q-ml-md"
-      />
+      /> -->
 
       <q-btn flat round icon="menu" class="lt-md" @click="toggleMobileMenu" />
     </q-toolbar>

@@ -1,28 +1,35 @@
 <template>
   <q-card
-    class="goal-card cursor-pointer"
+    class="goal-card cursor-pointer bg-card"
     :class="statusClass"
     @click="$emit('click', goal)"
   >
-    <q-card-section>
+    <q-card-section class="q-pa-md">
       <!-- Header mit Titel und Menu -->
-      <div class="row items-start no-wrap">
+      <div class="row items-center no-wrap q-mb-sm">
         <div class="col">
-          <div class="text-h6 text-weight-bold">{{ goal.title }}</div>
+          <div class="text-h6 text-weight-bold text-primary">{{ goal.title }}</div>
         </div>
         <div class="col-auto">
-          <q-btn flat round icon="more_vert" size="sm" @click.stop="$emit('menu', goal)">
-            <q-menu auto-close>
-              <q-list style="min-width: 100px">
-                <q-item clickable @click="$emit('edit', goal)">
+          <q-btn
+            flat
+            round
+            icon="more_vert"
+            size="sm"
+            color="grey-6"
+            @click.stop="$emit('menu', goal)"
+          >
+            <q-menu auto-close class="bg-surface">
+              <q-list class="text-dark">
+                <q-item clickable class="text-dark" @click="$emit('edit', goal)">
                   <q-item-section avatar>
-                    <q-icon name="edit" size="xs" />
+                    <q-icon name="edit" size="xs" color="primary" />
                   </q-item-section>
                   <q-item-section>Bearbeiten</q-item-section>
                 </q-item>
-                <q-item clickable @click="$emit('delete', goal)">
+                <q-item clickable class="text-dark" @click="$emit('delete', goal)">
                   <q-item-section avatar>
-                    <q-icon name="delete" size="xs" />
+                    <q-icon name="delete" size="xs" color="negative" />
                   </q-item-section>
                   <q-item-section>Löschen</q-item-section>
                 </q-item>
@@ -34,10 +41,14 @@
 
       <!-- Status und Kategorie -->
       <div class="row q-gutter-xs q-mb-md">
-        <q-badge :color="statusColor" :icon="statusIcon">
+        <q-badge
+          :color="statusColor"
+          :icon="statusIcon"
+          class="text-caption text-weight-medium"
+        >
           {{ statusText }}
         </q-badge>
-        <q-badge v-if="goal.category_name" outline color="primary">
+        <q-badge v-if="goal.category_name" outline color="accent" class="text-caption">
           {{ goal.category_name }}
         </q-badge>
       </div>
@@ -45,33 +56,41 @@
       <!-- Fortschrittsbalken -->
       <div class="q-mb-md">
         <div class="row justify-between items-center q-mb-xs">
-          <div class="text-caption text-grey">Fortschritt</div>
-          <div class="text-caption text-weight-bold">
-            {{ progressPercentage.toFixed(2) }}%
+          <div class="text-caption text-grey-6">Fortschritt</div>
+          <div class="text-caption text-weight-bold text-primary">
+            {{ progressPercentage.toFixed(1) }}%
           </div>
         </div>
         <q-linear-progress
           :value="goal.progress_percentage / 100"
           :color="progressColor"
-          size="10px"
+          size="8px"
           rounded
+          class="q-mb-xs"
         />
-      </div>
-
-      <!-- Beträge -->
-      <div class="row justify-between q-mb-xs">
-        <div class="text-caption">Gespart:</div>
-        <div class="text-caption text-weight-bold">€{{ goal.current_amount }}</div>
-      </div>
-      <div class="row justify-between q-mb-md">
-        <div class="text-caption">Ziel:</div>
-        <div class="text-caption text-weight-bold">€{{ goal.target_amount }}</div>
+        <div class="row justify-between">
+          <div class="text-caption text-grey-6">
+            €{{ formatNumber(goal.current_amount) }}
+          </div>
+          <div class="text-caption text-grey-6">
+            €{{ formatNumber(goal.target_amount) }}
+          </div>
+        </div>
       </div>
 
       <!-- Datum -->
-      <div class="row items-center">
-        <q-icon name="event" size="xs" color="grey" class="q-mr-xs" />
-        <div class="text-caption text-grey">Bis {{ formatDate(goal.target_date) }}</div>
+      <div class="row items-center justify-between">
+        <div class="row items-center">
+          <q-icon name="event" size="xs" color="grey-6" class="q-mr-xs" />
+          <div class="text-caption text-grey-6">
+            Bis {{ formatDate(goal.target_date) }}
+          </div>
+        </div>
+        <q-icon
+          name="trending_up"
+          size="sm"
+          :color="progressPercentage >= 50 ? 'positive' : 'primary'"
+        />
       </div>
     </q-card-section>
   </q-card>
@@ -100,7 +119,7 @@ export default defineComponent({
           return "primary";
       }
     });
-    // Falls goal.progress_percentage nicht existiert, kannst du es berechnen:
+
     const progressPercentage = computed(() => {
       return (props.goal.current_amount / props.goal.target_amount) * 100;
     });
@@ -139,6 +158,10 @@ export default defineComponent({
       return new Date(dateString).toLocaleDateString("de-DE");
     };
 
+    const formatNumber = (number) => {
+      return new Intl.NumberFormat("de-DE").format(number);
+    };
+
     return {
       statusColor,
       statusIcon,
@@ -147,6 +170,7 @@ export default defineComponent({
       statusClass,
       formatDate,
       progressPercentage,
+      formatNumber,
     };
   },
 });
@@ -154,16 +178,26 @@ export default defineComponent({
 
 <style scoped>
 .goal-card {
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
 .goal-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .goal-card-overdue {
   border-left: 4px solid #f44336;
+}
+
+:deep(.q-linear-progress__track) {
+  border-radius: 4px;
+}
+
+:deep(.q-linear-progress__model) {
+  border-radius: 4px;
 }
 </style>

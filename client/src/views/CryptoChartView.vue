@@ -12,6 +12,7 @@ import {
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import VChart from "vue-echarts";
+import { useQuasar } from "quasar";
 
 use([
   CanvasRenderer,
@@ -28,12 +29,13 @@ use([
 export default defineComponent({
   components: { VChart },
   setup() {
+    const $q = useQuasar();
     const chartOptions = ref({});
     const loading = ref(false);
 
     const topCoins = ref([]);
     const availableCoins = ref([]);
-    const selectedCoins = ref([]);
+    const selectedCoin = ref(null);
     const cryptoData = ref({});
     const volumeData = ref({});
     const rawPriceData = ref({});
@@ -54,11 +56,24 @@ export default defineComponent({
 
     const priceAlerts = ref([]);
     const newAlertPrice = ref("");
-    const newAlertCoin = ref("");
     const notifications = ref([]);
     const showAlertDialog = ref(false);
 
     const timeframeMinutes = 15;
+
+    // Hilfsfunktion für Indikator-Farben
+    const getIndicatorColor = (indicator) => {
+      switch (indicator) {
+        case "ema20":
+          return "#ff9900";
+        case "sma50":
+          return "#9966ff";
+        case "ema50":
+          return "#ff66cc";
+        default:
+          return "#667eea";
+      }
+    };
 
     function calculateIntervalStart(timestamp, minutes) {
       const date = new Date(timestamp);
@@ -196,7 +211,6 @@ export default defineComponent({
           currentChunk.push([timestamp, volumeValue]);
         } else {
           if (currentChunk.length > 0) {
-            // Summiere alle Volumen im Intervall
             const totalVolume = currentChunk.reduce((sum, vol) => sum + vol[1], 0);
             aggregatedVolume.push([chunkStartTime, totalVolume]);
           }
@@ -220,11 +234,11 @@ export default defineComponent({
     }
 
     function addPriceAlert() {
-      if (!newAlertPrice.value || !newAlertCoin.value) return;
+      if (!newAlertPrice.value || !selectedCoin.value) return;
 
       const alert = {
         id: Date.now(),
-        coin: newAlertCoin.value,
+        coin: selectedCoin.value,
         price: parseFloat(newAlertPrice.value),
         active: true,
         createdAt: new Date(),
@@ -233,22 +247,37 @@ export default defineComponent({
 
       priceAlerts.value.push(alert);
       newAlertPrice.value = "";
-      newAlertCoin.value = "";
       showAlertDialog.value = false;
       updateChart();
+
+      $q.notify({
+        type: "positive",
+        message: `Price alert set for ${alert.coin.toUpperCase()} at ${alert.price}€`,
+      });
     }
 
     function removeAlert(alertId) {
+      const alert = priceAlerts.value.find((a) => a.id === alertId);
       priceAlerts.value = priceAlerts.value.filter((alert) => alert.id !== alertId);
       updateChart();
+
+      if (alert) {
+        $q.notify({
+          type: "info",
+          message: `Alert removed for ${alert.coin.toUpperCase()}`,
+        });
+      }
     }
 
     function checkAlerts() {
-      if (!cryptoData.value || Object.keys(cryptoData.value).length === 0) return;
+      if (!cryptoData.value || !selectedCoin.value) return;
+
+      const coin = selectedCoin.value;
+      if (!cryptoData.value[coin]) return;
 
       priceAlerts.value.forEach((alert) => {
-        if (alert.active && cryptoData.value[alert.coin]) {
-          const latestData = cryptoData.value[alert.coin];
+        if (alert.active && alert.coin === coin) {
+          const latestData = cryptoData.value[coin];
           if (latestData.length === 0) return;
 
           const latestPrice = latestData[latestData.length - 1][2];
@@ -258,6 +287,15 @@ export default defineComponent({
           if (priceDiff <= tolerance && !alert.triggered) {
             alert.triggered = true;
             addNotification(alert.coin, alert.price, latestPrice);
+
+            $q.notify({
+              type: "warning",
+              message: `🚨 ${alert.coin.toUpperCase()} reached ${latestPrice.toFixed(
+                2
+              )}€ (Target: ${alert.price}€)`,
+              timeout: 0,
+              actions: [{ label: "Dismiss", color: "white" }],
+            });
           }
 
           if (priceDiff > tolerance && alert.triggered) {
@@ -284,10 +322,13 @@ export default defineComponent({
           label: `${coin.name} (${coin.symbol.toUpperCase()})`,
           value: coin.id,
         }));
-        selectedCoins.value = [topCoins.value[0].value];
-        newAlertCoin.value = selectedCoins.value[0];
+        selectedCoin.value = topCoins.value[0].value;
       } catch (error) {
         console.error("Fehler beim Laden der Top-Coins:", error);
+        $q.notify({
+          type: "negative",
+          message: "Failed to load top cryptocurrencies",
+        });
       }
     }
 
@@ -304,49 +345,53 @@ export default defineComponent({
     }
 
     async function fetchData() {
-      if (!selectedCoins.value.length) return;
+      if (!selectedCoin.value) return;
       loading.value = true;
 
       try {
-        const promises = selectedCoins.value.map((coin) =>
-          axios.get(`http://localhost:3000/api/crypto/${coin}`)
+        const response = await axios.get(
+          `http://localhost:3000/api/crypto/${selectedCoin.value}`
         );
 
-        const results = await Promise.all(promises);
         cryptoData.value = {};
         volumeData.value = {};
         rawPriceData.value = {};
 
-        results.forEach((res, idx) => {
-          const coin = selectedCoins.value[idx];
-          rawPriceData.value[coin] = res.data.prices;
+        const coin = selectedCoin.value;
+        rawPriceData.value[coin] = response.data.prices;
 
-          // ECHTES Volumen von der API verwenden
-          const volumes = res.data.total_volumes || [];
+        const volumes = response.data.total_volumes || [];
 
-          if (selectedChartType.value === "candlestick") {
-            cryptoData.value[coin] = createOHLC(res.data.prices, timeframeMinutes);
-            volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes);
-          } else {
-            cryptoData.value[coin] = createLineData(res.data.prices);
-            volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes);
-          }
-        });
+        if (selectedChartType.value === "candlestick") {
+          cryptoData.value[coin] = createOHLC(response.data.prices, timeframeMinutes);
+          volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes);
+        } else {
+          cryptoData.value[coin] = createLineData(response.data.prices);
+          volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes);
+        }
 
         checkAlerts();
         updateChart();
       } catch (error) {
         console.error("Fehler beim Laden der Kurse vom Server:", error);
+        $q.notify({
+          type: "negative",
+          message: "Failed to load cryptocurrency data",
+        });
       } finally {
         loading.value = false;
       }
     }
 
     function updateChart() {
-      if (!cryptoData.value || Object.keys(cryptoData.value).length === 0) {
+      if (
+        !cryptoData.value ||
+        !selectedCoin.value ||
+        !cryptoData.value[selectedCoin.value]
+      ) {
         chartOptions.value = {
           title: {
-            text: "Keine Daten verfügbar",
+            text: "No data available",
             left: "center",
             top: "center",
           },
@@ -354,113 +399,106 @@ export default defineComponent({
         return;
       }
 
+      const coin = selectedCoin.value;
       const series = [];
-      const colors = ["#5470c6", "#91cc75", "#fac858", "#ee6666", "#73c0de"];
+      const color = "#667eea";
 
-      Object.keys(cryptoData.value).forEach((coin, index) => {
-        const color = colors[index % colors.length];
-
-        const markLineData = [];
-        priceAlerts.value
-          .filter((alert) => alert.coin === coin && alert.active)
-          .forEach((alert) => {
-            markLineData.push({
-              yAxis: alert.price,
-              name: `Alarm: ${alert.price}€`,
-              lineStyle: {
-                color: alert.triggered ? "#00ff00" : "#ff4444",
-                type: "dashed",
-                width: 2,
-              },
-              label: {
-                formatter: `Alarm: ${alert.price}€`,
-                position: "end",
-              },
-            });
-          });
-
-        if (selectedChartType.value === "candlestick") {
-          series.push({
-            name: coin.toUpperCase(),
-            type: "candlestick",
-            data: cryptoData.value[coin],
-            itemStyle: {
-              color: "#06B800",
-              color0: "#FA0000",
-              borderColor: "#06B800",
-              borderColor0: "#FA0000",
-              borderWidth: 1,
+      const markLineData = [];
+      priceAlerts.value
+        .filter((alert) => alert.coin === coin && alert.active)
+        .forEach((alert) => {
+          markLineData.push({
+            yAxis: alert.price,
+            name: `Alert: ${alert.price}€`,
+            lineStyle: {
+              color: alert.triggered ? "#10b981" : "#ef4444",
+              type: "dashed",
+              width: 2,
             },
-            markLine:
-              markLineData.length > 0
-                ? { data: markLineData, symbol: "none" }
-                : undefined,
+            label: {
+              formatter: `Alert: ${alert.price}€`,
+              position: "end",
+            },
           });
-        } else {
-          series.push({
-            name: coin.toUpperCase(),
-            type: "line",
-            data: cryptoData.value[coin],
-            symbol: "none",
-            lineStyle: { color: color, width: 2 },
-            itemStyle: { color: color },
-            markLine:
-              markLineData.length > 0
-                ? { data: markLineData, symbol: "none" }
-                : undefined,
-          });
-        }
+        });
 
-        if (selectedIndicators.value.length > 0 && rawPriceData.value[coin]) {
-          const priceData = rawPriceData.value[coin];
+      // Haupt-Chart-Serie
+      if (selectedChartType.value === "candlestick") {
+        series.push({
+          name: coin.toUpperCase(),
+          type: "candlestick",
+          data: cryptoData.value[coin],
+          itemStyle: {
+            color: "#10b981",
+            color0: "#ef4444",
+            borderColor: "#10b981",
+            borderColor0: "#ef4444",
+            borderWidth: 1,
+          },
+          markLine:
+            markLineData.length > 0 ? { data: markLineData, symbol: "none" } : undefined,
+        });
+      } else {
+        series.push({
+          name: coin.toUpperCase(),
+          type: "line",
+          data: cryptoData.value[coin],
+          symbol: "none",
+          lineStyle: { color: color, width: 3 },
+          itemStyle: { color: color },
+          markLine:
+            markLineData.length > 0 ? { data: markLineData, symbol: "none" } : undefined,
+        });
+      }
 
-          selectedIndicators.value.forEach((indicator) => {
-            let indicatorData = [];
-            let indicatorColor = "";
+      // Technische Indikatoren
+      if (selectedIndicators.value.length > 0 && rawPriceData.value[coin]) {
+        const priceData = rawPriceData.value[coin];
 
-            switch (indicator) {
-              case "ema20":
-                indicatorData = calculateEMA(priceData, 20);
-                indicatorColor = "#ff9900";
-                break;
-              case "sma50":
-                indicatorData = calculateSMA(priceData, 50);
-                indicatorColor = "#9966ff";
-                break;
-              case "ema50":
-                indicatorData = calculateEMA(priceData, 50);
-                indicatorColor = "#ff66cc";
-                break;
-            }
+        selectedIndicators.value.forEach((indicator) => {
+          let indicatorData = [];
+          let indicatorColor = getIndicatorColor(indicator);
 
-            if (indicatorData.length > 0) {
-              series.push({
-                name: `${coin.toUpperCase()} ${indicator.toUpperCase()}`,
-                type: "line",
-                data: indicatorData,
-                symbol: "none",
-                lineStyle: {
-                  color: indicatorColor,
-                  width: 1.5,
-                  type: "dashed",
-                },
-                itemStyle: { color: indicatorColor },
-              });
-            }
-          });
-        }
+          switch (indicator) {
+            case "ema20":
+              indicatorData = calculateEMA(priceData, 20);
+              break;
+            case "sma50":
+              indicatorData = calculateSMA(priceData, 50);
+              break;
+            case "ema50":
+              indicatorData = calculateEMA(priceData, 50);
+              break;
+          }
 
-        if (showVolume.value && volumeData.value[coin]) {
-          series.push({
-            name: `${coin.toUpperCase()} Volumen`,
-            type: "bar",
-            data: volumeData.value[coin],
-            xAxisIndex: 1,
-            yAxisIndex: 1,
-            itemStyle: { color: "#5470c6", opacity: 0.6 },
-          });
-        }
-      });
+          if (indicatorData.length > 0) {
+            series.push({
+              name: `${coin.toUpperCase()} ${indicator.toUpperCase()}`,
+              type: "line",
+              data: indicatorData,
+              symbol: "none",
+              lineStyle: {
+                color: indicatorColor,
+                width: 2,
+                type: "dashed",
+              },
+              itemStyle: { color: indicatorColor },
+            });
+          }
+        });
+      }
+
+      // Volumen
+      if (showVolume.value && volumeData.value[coin]) {
+        series.push({
+          name: `${coin.toUpperCase()} Volume`,
+          type: "bar",
+          data: volumeData.value[coin],
+          xAxisIndex: 1,
+          yAxisIndex: 1,
+          itemStyle: { color: "#667eea", opacity: 0.6 },
+        });
+      }
 
       const gridConfig = showVolume.value
         ? [
@@ -513,10 +551,10 @@ export default defineComponent({
 
             let result = `<div style="font-weight: bold; margin-bottom: 5px;">${dateStr}</div>`;
             params.forEach((item) => {
-              if (item.seriesName.includes("Volumen")) {
+              if (item.seriesName.includes("Volume")) {
                 result += `<div style="margin: 2px 0;">
                   <strong>${item.seriesName}</strong><br>
-                  Volumen: <strong>${(item.value[1] / 1000000).toFixed(2)} Mio. €</strong>
+                  Volume: <strong>${(item.value[1] / 1000000).toFixed(2)} Mio. €</strong>
                 </div>`;
               } else if (
                 selectedChartType.value === "candlestick" &&
@@ -527,7 +565,7 @@ export default defineComponent({
               ) {
                 const isUp = item.value[2] >= item.value[1];
                 const arrow = isUp ? "▲" : "▼";
-                const color = isUp ? "#06B800" : "#FA0000";
+                const color = isUp ? "#10b981" : "#ef4444";
 
                 result += `<div style="color: ${color}; margin: 2px 0;">
                   <strong>${item.seriesName}</strong> ${arrow}<br>
@@ -539,7 +577,7 @@ export default defineComponent({
               } else if (
                 item.value &&
                 item.value.length >= 2 &&
-                !item.seriesName.includes("Volumen")
+                !item.seriesName.includes("Volume")
               ) {
                 const value =
                   item.seriesName.includes("EMA") || item.seriesName.includes("SMA")
@@ -550,8 +588,8 @@ export default defineComponent({
                   <strong>${item.seriesName}</strong><br>
                   ${
                     item.seriesName.includes("EMA") || item.seriesName.includes("SMA")
-                      ? "Wert"
-                      : "Preis"
+                      ? "Value"
+                      : "Price"
                   }: <strong>${value}</strong>
                 </div>`;
               }
@@ -559,7 +597,14 @@ export default defineComponent({
             return result;
           },
         },
-        legend: { top: 10, right: 10, type: "scroll" },
+        legend: {
+          top: 10,
+          right: 10,
+          type: "scroll",
+          textStyle: {
+            color: "#1f2937",
+          },
+        },
         grid: gridConfig,
         xAxis: showVolume.value
           ? [
@@ -580,6 +625,7 @@ export default defineComponent({
                       .toString()
                       .padStart(2, "0")}`;
                   },
+                  color: "#6b7280",
                 },
               },
               {
@@ -602,6 +648,7 @@ export default defineComponent({
                     .toString()
                     .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
                 },
+                color: "#6b7280",
               },
             },
         yAxis: showVolume.value
@@ -612,14 +659,24 @@ export default defineComponent({
                 scale: true,
                 gridIndex: 0,
                 splitLine: { show: true },
-                axisLabel: { formatter: (value) => `€${value.toLocaleString()}` },
+                axisLabel: {
+                  formatter: (value) => `€${value.toLocaleString()}`,
+                  color: "#6b7280",
+                },
+                nameTextStyle: {
+                  color: "#6b7280",
+                },
               },
               {
                 type: "value",
-                name: "Volumen (Mio. €)",
+                name: "Volume (Mio. €)",
                 gridIndex: 1,
                 axisLabel: {
                   formatter: (value) => `${(value / 1000000).toFixed(1)}M`,
+                  color: "#6b7280",
+                },
+                nameTextStyle: {
+                  color: "#6b7280",
                 },
               },
             ]
@@ -628,7 +685,13 @@ export default defineComponent({
               name: "EUR",
               scale: true,
               splitLine: { show: true },
-              axisLabel: { formatter: (value) => `€${value.toLocaleString()}` },
+              axisLabel: {
+                formatter: (value) => `€${value.toLocaleString()}`,
+                color: "#6b7280",
+              },
+              nameTextStyle: {
+                color: "#6b7280",
+              },
             },
         dataZoom: [
           {
@@ -644,16 +707,46 @@ export default defineComponent({
       };
     }
 
-    watch(selectedCoins, fetchData);
-    watch([selectedChartType, showVolume, selectedIndicators, priceAlerts], updateChart, {
-      deep: true,
+    // Watch-Funktionen korrigiert
+    watch(selectedCoin, (newCoin, oldCoin) => {
+      if (newCoin !== oldCoin) {
+        fetchData();
+      }
     });
+
+    watch(
+      [selectedChartType, showVolume, selectedIndicators],
+      () => {
+        if (selectedCoin.value) {
+          updateChart();
+        }
+      },
+      { deep: true }
+    );
+
+    watch(
+      priceAlerts,
+      () => {
+        if (selectedCoin.value) {
+          updateChart();
+        }
+      },
+      { deep: true }
+    );
 
     onMounted(() => {
       fetchTopCoins();
       fetchAllCoins();
-      setTimeout(fetchData, 1000);
-      setInterval(fetchData, 60000);
+      setTimeout(() => {
+        if (selectedCoin.value) {
+          fetchData();
+        }
+      }, 1000);
+      setInterval(() => {
+        if (selectedCoin.value) {
+          fetchData();
+        }
+      }, 60000);
       setInterval(checkAlerts, 5000);
     });
 
@@ -662,7 +755,7 @@ export default defineComponent({
       loading,
       availableCoins,
       topCoins,
-      selectedCoins,
+      selectedCoin,
       cryptoData,
       chartTypes,
       selectedChartType,
@@ -671,60 +764,95 @@ export default defineComponent({
       selectedIndicators,
       priceAlerts,
       newAlertPrice,
-      newAlertCoin,
       notifications,
       showAlertDialog,
       addPriceAlert,
       removeAlert,
       removeNotification,
+      getIndicatorColor,
     };
   },
 });
 </script>
 
 <template>
-  <div class="q-pa-md">
-    <div class="notification-container">
-      <div
-        v-for="notification in notifications"
-        :key="notification.id"
-        class="notification"
-        :class="notification.type"
-      >
-        <div class="notification-icon">🚨</div>
-        <div class="notification-content">
-          <div class="notification-title">Preis-Alarm!</div>
-          <div class="notification-message">
-            {{ notification.coin.toUpperCase() }} hat
-            {{ notification.currentPrice.toFixed(2) }}€ erreicht
-            <br />
-            <small>Ziel: {{ notification.targetPrice }}€</small>
-          </div>
-        </div>
+  <div class="modern-dashboard">
+    <!-- Header mit Glas-Effekt -->
+    <div class="dashboard-header">
+      <div class="header-content">
+        <h1>Crypto Chart Analysis</h1>
+        <p>Real-time cryptocurrency data with technical indicators & alerts</p>
+      </div>
+      <div class="header-actions">
         <q-btn
-          flat
-          dense
+          icon="refresh"
           round
-          icon="close"
-          size="sm"
-          @click="removeNotification(notification.id)"
-          class="notification-close"
+          flat
+          @click="fetchData"
+          :disable="!selectedCoin || loading"
+        />
+        <q-btn
+          icon="notifications"
+          round
+          flat
+          color="red"
+          @click="showAlertDialog = true"
+          :disable="!selectedCoin"
         />
       </div>
     </div>
 
-    <q-card>
-      <q-card-section class="bg-primary text-white">
-        <div class="text-h6">Crypto Chart Analysis</div>
-        <div class="text-caption">
-          15-Minuten Candlesticks mit echten Volumen-Daten & Alarmen
+    <!-- Quick Stats -->
+    <div class="quick-stats">
+      <div class="stat-card selected-coin">
+        <div class="stat-icon">
+          <q-icon name="currency_bitcoin" />
         </div>
-      </q-card-section>
+        <div class="stat-content">
+          <div class="stat-value" v-if="selectedCoin">
+            {{ selectedCoin.toUpperCase() }}
+          </div>
+          <div class="stat-value" v-else>None</div>
+          <div class="stat-label">Selected Coin</div>
+        </div>
+      </div>
 
+      <div class="stat-card alerts">
+        <div class="stat-icon">
+          <q-icon name="notifications" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">
+            {{ priceAlerts.filter((a) => a.active && a.coin === selectedCoin).length }}
+          </div>
+          <div class="stat-label">Active Alerts</div>
+        </div>
+      </div>
+
+      <div class="stat-card timeframe">
+        <div class="stat-icon">
+          <q-icon name="schedule" />
+        </div>
+        <div class="stat-content">
+          <div class="stat-value">{{ timeframeMinutes }}min</div>
+          <div class="stat-label">Timeframe</div>
+        </div>
+      </div>
+
+      <div class="stat-card indicators">
+        <div class="stat-content">
+          <div class="stat-value">{{ selectedIndicators.length }}</div>
+          <div class="stat-label">Technical Indicators</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controls Card -->
+    <q-card class="controls-card">
       <q-card-section>
-        <div class="row q-gutter-md q-mb-md">
+        <div class="row q-gutter-md items-center">
           <q-select
-            v-model="selectedCoins"
+            v-model="selectedCoin"
             :options="topCoins"
             use-input
             input-debounce="300"
@@ -741,18 +869,17 @@ export default defineComponent({
                 );
               }
             "
-            multiple
-            label="Kryptowährungen"
+            label="Select Cryptocurrency"
             emit-value
             map-options
             filled
-            style="min-width: 250px"
+            style="min-width: 300px"
           />
 
           <q-select
             v-model="selectedChartType"
             :options="chartTypes"
-            label="Chart-Typ"
+            label="Chart Type"
             emit-value
             map-options
             filled
@@ -762,94 +889,151 @@ export default defineComponent({
             v-model="selectedIndicators"
             :options="indicators"
             multiple
-            label="Indikatoren"
+            label="Technical Indicators"
             emit-value
             map-options
             filled
           />
 
-          <q-toggle v-model="showVolume" label="Volumen anzeigen" color="primary" />
+          <q-toggle v-model="showVolume" label="Show Volume" color="primary" />
 
-          <q-btn
-            color="red"
-            icon="notifications"
-            label="Alarm erstellen"
-            @click="showAlertDialog = true"
-          />
+          <q-space />
+
+          <q-btn-group class="col-auto">
+            <q-btn
+              label="Financial Dashboard"
+              color="primary"
+              icon="analytics"
+              to="/chart"
+              outline
+            />
+            <q-btn
+              label="Bank Import"
+              color="deep-purple"
+              icon="account_balance"
+              to="/bank-import"
+              outline
+            />
+          </q-btn-group>
         </div>
+      </q-card-section>
+    </q-card>
 
-        <div v-if="priceAlerts.length > 0" class="q-mb-md">
-          <div class="text-subtitle2 q-mb-xs">Aktive Alarme:</div>
+    <!-- Active Alerts -->
+    <div
+      v-if="selectedCoin && priceAlerts.filter((a) => a.coin === selectedCoin).length > 0"
+      class="alerts-section"
+    >
+      <q-card class="alerts-card">
+        <q-card-section>
+          <div class="text-subtitle2 q-mb-xs">
+            Active Price Alerts for {{ selectedCoin.toUpperCase() }}:
+          </div>
           <div class="row q-gutter-sm">
             <q-chip
-              v-for="alert in priceAlerts"
+              v-for="alert in priceAlerts.filter((a) => a.coin === selectedCoin)"
               :key="alert.id"
               :color="alert.triggered ? 'green' : 'red'"
               text-color="white"
               removable
               @remove="removeAlert(alert.id)"
             >
-              {{ alert.coin.toUpperCase() }}: {{ alert.price }}€
-              <q-tooltip v-if="alert.triggered">Alarm wurde ausgelöst!</q-tooltip>
+              <q-icon
+                :name="alert.triggered ? 'notifications_active' : 'notifications'"
+                class="q-mr-xs"
+              />
+              {{ alert.price }}€
+              <q-tooltip v-if="alert.triggered">Alert triggered!</q-tooltip>
             </q-chip>
           </div>
-        </div>
+        </q-card-section>
+      </q-card>
+    </div>
 
+    <!-- Main Chart Area -->
+    <div class="chart-container">
+      <div class="chart-header">
+        <h3 v-if="selectedCoin">
+          {{ selectedCoin.toUpperCase() }} - Cryptocurrency Analysis
+        </h3>
+        <h3 v-else>Select a cryptocurrency to view analysis</h3>
+        <div class="chart-legend">
+          <div class="legend-item" v-if="selectedChartType === 'candlestick'">
+            <div class="legend-color bullish"></div>
+            <span>Bullish</span>
+          </div>
+          <div class="legend-item" v-if="selectedChartType === 'candlestick'">
+            <div class="legend-color bearish"></div>
+            <span>Bearish</span>
+          </div>
+          <div class="legend-item" v-if="showVolume">
+            <div class="legend-color volume"></div>
+            <span>Volume</span>
+          </div>
+          <div
+            class="legend-item"
+            v-for="indicator in selectedIndicators"
+            :key="indicator"
+          >
+            <div
+              class="legend-color"
+              :style="{ backgroundColor: getIndicatorColor(indicator) }"
+            ></div>
+            <span>{{ indicator.toUpperCase() }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-wrapper">
         <v-chart
-          class="crypto-chart"
+          class="main-chart"
           :option="chartOptions"
           autoresize
           :loading="loading"
         />
-      </q-card-section>
-    </q-card>
+      </div>
+    </div>
 
+    <!-- Alert Dialog -->
     <q-dialog v-model="showAlertDialog" persistent>
       <q-card style="min-width: 400px">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Neuen Preis-Alarm erstellen</div>
+          <div class="text-h6">Create Price Alert</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section>
           <div class="q-gutter-y-md">
-            <q-select
-              v-model="newAlertCoin"
-              :options="
-                selectedCoins.map((coin) => ({
-                  label: coin.toUpperCase(),
-                  value: coin,
-                }))
-              "
-              label="Coin auswählen"
-              emit-value
-              map-options
-              filled
-            />
+            <div class="alert-coin-info">
+              <div class="text-subtitle2">Selected Coin:</div>
+              <div class="text-h6 text-primary">
+                {{ selectedCoin ? selectedCoin.toUpperCase() : "None" }}
+              </div>
+            </div>
 
             <q-input
               v-model="newAlertPrice"
-              label="Preis in €"
+              label="Target Price (€)"
               type="number"
               filled
-              placeholder="z.B. 45000"
+              placeholder="e.g., 45000"
+              :disable="!selectedCoin"
             />
 
             <div class="text-caption text-grey">
-              💡 Der Alarm wird ausgelöst, wenn der Kurs innerhalb von 0.5% des
-              Zielpreises liegt.
+              💡 Alert will trigger when price is within 0.5% of target price.
             </div>
           </div>
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Abbrechen" color="primary" v-close-popup />
+          <q-btn flat label="Cancel" color="primary" v-close-popup />
           <q-btn
-            label="Alarm erstellen"
+            label="Create Alert"
             color="red"
             @click="addPriceAlert"
-            :disable="!newAlertPrice || !newAlertCoin"
+            :disable="!newAlertPrice || !selectedCoin"
           />
         </q-card-actions>
       </q-card>
@@ -858,88 +1042,263 @@ export default defineComponent({
 </template>
 
 <style scoped>
-.crypto-chart {
-  width: 100%;
-  height: 600px;
-}
+.modern-dashboard {
+  padding: 20px;
+  background: #f8fafc;
+  min-height: 100vh;
 
-.row {
-  flex-wrap: wrap;
-}
+  .dashboard-header {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
 
-.notification-container {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 10000;
-  max-width: 350px;
-}
+    .header-content {
+      h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
 
-.notification {
-  display: flex;
-  align-items: flex-start;
-  background: white;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-left: 4px solid #ff4444;
-  animation: slideIn 0.3s ease-out;
-  min-width: 300px;
-}
+      p {
+        margin: 5px 0 0 0;
+        color: #718096;
+        font-size: 1.1rem;
+      }
+    }
 
-.notification.success {
-  border-left-color: #00c851;
-}
-
-.notification-icon {
-  font-size: 24px;
-  margin-right: 12px;
-  flex-shrink: 0;
-}
-
-.notification-content {
-  flex-grow: 1;
-}
-
-.notification-title {
-  font-weight: bold;
-  font-size: 14px;
-  margin-bottom: 4px;
-  color: #333;
-}
-
-.notification-message {
-  font-size: 13px;
-  color: #666;
-  line-height: 1.4;
-}
-
-.notification-close {
-  margin-left: 8px;
-  flex-shrink: 0;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-@media (max-width: 600px) {
-  .notification-container {
-    right: 10px;
-    left: 10px;
-    max-width: none;
+    .header-actions {
+      display: flex;
+      gap: 10px;
+    }
   }
 
-  .notification {
-    min-width: auto;
+  .quick-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+
+    .stat-card {
+      background: white;
+      border-radius: 16px;
+      padding: 25px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      transition: transform 0.3s ease;
+
+      &:hover {
+        transform: translateY(-5px);
+      }
+
+      &.selected-coin {
+        border-left: 4px solid #667eea;
+      }
+
+      &.alerts {
+        border-left: 4px solid #ef4444;
+      }
+
+      &.timeframe {
+        border-left: 4px solid #10b981;
+      }
+
+      &.indicators {
+        border-left: 4px solid #8b5cf6;
+      }
+
+      .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .selected-coin & {
+          background: #dbeafe;
+          color: #667eea;
+        }
+        .alerts & {
+          background: #fee2e2;
+          color: #ef4444;
+        }
+        .timeframe & {
+          background: #dcfce7;
+          color: #10b981;
+        }
+        .indicators & {
+          background: #f3e8ff;
+          color: #8b5cf6;
+        }
+
+        .q-icon {
+          font-size: 1.5rem;
+        }
+      }
+
+      .stat-content {
+        flex: 1;
+
+        .stat-value {
+          font-size: 1.4rem;
+          font-weight: 700;
+          margin-bottom: 5px;
+          color: #1f2937;
+        }
+
+        .stat-label {
+          color: #6b7280;
+          font-size: 0.9rem;
+        }
+      }
+    }
+  }
+
+  .controls-card {
+    border-radius: 16px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  }
+
+  .alerts-section {
+    margin-bottom: 30px;
+
+    .alerts-card {
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+  }
+
+  .chart-container {
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+
+      h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #1f2937;
+      }
+
+      .chart-legend {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 0.8rem;
+          color: #6b7280;
+
+          .legend-color {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+
+            &.bullish {
+              background: #10b981;
+            }
+            &.bearish {
+              background: #ef4444;
+            }
+            &.volume {
+              background: #667eea;
+            }
+          }
+        }
+      }
+    }
+
+    .chart-wrapper {
+      height: 600px;
+
+      .main-chart {
+        width: 100%;
+        height: 100%;
+      }
+    }
+  }
+
+  .alert-coin-info {
+    padding: 10px;
+    background: #f8fafc;
+    border-radius: 8px;
+    margin-bottom: 15px;
+  }
+}
+
+/* Dark Mode */
+body.body--dark {
+  .modern-dashboard {
+    background: #111827;
+
+    .dashboard-header {
+      background: rgba(31, 41, 55, 0.8);
+      border-color: rgba(255, 255, 255, 0.1);
+
+      p {
+        color: #d1d5db;
+      }
+    }
+
+    .quick-stats .stat-card,
+    .controls-card,
+    .alerts-card,
+    .chart-container {
+      background: #1f2937;
+      color: #f9fafb;
+
+      .stat-label {
+        color: #d1d5db;
+      }
+
+      .stat-value {
+        color: #f9fafb;
+      }
+    }
+
+    .alert-coin-info {
+      background: #374151;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .modern-dashboard {
+    .quick-stats {
+      grid-template-columns: 1fr;
+    }
+
+    .chart-container .chart-header {
+      flex-direction: column;
+      gap: 15px;
+      align-items: flex-start;
+    }
+
+    .chart-wrapper {
+      height: 400px;
+    }
   }
 }
 </style>

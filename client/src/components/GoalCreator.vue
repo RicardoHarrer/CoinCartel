@@ -1,16 +1,18 @@
 <template>
-  <q-card style="width: 600px; max-width: 90vw">
-    <q-card-section>
-      <div class="text-h6">
+  <q-card class="creator-card bg-surface">
+    <q-card-section class="q-pb-none">
+      <div class="text-h5 text-weight-bold text-dark">
         {{ editGoal ? "Ziel bearbeiten" : "Neues Sparziel" }}
       </div>
     </q-card-section>
 
-    <q-card-section class="q-pt-none">
-      <q-form @submit="submitGoal" class="q-gutter-md">
+    <q-card-section class="q-pt-md">
+      <q-form @submit="submitGoal" class="q-gutter-y-md">
         <!-- Schnellauswahl -->
-        <div v-if="!editGoal" class="q-mb-md">
-          <div class="text-subtitle2 q-mb-sm">Schnellauswahl</div>
+        <div v-if="!editGoal" class="q-mb-lg">
+          <div class="text-subtitle1 text-weight-medium text-dark q-mb-sm">
+            Schnellauswahl
+          </div>
           <div class="row q-col-gutter-sm">
             <div
               v-for="(suggestion, index) in goalSuggestions"
@@ -18,14 +20,18 @@
               class="col-6"
             >
               <q-card
-                class="cursor-pointer suggestion-card"
+                class="cursor-pointer suggestion-card bg-card"
                 @click="applySuggestion(suggestion)"
               >
                 <q-card-section class="text-center q-pa-sm">
                   <q-icon name="savings" size="md" color="primary" class="q-mb-xs" />
-                  <div class="text-caption text-weight-bold">{{ suggestion.title }}</div>
-                  <div class="text-h6 text-primary">€{{ suggestion.target_amount }}</div>
-                  <q-badge :label="suggestion.category" />
+                  <div class="text-caption text-weight-bold text-dark">
+                    {{ suggestion.title }}
+                  </div>
+                  <div class="text-h6 text-primary">
+                    €{{ formatNumber(suggestion.target_amount) }}
+                  </div>
+                  <q-badge :label="suggestion.category" color="accent" />
                 </q-card-section>
               </q-card>
             </div>
@@ -38,6 +44,8 @@
           placeholder="z.B. Neues Auto, Urlaub, Notgroschen..."
           :rules="[(val) => !!val || 'Titel ist erforderlich']"
           filled
+          class="input-field"
+          color="primary"
         />
 
         <div class="row q-col-gutter-sm">
@@ -51,6 +59,8 @@
                 (val) => val > 0 || 'Betrag muss positiv sein',
               ]"
               filled
+              class="input-field"
+              color="primary"
             />
           </div>
           <div class="col-6">
@@ -59,6 +69,8 @@
               label="Aktueller Betrag (€)"
               type="number"
               filled
+              class="input-field"
+              color="primary"
             />
           </div>
         </div>
@@ -69,6 +81,8 @@
           type="date"
           :rules="[(val) => !!val || 'Datum ist erforderlich']"
           filled
+          class="input-field"
+          color="primary"
         />
 
         <q-select
@@ -78,38 +92,46 @@
           emit-value
           map-options
           filled
+          class="input-field"
+          color="primary"
         />
 
         <q-input
           v-model="formData.description"
           label="Beschreibung"
           type="textarea"
-          rows="3"
+          rows="2"
           filled
+          class="input-field"
+          color="primary"
         />
 
         <!-- Spar-Informationen -->
         <q-card
           v-if="formData.target_amount && formData.target_date"
           flat
-          class="bg-grey-2"
+          class="bg-info-card"
         >
-          <q-card-section>
-            <div class="text-subtitle2 q-mb-sm">Sparplan</div>
-            <div class="row justify-between items-center">
-              <div>Monatliche Sparrate:</div>
-              <div class="text-h6 text-dark">€{{ monthlySaving }}</div>
+          <q-card-section class="q-pa-md">
+            <div class="text-subtitle2 text-weight-medium text-dark q-mb-sm">
+              Sparplan
+            </div>
+            <div class="row justify-between items-center q-mb-sm">
+              <div class="text-caption text-grey-7">Monatliche Sparrate:</div>
+              <div class="text-h6 text-primary">€{{ monthlySaving }}</div>
             </div>
 
             <div v-if="currentProgress > 0" class="q-mt-md">
               <div class="row justify-between items-center q-mb-xs">
-                <div>Fortschritt:</div>
-                <div>{{ currentProgress.toFixed(2) }}%</div>
+                <div class="text-caption text-grey-7">Fortschritt:</div>
+                <div class="text-caption text-weight-bold text-primary">
+                  {{ currentProgress.toFixed(1) }}%
+                </div>
               </div>
               <q-linear-progress
                 :value="currentProgress / 100"
                 color="primary"
-                size="10px"
+                size="6px"
                 rounded
               />
             </div>
@@ -118,12 +140,19 @@
 
         <!-- Buttons -->
         <div class="row justify-end q-gutter-sm q-mt-lg">
-          <q-btn label="Abbrechen" color="grey" v-close-popup @click="$emit('cancel')" />
+          <q-btn
+            label="Abbrechen"
+            color="grey-6"
+            flat
+            v-close-popup
+            @click="$emit('cancel')"
+          />
           <q-btn
             :label="editGoal ? 'Aktualisieren' : 'Erstellen'"
             type="submit"
             color="primary"
             :loading="loading"
+            class="action-button"
           />
         </div>
       </q-form>
@@ -152,7 +181,6 @@ export default defineComponent({
     const $q = useQuasar();
 
     const loading = ref(false);
-    const categories = ref([]);
 
     const formData = ref({
       title: "",
@@ -165,30 +193,39 @@ export default defineComponent({
 
     const goalSuggestions = [
       {
-        title: "Notgroschen aufbauen",
+        title: "Notgroschen",
         target_amount: 3000,
         category: "Sparen",
         description: "3 Nettogehälter als Sicherheit",
       },
       {
-        title: "Urlaubsgeld sparen",
+        title: "Urlaubsgeld",
         target_amount: 1500,
         category: "Sparen",
         description: "Für den nächsten Sommerurlaub",
       },
       {
-        title: "Neues Smartphone",
+        title: "Smartphone",
         target_amount: 800,
-        category: "Sonstiges",
+        category: "Technik",
         description: "Aktuelles Modell ersetzen",
+      },
+      {
+        title: "Auto-Reparatur",
+        target_amount: 1200,
+        category: "Auto",
+        description: "Jährliche Wartungskosten",
       },
     ];
 
     const categoryOptions = computed(() => {
       return [
         { label: "Sparen", value: 11 },
-        { label: "Investition", value: 15 },
-        { label: "Sonstiges", value: 15 },
+        { label: "Investition", value: 12 },
+        { label: "Urlaub", value: 13 },
+        { label: "Auto", value: 14 },
+        { label: "Technik", value: 15 },
+        { label: "Sonstiges", value: 16 },
       ];
     });
 
@@ -216,7 +253,6 @@ export default defineComponent({
     });
 
     const applySuggestion = (suggestion) => {
-      // Finde die Kategorie ID aus den festen Optionen
       const categoryOption = categoryOptions.value.find(
         (opt) => opt.label === suggestion.category
       );
@@ -235,6 +271,10 @@ export default defineComponent({
       const date = new Date();
       date.setDate(date.getDate() + days);
       return date.toISOString().split("T")[0];
+    };
+
+    const formatNumber = (number) => {
+      return new Intl.NumberFormat("de-DE").format(number);
     };
 
     const submitGoal = async () => {
@@ -276,7 +316,6 @@ export default defineComponent({
       }
     };
 
-    // Formular mit editGoal-Daten füllen
     watch(
       () => props.editGoal,
       (newGoal) => {
@@ -290,7 +329,6 @@ export default defineComponent({
             description: newGoal.description || "",
           };
         } else {
-          // Formular zurücksetzen
           formData.value = {
             title: "",
             target_amount: "",
@@ -308,129 +346,51 @@ export default defineComponent({
       loading,
       formData,
       goalSuggestions,
-      categories,
       categoryOptions,
       monthlySaving,
       currentProgress,
       applySuggestion,
       submitGoal,
+      formatNumber,
     };
   },
 });
 </script>
 
-<style scoped lang="scss">
-/* ===================== Lightmode ===================== */
+<style scoped>
+.creator-card {
+  width: 600px;
+  max-width: 90vw;
+  border-radius: 16px;
+}
+
 .suggestion-card {
-  background: #ffffff;
-  color: #000000;
-  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.suggestion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.bg-info-card {
+  background: rgba(25, 118, 210, 0.04) !important;
+  border: 1px solid rgba(25, 118, 210, 0.12) !important;
+  border-radius: 12px;
+}
+
+.action-button {
   border-radius: 8px;
-  transition: all 0.2s ease;
-  cursor: pointer;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
-  }
+  font-weight: 600;
 }
 
-.bg-grey-2 {
-  background: #f5f5f5 !important;
-  color: #000;
+:deep(.input-field .q-field__control) {
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  padding: 12px;
 }
 
-.text-dark {
-  color: #000;
-}
-
-.text-primary {
-  color: #007bff;
-}
-
-.q-badge {
-  background-color: #e0e0e0;
-  color: #000;
-  border-radius: 4px;
-}
-
-/* ===================== Darkmode ===================== */
-body[data-theme='dark'] {
-  .suggestion-card {
-    background: #121212;
-    color: #ffffff;
-    border: 1px solid #333;
-    border-radius: 8px;
-
-    &:hover {
-      box-shadow: 0 6px 15px rgba(255, 255, 255, 0.15);
-    }
-  }
-
-  .bg-grey-2 {
-    background: #1e1e1e !important;
-    color: #ffffff;
-    border: 1px solid #333;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.05);
-    padding: 12px;
-  }
-
-  .q-input__control,
-  .q-select__control,
-  .q-input__bottom {
-    background: #1e1e1e !important;
-    color: #ffffff !important;
-    border: 1px solid #333;
-    border-radius: 4px;
-  }
-
-  .q-linear-progress__track {
-    background-color: #333 !important;
-  }
-
-  .q-linear-progress__bar {
-    background-color: #00bcd4 !important;
-  }
-
-  .text-dark {
-    color: #ffffff !important;
-  }
-
-  .text-primary {
-    color: #00bcd4 !important;
-  }
-
-  .q-badge {
-    background-color: #333 !important;
-    color: #ffffff !important;
-  }
-
-  .q-btn {
-    &.q-btn--primary {
-      background-color: #00bcd4 !important;
-      color: #ffffff !important;
-    }
-    &.q-btn--grey {
-      background-color: #333 !important;
-      color: #ffffff !important;
-    }
-  }
-
-  input[type="date"] {
-    background: #1e1e1e !important;
-    color: #ffffff;
-    border: 1px solid #333;
-    border-radius: 4px;
-  }
-
-  /* Placeholderfarbe für Inputs/Textareas */
-  input::placeholder,
-  textarea::placeholder {
-    color: #bbb !important;
-  }
+:deep(.input-field .q-field__label) {
+  font-weight: 500;
 }
 </style>

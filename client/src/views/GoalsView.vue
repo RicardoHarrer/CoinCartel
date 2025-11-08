@@ -1,94 +1,137 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-pa-lg bg-page">
     <div class="goals-view">
-      <!-- Header with statistics -->
-      <div class="row q-mb-lg">
-        <div class="col-12">
-          <h2 class="text-h4 text-primary q-mb-md">🎯 My Savings Goals</h2>
+      <!-- Header Section -->
+      <div class="header-section q-mb-xl">
+        <div class="row items-center justify-between q-mb-lg">
+          <div class="col">
+            <h1 class="text-h3 text-weight-bold text-dark q-mb-xs">🎯 Sparziele</h1>
+            <p class="text-subtitle1 text-grey-7">
+              Verwalte und verfolge deine finanziellen Ziele
+            </p>
+          </div>
+          <div class="col-auto">
+            <q-btn
+              label="Neues Ziel"
+              icon="add"
+              color="primary"
+              class="create-button"
+              @click="showCreateDialog = true"
+            />
+          </div>
+        </div>
 
-          <div class="row q-col-gutter-md q-mb-lg">
-            <div class="col-12 col-sm-4">
-              <q-card class="bg-primary text-white text-center">
-                <q-card-section>
-                  <div class="text-h4">{{ stats.active }}</div>
-                  <div>Active Goals</div>
-                </q-card-section>
-              </q-card>
-            </div>
-            <div class="col-12 col-sm-4">
-              <q-card class="bg-positive text-white text-center">
-                <q-card-section>
-                  <div class="text-h4">{{ stats.completed }}</div>
-                  <div>Completed</div>
-                </q-card-section>
-              </q-card>
-            </div>
-            <div class="col-12 col-sm-4">
-              <q-card class="bg-negative text-white text-center">
-                <q-card-section>
-                  <div class="text-h4">{{ stats.overdue }}</div>
-                  <div>Overdue</div>
-                </q-card-section>
-              </q-card>
+        <!-- Statistics Cards -->
+        <div class="row q-col-gutter-md q-mb-lg">
+          <div class="col-12 col-sm-4">
+            <q-card class="stat-card bg-primary text-white">
+              <q-card-section class="text-center">
+                <div class="text-h2 text-weight-bold">{{ stats.active }}</div>
+                <div class="text-subtitle1">Aktive Ziele</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-sm-4">
+            <q-card class="stat-card bg-positive text-white">
+              <q-card-section class="text-center">
+                <div class="text-h2 text-weight-bold">{{ stats.completed }}</div>
+                <div class="text-subtitle1">Erreicht</div>
+              </q-card-section>
+            </q-card>
+          </div>
+          <div class="col-12 col-sm-4">
+            <q-card class="stat-card bg-negative text-white">
+              <q-card-section class="text-center">
+                <div class="text-h2 text-weight-bold">{{ stats.overdue }}</div>
+                <div class="text-subtitle1">Überfällig</div>
+              </q-card-section>
+            </q-card>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <q-tabs
+          v-model="activeTab"
+          class="filter-tabs text-primary"
+          indicator-color="primary"
+          align="justify"
+        >
+          <q-tab
+            name="active"
+            icon="schedule"
+            :label="`Aktiv (${stats.active + stats.overdue})`"
+            class="text-weight-medium"
+          />
+          <q-tab
+            name="completed"
+            icon="check_circle"
+            :label="`Erreicht (${stats.completed})`"
+            class="text-weight-medium"
+          />
+          <q-tab
+            name="overdue"
+            icon="warning"
+            :label="`Überfällig (${stats.overdue})`"
+            class="text-weight-medium"
+          />
+        </q-tabs>
+      </div>
+
+      <!-- Content Section -->
+      <div class="content-section">
+        <div v-if="loading" class="loading-section text-center q-py-xl">
+          <q-spinner size="50px" color="primary" />
+          <div class="text-h6 text-grey-7 q-mt-md">Lade Ziele...</div>
+        </div>
+
+        <div v-else-if="filteredGoals.length > 0" class="goals-grid">
+          <div class="row q-col-gutter-lg">
+            <div
+              v-for="goal in filteredGoals"
+              :key="goal.id"
+              class="col-12 col-md-6 col-lg-4"
+            >
+              <GoalCard
+                :goal="goal"
+                @click="openGoalDetails(goal)"
+                @edit="editGoal(goal)"
+                @delete="confirmDeleteGoal(goal)"
+              />
             </div>
           </div>
+        </div>
 
-          <!-- Tabs -->
-          <q-tabs v-model="activeTab" class="text-primary">
-            <q-tab
-              name="active"
-              icon="schedule"
-              :label="`Active (${stats.active + stats.overdue})`"
+        <!-- Empty State -->
+        <q-card v-else class="empty-state text-center">
+          <q-card-section class="q-pa-xl">
+            <q-icon name="savings" size="80px" color="grey-4" class="q-mb-lg" />
+            <div class="text-h5 text-weight-medium text-grey-7 q-mb-md">
+              {{ emptyStateMessage }}
+            </div>
+            <p class="text-grey-6 q-mb-xl">
+              {{ emptyStateDescription }}
+            </p>
+            <q-btn
+              v-if="activeTab === 'active'"
+              label="Erstes Ziel erstellen"
+              color="primary"
+              icon="add"
+              class="empty-state-button"
+              @click="showCreateDialog = true"
             />
-            <q-tab
-              name="completed"
-              icon="check_circle"
-              :label="`Completed (${stats.completed})`"
-            />
-            <q-tab name="overdue" icon="warning" :label="`Overdue (${stats.overdue})`" />
-          </q-tabs>
-        </div>
+          </q-card-section>
+        </q-card>
       </div>
 
-      <!-- Goals Grid -->
-      <div v-if="loading" class="text-center q-py-xl">
-        <q-spinner size="50px" color="primary" />
-        <div class="q-mt-md">Loading goals...</div>
-      </div>
-
-      <div v-else class="row q-col-gutter-md">
-        <div
-          v-for="goal in filteredGoals"
-          :key="goal.id"
-          class="col-12 col-md-6 col-lg-4"
-        >
-          <GoalCard
-            :goal="goal"
-            @click="openGoalDetails(goal)"
-            @edit="editGoal(goal)"
-            @delete="confirmDeleteGoal(goal)"
-          />
-        </div>
-      </div>
-
-      <!-- Empty State -->
-      <q-card v-if="!loading && filteredGoals.length === 0" class="text-center q-pa-xl">
-        <q-icon name="savings" size="64px" color="grey" class="q-mb-md" />
-        <div class="text-h6 text-grey q-mb-md">
-          {{ emptyStateMessage }}
-        </div>
+      <!-- FAB for mobile -->
+      <q-page-sticky position="bottom-right" :offset="[18, 18]">
         <q-btn
-          v-if="activeTab === 'active'"
-          label="Create your first goal"
-          color="primary"
+          fab
           icon="add"
+          color="primary"
+          class="fab-button"
           @click="showCreateDialog = true"
         />
-      </q-card>
-
-      <!-- FAB for new goals -->
-      <q-page-sticky position="bottom-right" :offset="[18, 18]">
-        <q-btn fab icon="add" color="primary" @click="showCreateDialog = true" />
       </q-page-sticky>
 
       <!-- Dialogs -->
@@ -111,18 +154,25 @@
 
       <!-- Delete Confirmation -->
       <q-dialog v-model="showDeleteDialog">
-        <q-card>
-          <q-card-section>
-            <div class="text-h6">Delete Goal</div>
+        <q-card class="delete-dialog bg-surface">
+          <q-card-section class="text-center q-pa-xl">
+            <q-icon name="warning" size="60px" color="warning" class="q-mb-md" />
+            <div class="text-h6 text-weight-bold text-dark q-mb-sm">Ziel löschen</div>
+            <p class="text-grey-7">
+              Bist du sicher, dass du das Ziel<br />
+              <strong>"{{ deletingGoal?.title }}"</strong> löschen möchtest?
+            </p>
           </q-card-section>
 
-          <q-card-section>
-            Are you sure you want to delete the goal "{{ deletingGoal?.title }}"?
-          </q-card-section>
-
-          <q-card-actions align="right">
-            <q-btn flat label="Cancel" color="primary" v-close-popup />
-            <q-btn flat label="Delete" color="negative" @click="deleteGoal" />
+          <q-card-actions align="center" class="q-pb-xl">
+            <q-btn flat label="Abbrechen" color="grey-6" v-close-popup class="q-mr-sm" />
+            <q-btn
+              flat
+              label="Löschen"
+              color="negative"
+              @click="deleteGoal"
+              class="delete-confirm-button"
+            />
           </q-card-actions>
         </q-card>
       </q-dialog>
@@ -178,13 +228,26 @@ export default defineComponent({
     const emptyStateMessage = computed(() => {
       switch (activeTab.value) {
         case "active":
-          return "No goals yet";
+          return "Noch keine Ziele";
         case "completed":
-          return "No completed goals";
+          return "Keine erreichten Ziele";
         case "overdue":
-          return "No overdue goals";
+          return "Keine überfälligen Ziele";
         default:
-          return "No goals found";
+          return "Keine Ziele gefunden";
+      }
+    });
+
+    const emptyStateDescription = computed(() => {
+      switch (activeTab.value) {
+        case "active":
+          return "Beginne deine Sparreise, indem du dein erstes Ziel erstellst.";
+        case "completed":
+          return "Du hast noch keine Ziele erfolgreich abgeschlossen.";
+        case "overdue":
+          return "Glückwunsch! Alle Ziele sind aktuell im Zeitplan.";
+        default:
+          return "Keine Ziele in dieser Kategorie vorhanden.";
       }
     });
 
@@ -198,11 +261,19 @@ export default defineComponent({
           goals.value = JSON.parse(text);
         } else {
           console.error("Server returned HTML instead of JSON:", text);
-          $q.notify({ type: "negative", message: "Server error: wrong format" });
+          $q.notify({
+            type: "negative",
+            message: "Server-Fehler: Falsches Format",
+            position: "top",
+          });
         }
       } catch (error) {
         console.error("Error fetching goals:", error);
-        $q.notify({ type: "negative", message: "Error loading goals" });
+        $q.notify({
+          type: "negative",
+          message: "Fehler beim Laden der Ziele",
+          position: "top",
+        });
       } finally {
         loading.value = false;
       }
@@ -231,11 +302,19 @@ export default defineComponent({
         );
 
         if (response.ok) {
-          $q.notify({ type: "positive", message: "Goal deleted successfully" });
+          $q.notify({
+            type: "positive",
+            message: "Ziel erfolgreich gelöscht",
+            position: "top",
+          });
           fetchGoals();
         }
       } catch (error) {
-        $q.notify({ type: "negative", message: "Error deleting goal" });
+        $q.notify({
+          type: "negative",
+          message: "Fehler beim Löschen des Ziels",
+          position: "top",
+        });
       } finally {
         showDeleteDialog.value = false;
         deletingGoal.value = null;
@@ -247,7 +326,8 @@ export default defineComponent({
       fetchGoals();
       $q.notify({
         type: "positive",
-        message: editingGoal.value ? "Goal updated" : "Goal created",
+        message: editingGoal.value ? "Ziel aktualisiert" : "Ziel erstellt",
+        position: "top",
       });
     };
 
@@ -272,6 +352,7 @@ export default defineComponent({
       stats,
       filteredGoals,
       emptyStateMessage,
+      emptyStateDescription,
       openGoalDetails,
       editGoal,
       confirmDeleteGoal,
@@ -286,7 +367,104 @@ export default defineComponent({
 
 <style scoped>
 .goals-view {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
+}
+
+.bg-page {
+  background: #f8f9fa;
+}
+
+.header-section {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  padding-bottom: 24px;
+}
+
+.stat-card {
+  border-radius: 16px;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.filter-tabs {
+  background: white;
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.create-button {
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 8px 20px;
+}
+
+.fab-button {
+  box-shadow: 0 4px 20px rgba(25, 118, 210, 0.3);
+}
+
+.empty-state {
+  border-radius: 20px;
+  box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
+}
+
+.empty-state-button {
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 12px 24px;
+}
+
+.delete-dialog {
+  border-radius: 20px;
+  width: 400px;
+  max-width: 90vw;
+}
+
+.delete-confirm-button {
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.loading-section {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.goals-grid {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 599px) {
+  .header-section .row.items-center {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .header-section .col-auto {
+    width: 100%;
+  }
+
+  .create-button {
+    width: 100%;
+  }
 }
 </style>

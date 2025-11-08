@@ -1,110 +1,139 @@
 <template>
-  <q-card style="width: 500px; max-width: 90vw">
-    <q-card-section>
-      <div class="text-h6 text-center">{{ goal.title }}</div>
-      <div v-if="goal.description" class="text-caption text-grey text-center q-mt-xs">
+  <q-card class="details-card bg-surface">
+    <q-card-section class="text-center q-pb-none">
+      <div class="text-h5 text-weight-bold text-dark">{{ goal.title }}</div>
+      <div v-if="goal.description" class="text-caption text-grey-7 q-mt-xs">
         {{ goal.description }}
       </div>
     </q-card-section>
 
-    <q-card-section class="q-pt-none">
+    <q-card-section class="q-pt-md">
       <!-- Fortschritts-Kreis -->
       <div class="row justify-center q-mb-lg">
-        <div class="relative-position" style="width: 120px; height: 120px">
+        <div class="relative-position" style="width: 140px; height: 140px">
           <q-circular-progress
             show-value
             :value="progress"
-            size="120px"
-            :thickness="0.2"
+            size="140px"
+            :thickness="0.22"
             :color="progressColor"
             track-color="grey-3"
             class="q-mb-md"
           >
             <div class="text-center">
-              <div class="text-h6 text-weight-bold">{{ progress.toFixed(2) }}%</div>
-              <div class="text-caption text-grey">erreicht</div>
+              <div class="text-h5 text-weight-bold text-primary">
+                {{ progress.toFixed(1) }}%
+              </div>
+              <div class="text-caption text-grey-7">erreicht</div>
             </div>
           </q-circular-progress>
         </div>
       </div>
 
       <!-- Beträge -->
-      <div class="row justify-between q-mb-md">
-        <div>
-          <div class="text-caption text-grey">Gespart</div>
-          <div class="text-h6 text-primary">€{{ goal.current_amount }}</div>
+      <div class="row justify-between items-center q-mb-lg">
+        <div class="text-center">
+          <div class="text-caption text-grey-7">Gespart</div>
+          <div class="text-h4 text-weight-bold text-primary">
+            €{{ formatNumber(goal.current_amount) }}
+          </div>
         </div>
-        <div class="text-right">
-          <div class="text-caption text-grey">Ziel</div>
-          <div class="text-h6">€{{ goal.target_amount }}</div>
+        <q-icon name="arrow_forward" size="sm" color="grey-5" />
+        <div class="text-center">
+          <div class="text-caption text-grey-7">Ziel</div>
+          <div class="text-h4 text-weight-bold text-dark">
+            €{{ formatNumber(goal.target_amount) }}
+          </div>
         </div>
       </div>
 
       <!-- Aktuellen Betrag bearbeiten -->
-      <div class="row items-center q-mb-lg">
-        <div class="col">
-          <div class="text-caption">Aktuellen Betrag anpassen:</div>
-        </div>
-        <div class="col-auto">
-          <q-input
-            v-model="currentAmount"
-            type="number"
-            dense
-            style="width: 100px"
-            @update:model-value="updateCurrentAmount"
-          />
-        </div>
-      </div>
+      <q-card flat class="bg-edit-card q-mb-lg">
+        <q-card-section class="q-pa-md">
+          <div class="row items-center">
+            <div class="col">
+              <div class="text-caption text-weight-medium text-dark">
+                Aktuellen Betrag anpassen
+              </div>
+            </div>
+            <div class="col-auto">
+              <q-input
+                v-model="currentAmount"
+                type="number"
+                dense
+                outlined
+                style="width: 120px"
+                @update:model-value="updateCurrentAmount"
+                class="amount-input"
+              >
+                <template v-slot:prepend>
+                  <span class="text-caption text-grey-7">€</span>
+                </template>
+              </q-input>
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
 
       <!-- Details Grid -->
-      <div class="row q-col-gutter-sm q-mb-md">
+      <div class="row q-col-gutter-sm q-mb-lg">
         <div class="col-6">
-          <q-card flat class="bg-grey-1">
-            <q-card-section class="q-pa-sm text-center">
-              <q-icon name="event" size="sm" color="grey" class="q-mb-xs" />
-              <div class="text-caption text-weight-bold">Ziel-Datum</div>
-              <div class="text-caption">{{ formatDate(goal.target_date) }}</div>
-              <div class="text-caption text-grey">{{ daysRemaining }} Tage</div>
+          <q-card flat class="bg-detail-card">
+            <q-card-section class="q-pa-md text-center">
+              <q-icon name="event" size="sm" color="primary" class="q-mb-xs" />
+              <div class="text-caption text-weight-medium text-dark">Ziel-Datum</div>
+              <div class="text-caption text-grey-7">
+                {{ formatDate(goal.target_date) }}
+              </div>
+              <div class="text-caption text-primary text-weight-medium">
+                {{ daysRemaining }} Tage
+              </div>
             </q-card-section>
           </q-card>
         </div>
         <div class="col-6">
-          <q-card flat class="bg-grey-1">
-            <q-card-section class="q-pa-sm text-center">
-              <q-icon name="savings" size="sm" color="grey" class="q-mb-xs" />
-              <div class="text-caption text-weight-bold">Täglich sparen</div>
-              <div class="text-caption">€{{ dailySaving }}</div>
-              <div class="text-caption text-grey">für Ziel</div>
+          <q-card flat class="bg-detail-card">
+            <q-card-section class="q-pa-md text-center">
+              <q-icon name="savings" size="sm" color="primary" class="q-mb-xs" />
+              <div class="text-caption text-weight-medium text-dark">Täglich sparen</div>
+              <div class="text-caption text-primary text-weight-medium">
+                €{{ dailySaving }}
+              </div>
+              <div class="text-caption text-grey-7">für Ziel</div>
             </q-card-section>
           </q-card>
         </div>
       </div>
 
       <!-- Kategorie -->
-      <div v-if="goal.category_name" class="row items-center q-mb-md">
-        <q-icon name="category" size="sm" color="grey" class="q-mr-sm" />
-        <div class="text-caption text-grey">Kategorie:</div>
-        <q-badge :label="goal.category_name" color="primary" class="q-ml-sm" />
+      <div v-if="goal.category_name" class="row items-center justify-center q-mb-lg">
+        <q-icon name="category" size="sm" color="grey-6" class="q-mr-sm" />
+        <div class="text-caption text-grey-7">Kategorie:</div>
+        <q-badge
+          :label="goal.category_name"
+          color="accent"
+          class="q-ml-sm text-caption"
+        />
       </div>
 
       <!-- Verbleibender Betrag -->
-      <q-card flat class="bg-primary text-white">
-        <q-card-section class="text-center">
+      <q-card flat class="bg-primary text-white q-mb-md">
+        <q-card-section class="text-center q-py-sm">
           <div class="text-caption">Noch zu sparen</div>
-          <div class="text-h5">€{{ remainingAmount }}</div>
+          <div class="text-h5 text-weight-bold">€{{ formatNumber(remainingAmount) }}</div>
         </q-card-section>
       </q-card>
 
       <!-- Motivations-Nachricht -->
-      <q-card v-if="progress < 100" flat class="bg-positive text-white q-mt-md">
-        <q-card-section class="text-center">
+      <q-card v-if="progress < 100" flat class="bg-motivation text-dark">
+        <q-card-section class="text-center q-py-sm">
           <div class="text-caption">{{ motivationMessage }}</div>
         </q-card-section>
       </q-card>
     </q-card-section>
 
-    <q-card-actions align="right">
-      <q-btn flat label="Schließen" color="primary" v-close-popup />
+    <q-card-actions align="center" class="q-pa-md">
+      <q-btn flat label="Schließen" color="primary" v-close-popup class="close-button" />
     </q-card-actions>
   </q-card>
 </template>
@@ -164,6 +193,10 @@ export default defineComponent({
       return new Date(dateString).toLocaleDateString("de-DE");
     };
 
+    const formatNumber = (number) => {
+      return new Intl.NumberFormat("de-DE").format(number);
+    };
+
     const updateCurrentAmount = async () => {
       try {
         const response = await fetch(
@@ -183,6 +216,7 @@ export default defineComponent({
           $q.notify({
             type: "positive",
             message: "Betrag erfolgreich aktualisiert",
+            position: "top",
           });
           emit("updated");
         }
@@ -210,8 +244,47 @@ export default defineComponent({
       dailySaving,
       motivationMessage,
       formatDate,
+      formatNumber,
       updateCurrentAmount,
     };
   },
 });
 </script>
+
+<style scoped>
+.details-card {
+  width: 480px;
+  max-width: 90vw;
+  border-radius: 16px;
+}
+
+.bg-edit-card {
+  background: rgba(25, 118, 210, 0.04) !important;
+  border: 1px solid rgba(25, 118, 210, 0.12) !important;
+  border-radius: 12px;
+}
+
+.bg-detail-card {
+  background: #f8f9fa !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  border-radius: 12px;
+}
+
+.bg-motivation {
+  background: linear-gradient(135deg, #e8f5e8, #c8e6c9) !important;
+  border-radius: 12px;
+}
+
+.close-button {
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+:deep(.amount-input .q-field__control) {
+  border-radius: 6px;
+}
+
+:deep(.q-circular-progress__text) {
+  font-weight: 600;
+}
+</style>
