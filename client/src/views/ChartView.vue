@@ -1,4 +1,3 @@
-// ChartView.vue
 <script>
 import { defineComponent, ref, computed, onMounted, watch } from "vue";
 import axios from "axios";
@@ -37,8 +36,8 @@ export default defineComponent({
     const route = useRoute();
     const chartLoading = ref(false);
     const categories = ref([]);
-    const allTransactions = ref([]); // Store all transactions
-    const filteredTransactions = ref([]); // Store filtered transactions
+    const allTransactions = ref([]);
+    const filteredTransactions = ref([]);
     const loading = ref(false);
     const loadingPreferences = ref(true);
     const error = ref(null);
@@ -48,7 +47,6 @@ export default defineComponent({
       to: null,
     });
 
-    // Initialize with current month
     function initDateRange() {
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -77,13 +75,15 @@ export default defineComponent({
       }
     }
 
-    // PDF Export Funktionen
+    const toggleDarkMode = () => {
+      $q.dark.set(!$q.dark.isActive);
+    };
+
     const exportPDF = () => {
       try {
         const doc = new jsPDF();
         doc.text("Financial Report - Transaction Overview", 105, 20, { align: "center" });
 
-        // Header Info
         doc.setFontSize(10);
         doc.text(`Date Range: ${dateRange.value.from} to ${dateRange.value.to}`, 20, 35);
         doc.text(`Currency: ${currentCurrency.value}`, 20, 42);
@@ -107,7 +107,6 @@ export default defineComponent({
           headStyles: { fillColor: [66, 133, 244] },
         });
 
-        // Summary Section
         const finalY = doc.lastAutoTable.finalY + 10;
         doc.setFontSize(12);
         doc.text("Summary", 20, finalY);
@@ -152,7 +151,6 @@ export default defineComponent({
         const doc = new jsPDF();
         doc.text("Financial Report - Category Summary", 105, 20, { align: "center" });
 
-        // Header Info
         doc.setFontSize(10);
         doc.text(`Date Range: ${dateRange.value.from} to ${dateRange.value.to}`, 20, 35);
         doc.text(`Currency: ${currentCurrency.value}`, 20, 42);
@@ -175,7 +173,6 @@ export default defineComponent({
           headStyles: { fillColor: [66, 133, 244] },
         });
 
-        // Summary Section
         const finalY = doc.lastAutoTable.finalY + 10;
         doc.setFontSize(12);
         doc.text("Category Overview", 20, finalY);
@@ -216,7 +213,6 @@ export default defineComponent({
       }
     };
 
-    // Hilfsfunktionen für PDF Export
     const getCategoryName = (categoryId) => {
       const category = categories.value.find((c) => c.id === categoryId);
       return category ? category.name : "Uncategorized";
@@ -306,7 +302,7 @@ export default defineComponent({
           `http://localhost:3000/transactions-with-categories/users/${userid}`
         );
         allTransactions.value = response.data;
-        applyDateFilter(); // Apply current date range filter
+        applyDateFilter();
       } catch (err) {
         console.error("Error fetching transactions:", err);
         error.value = "Failed to fetch data.";
@@ -329,7 +325,6 @@ export default defineComponent({
         );
       });
 
-      // Update categories based on filtered transactions
       const categoryMap = new Map();
       filteredTransactions.value.forEach((t) => {
         if (t.category_id && !categoryMap.has(t.category_id)) {
@@ -418,23 +413,36 @@ export default defineComponent({
         balanceData.push([date, runningBalance]);
       });
 
+      const isDark = $q.dark.isActive;
+      const textColor = isDark ? '#ffffff' : '#374151';
+      const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+      const backgroundColor = isDark ? '#121212' : '#ffffff';
+
       return {
+        backgroundColor: backgroundColor,
         tooltip: {
           trigger: "axis",
+          backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
+          borderColor: isDark ? '#333333' : '#e2e8f0',
+          textStyle: {
+            color: textColor
+          },
           formatter: (params) => {
             const date = new Date(params[0].value[0]);
-            let result = `${date.toLocaleDateString()}<br/>`;
+            let result = `<div style="color: ${textColor}">${date.toLocaleDateString()}<br/>`;
             params.forEach((item) => {
               result += `${item.marker} ${item.seriesName}: ${item.value[1].toFixed(
                 2
               )} ${currency}<br/>`;
             });
+            result += '</div>';
             return result;
           },
         },
         xAxis: {
           type: "time",
           axisLabel: {
+            color: textColor,
             formatter: (value) => {
               const date = new Date(value);
               return `${date.getFullYear()}-${(date.getMonth() + 1)
@@ -442,18 +450,46 @@ export default defineComponent({
                 .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
             },
           },
+          axisLine: {
+            lineStyle: {
+              color: gridColor
+            }
+          },
+          splitLine: {
+            lineStyle: {
+              color: gridColor,
+              type: 'dashed'
+            }
+          }
         },
         yAxis: {
           type: "value",
           name: `Amount (${currency})`,
+          nameTextStyle: {
+            color: textColor
+          },
+          axisLabel: {
+            color: textColor
+          },
+          axisLine: {
+            lineStyle: {
+              color: gridColor
+            }
+          },
+          splitLine: {
+            lineStyle: {
+              color: gridColor,
+              type: 'dashed'
+            }
+          }
         },
         series: [
           {
             name: "Cumulative Income",
             type: "line",
             data: incomeData,
-            itemStyle: { color: "green" },
-            lineStyle: { width: 2 },
+            itemStyle: { color: "#10b981" },
+            lineStyle: { width: 3 },
             symbol: "circle",
             symbolSize: 6,
             smooth: false,
@@ -462,8 +498,8 @@ export default defineComponent({
             name: "Cumulative Expense",
             type: "line",
             data: expenseData,
-            itemStyle: { color: "red" },
-            lineStyle: { width: 2 },
+            itemStyle: { color: "#ef4444" },
+            lineStyle: { width: 3 },
             symbol: "circle",
             symbolSize: 6,
             smooth: false,
@@ -472,14 +508,36 @@ export default defineComponent({
             name: "Running Balance",
             type: "line",
             data: balanceData,
-            itemStyle: { color: "blue" },
-            lineStyle: { width: 3 },
+            itemStyle: { color: "#3b82f6" },
+            lineStyle: { width: 4 },
             symbol: "circle",
             symbolSize: 8,
             smooth: false,
           },
         ],
-        dataZoom: [{ type: "slider", start: 0, end: 100 }],
+        dataZoom: [{
+          type: "slider",
+          start: 0,
+          end: 100,
+          backgroundColor: backgroundColor,
+          dataBackground: {
+            lineStyle: {
+              color: gridColor
+            },
+            areaStyle: {
+              color: gridColor
+            }
+          },
+          borderColor: gridColor,
+          textStyle: {
+            color: textColor
+          }
+        }],
+        legend: {
+          textStyle: {
+            color: textColor
+          }
+        }
       };
     });
 
@@ -490,7 +548,6 @@ export default defineComponent({
           chartLoading.value = true;
           try {
             await getExchangeRates();
-            // No need to fetch transactions again, just use the existing ones
           } finally {
             chartLoading.value = false;
           }
@@ -557,6 +614,7 @@ export default defineComponent({
       transactions: filteredTransactions,
       exportPDF,
       exportCategoryPDF,
+      toggleDarkMode,
     };
   },
 });
@@ -564,7 +622,18 @@ export default defineComponent({
 
 <template>
   <div v-if="isPreferencesLoaded" class="modern-dashboard">
-    <!-- Header mit Glas-Effekt -->
+    <div class="dark-mode-toggle">
+      <q-btn 
+        round 
+        :color="$q.dark.isActive ? 'grey-9' : 'yellow'" 
+        :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'" 
+        class="toggle-btn"
+        @click="toggleDarkMode"
+        size="lg"
+      >
+      </q-btn>
+    </div>
+
     <div class="dashboard-header">
       <div class="header-content">
         <h1>Financial Dashboard</h1>
@@ -577,7 +646,6 @@ export default defineComponent({
       </div>
     </div>
 
-    <!-- Quick Stats -->
     <div class="quick-stats">
       <div class="stat-card income">
         <div class="stat-icon">
@@ -634,7 +702,6 @@ export default defineComponent({
       </div>
     </div>
 
-    <!-- Controls Card -->
     <q-card class="controls-card">
       <q-card-section>
         <div class="row q-gutter-md items-center">
@@ -645,6 +712,7 @@ export default defineComponent({
               label="Date Range"
               mask="date"
               class="date-input"
+              dark
             >
               <template v-slot:append>
                 <q-icon name="event" class="cursor-pointer">
@@ -669,6 +737,7 @@ export default defineComponent({
             :loading="loadingPreferences"
             @update:model-value="updateChart"
             filled
+            dark
           />
 
           <q-btn
@@ -701,7 +770,6 @@ export default defineComponent({
       </q-card-section>
     </q-card>
 
-    <!-- Main Chart Area -->
     <div class="chart-container">
       <div class="chart-header">
         <h3>Financial Overview</h3>
@@ -731,7 +799,6 @@ export default defineComponent({
       </div>
     </div>
 
-    <!-- Bottom Widgets -->
     <div class="widgets-grid">
       <CategoryPieChart
         :transactions="transactions"
@@ -754,9 +821,43 @@ export default defineComponent({
   padding: 20px;
   background: #f8fafc;
   min-height: 100vh;
+  transition: all 0.3s ease;
+  position: relative;
+}
 
+/* Dark Mode Toggle */
+.dark-mode-toggle {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  
+  .toggle-btn {
+    width: 60px;
+    height: 60px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    
+    &:hover {
+      transform: scale(1.1);
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+    }
+    
+    &:active {
+      transform: scale(0.95);
+    }
+    
+    :deep(.q-icon) {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+}
+
+.modern-dashboard {
   .dashboard-header {
-    background: rgba(255, 255, 255, 0.8);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
     backdrop-filter: blur(20px);
     border-radius: 20px;
     padding: 30px;
@@ -764,7 +865,8 @@ export default defineComponent({
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 
     .header-content {
       h1 {
@@ -774,18 +876,31 @@ export default defineComponent({
         -webkit-background-clip: text;
         background-clip: text;
         color: transparent;
+        font-weight: 700;
       }
 
       p {
         margin: 5px 0 0 0;
-        color: #718096;
+        color: #64748b;
         font-size: 1.1rem;
+        font-weight: 500;
       }
     }
 
     .header-actions {
       display: flex;
       gap: 10px;
+      
+      .q-btn {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.9);
+          transform: translateY(-2px);
+        }
+      }
     }
   }
 
@@ -796,17 +911,20 @@ export default defineComponent({
     margin-bottom: 30px;
 
     .stat-card {
-      background: white;
+      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
       border-radius: 16px;
       padding: 25px;
       display: flex;
       align-items: center;
       gap: 20px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-      transition: transform 0.3s ease;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(10px);
 
       &:hover {
         transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
       }
 
       &.income {
@@ -832,21 +950,22 @@ export default defineComponent({
         display: flex;
         align-items: center;
         justify-content: center;
+        backdrop-filter: blur(10px);
 
         .income & {
-          background: #dcfce7;
+          background: linear-gradient(135deg, #dcfce7, #bbf7d0);
           color: #10b981;
         }
         .expense & {
-          background: #fee2e2;
+          background: linear-gradient(135deg, #fee2e2, #fecaca);
           color: #ef4444;
         }
         .balance & {
-          background: #dbeafe;
+          background: linear-gradient(135deg, #dbeafe, #bfdbfe);
           color: #3b82f6;
         }
         .budget & {
-          background: #f3e8ff;
+          background: linear-gradient(135deg, #f3e8ff, #e9d5ff);
           color: #8b5cf6;
         }
 
@@ -862,6 +981,7 @@ export default defineComponent({
           font-size: 1.8rem;
           font-weight: 700;
           margin-bottom: 5px;
+          color: #1e293b;
 
           &.positive {
             color: #10b981;
@@ -872,8 +992,9 @@ export default defineComponent({
         }
 
         .stat-label {
-          color: #6b7280;
+          color: #64748b;
           font-size: 0.9rem;
+          font-weight: 500;
           margin-bottom: 5px;
         }
       }
@@ -881,9 +1002,12 @@ export default defineComponent({
   }
 
   .controls-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     border-radius: 16px;
     margin-bottom: 30px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(10px);
 
     .date-input {
       min-width: 250px;
@@ -891,11 +1015,13 @@ export default defineComponent({
   }
 
   .chart-container {
-    background: white;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
     border-radius: 20px;
     padding: 30px;
     margin-bottom: 30px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(10px);
 
     .chart-header {
       display: flex;
@@ -906,7 +1032,8 @@ export default defineComponent({
       h3 {
         margin: 0;
         font-size: 1.5rem;
-        color: #1f2937;
+        color: #1e293b;
+        font-weight: 600;
       }
 
       .chart-legend {
@@ -918,7 +1045,8 @@ export default defineComponent({
           align-items: center;
           gap: 8px;
           font-size: 0.9rem;
-          color: #6b7280;
+          color: #64748b;
+          font-weight: 500;
 
           .legend-color {
             width: 12px;
@@ -926,13 +1054,13 @@ export default defineComponent({
             border-radius: 2px;
 
             &.income {
-              background: green;
+              background: #10b981;
             }
             &.expense {
-              background: red;
+              background: #ef4444;
             }
             &.balance {
-              background: blue;
+              background: #3b82f6;
             }
           }
         }
@@ -956,7 +1084,6 @@ export default defineComponent({
   }
 }
 
-/* Budget Progress spezifische Styles */
 .budget-progress {
   width: 100%;
 }
@@ -969,13 +1096,14 @@ export default defineComponent({
 }
 
 .progress-label {
-  color: #6b7280;
+  color: #64748b;
   font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .progress-value {
   font-weight: 600;
-  color: #1f2937;
+  color: #1e293b;
   font-size: 1rem;
 }
 
@@ -983,44 +1111,138 @@ export default defineComponent({
   width: 100%;
 }
 
-/* Dark Mode */
-body.body--dark {
-  .modern-dashboard {
-    background: #111827;
+body.body--dark .modern-dashboard {
+  background: #121212 !important;
+}
 
-    .dashboard-header {
-      background: rgba(31, 41, 55, 0.8);
-      border-color: rgba(255, 255, 255, 0.1);
+body.body--dark .modern-dashboard .dashboard-header {
+  background: linear-gradient(135deg, rgba(30, 30, 30, 0.9) 0%, rgba(18, 18, 18, 0.8) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
 
-      p {
-        color: #d1d5db;
-      }
-    }
+body.body--dark .modern-dashboard .dashboard-header .header-content h1 {
+  background: linear-gradient(45deg, #8baafe, #a67fce) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+}
 
-    .quick-stats .stat-card,
-    .controls-card,
-    .chart-container,
-    .widgets-grid .widget {
-      background: #1f2937;
-      color: #f9fafb;
+body.body--dark .modern-dashboard .dashboard-header .header-content p {
+  color: #ffffff !important;
+}
 
-      .stat-label {
-        color: #d1d5db;
-      }
-    }
+body.body--dark .modern-dashboard .dashboard-header .header-actions .q-btn {
+  background: rgba(30, 30, 30, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
 
-    .progress-value {
-      color: #f9fafb;
-    }
+body.body--dark .modern-dashboard .dashboard-header .header-actions .q-btn:hover {
+  background: rgba(30, 30, 30, 0.9) !important;
+}
 
-    .progress-label {
-      color: #d1d5db;
-    }
-  }
+body.body--dark .modern-dashboard .quick-stats .stat-card {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.body--dark .modern-dashboard .quick-stats .stat-card .stat-content .stat-value {
+  color: #ffffff !important;
+}
+
+body.body--dark .modern-dashboard .quick-stats .stat-card .stat-content .stat-label {
+  color: #b0b0b0 !important;
+}
+
+body.body--dark .modern-dashboard .quick-stats .stat-card .stat-icon {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.body--dark .modern-dashboard .quick-stats .stat-card .stat-icon .q-icon {
+  color: #ffffff !important;
+}
+
+body.body--dark .modern-dashboard .controls-card {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+body.body--dark .modern-dashboard .controls-card :deep(.q-field__label) {
+  color: #ffffff !important;
+}
+
+body.body--dark .modern-dashboard .controls-card :deep(.q-field__native) {
+  color: #ffffff !important;
+}
+
+body.body--dark .modern-dashboard .controls-card :deep(.q-field__control) {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+body.body--dark .modern-dashboard .controls-card :deep(.q-field__control:before) {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+body.body--dark .modern-dashboard .chart-container {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.body--dark .modern-dashboard .chart-container .chart-header h3 {
+  color: #ffffff !important;
+}
+
+body.body--dark .modern-dashboard .chart-container .chart-header .chart-legend .legend-item {
+  color: #ffffff !important;
+}
+
+body.body--dark .modern-dashboard .widgets-grid .widget {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  color: #ffffff !important;
+}
+
+body.body--dark .modern-dashboard .progress-value {
+  color: #ffffff !important;
+}
+
+body.body--dark .modern-dashboard .progress-label {
+  color: #b0b0b0 !important;
+}
+
+body.body--dark :deep(.q-field--filled) .q-field__control {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+body.body--dark :deep(.q-field--filled) .q-field__label {
+  color: #ffffff !important;
+}
+
+body.body--dark :deep(.q-field--filled) .q-field__native {
+  color: #ffffff !important;
+}
+
+body.body--dark :deep(.q-field--filled) .q-field__control:before {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+body.body--dark :deep(.q-btn) {
+  color: #ffffff !important;
+}
+
+body.body--dark :deep(.q-btn--outline) {
+  border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 @media (max-width: 768px) {
   .modern-dashboard {
+    padding: 15px;
+
     .quick-stats {
       grid-template-columns: 1fr;
     }
@@ -1036,6 +1258,47 @@ body.body--dark {
       align-items: flex-start;
       gap: 5px;
     }
+
+    .dashboard-header {
+      flex-direction: column;
+      gap: 20px;
+      text-align: center;
+      
+      .header-content h1 {
+        font-size: 2rem;
+      }
+    }
+
+    .dark-mode-toggle {
+      bottom: 16px;
+      right: 16px;
+      
+      .toggle-btn {
+        width: 50px;
+        height: 50px;
+      }
+    }
   }
+}
+
+.q-btn, .stat-card, .controls-card, .chart-container {
+  transition: all 0.3s ease;
+}
+
+body.body--dark ::-webkit-scrollbar {
+  width: 8px;
+}
+
+body.body--dark ::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
+body.body--dark ::-webkit-scrollbar-thumb {
+  background: #444444;
+  border-radius: 4px;
+}
+
+body.body--dark ::-webkit-scrollbar-thumb:hover {
+  background: #666666;
 }
 </style>

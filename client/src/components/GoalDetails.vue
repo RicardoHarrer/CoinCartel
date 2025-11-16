@@ -17,7 +17,7 @@
             size="140px"
             :thickness="0.22"
             :color="progressColor"
-            track-color="grey-3"
+            :track-color="$q.dark.isActive ? 'grey-8' : 'grey-3'"
             class="q-mb-md"
           >
             <div class="text-center">
@@ -38,7 +38,7 @@
             €{{ formatNumber(goal.current_amount) }}
           </div>
         </div>
-        <q-icon name="arrow_forward" size="sm" color="grey-5" />
+        <q-icon name="arrow_forward" size="sm" :color="$q.dark.isActive ? 'grey-6' : 'grey-5'" />
         <div class="text-center">
           <div class="text-caption text-grey-7">Ziel</div>
           <div class="text-h4 text-weight-bold text-dark">
@@ -65,6 +65,7 @@
                 style="width: 120px"
                 @update:model-value="updateCurrentAmount"
                 class="amount-input"
+                :dark="$q.dark.isActive"
               >
                 <template v-slot:prepend>
                   <span class="text-caption text-grey-7">€</span>
@@ -107,7 +108,7 @@
 
       <!-- Kategorie -->
       <div v-if="goal.category_name" class="row items-center justify-center q-mb-lg">
-        <q-icon name="category" size="sm" color="grey-6" class="q-mr-sm" />
+        <q-icon name="category" size="sm" :color="$q.dark.isActive ? 'grey-5' : 'grey-6'" class="q-mr-sm" />
         <div class="text-caption text-grey-7">Kategorie:</div>
         <q-badge
           :label="goal.category_name"
@@ -256,23 +257,27 @@ export default defineComponent({
   width: 480px;
   max-width: 90vw;
   border-radius: 16px;
+  transition: all 0.3s ease;
 }
 
 .bg-edit-card {
   background: rgba(25, 118, 210, 0.04) !important;
   border: 1px solid rgba(25, 118, 210, 0.12) !important;
   border-radius: 12px;
+  transition: all 0.3s ease;
 }
 
 .bg-detail-card {
   background: #f8f9fa !important;
   border: 1px solid rgba(0, 0, 0, 0.06) !important;
   border-radius: 12px;
+  transition: all 0.3s ease;
 }
 
 .bg-motivation {
   background: linear-gradient(135deg, #e8f5e8, #c8e6c9) !important;
   border-radius: 12px;
+  transition: all 0.3s ease;
 }
 
 .close-button {
@@ -286,5 +291,121 @@ export default defineComponent({
 
 :deep(.q-circular-progress__text) {
   font-weight: 600;
+}
+
+/* DARK MODE STYLES */
+body.body--dark .details-card {
+  background: #1e1e1e !important;
+}
+
+body.body--dark .details-card .text-dark {
+  color: #ffffff !important;
+}
+
+body.body--dark .details-card .text-grey-7 {
+  color: #b0b0b0 !important;
+}
+
+body.body--dark .bg-edit-card {
+  background: rgba(25, 118, 210, 0.1) !important;
+  border-color: rgba(25, 118, 210, 0.3) !important;
+}
+
+body.body--dark .bg-detail-card {
+  background: #2d2d2d !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.body--dark .bg-motivation {
+  background: linear-gradient(135deg, #1b5e20, #2e7d32) !important;
+  color: #ffffff !important;
+}
+
+body.body--dark .bg-motivation.text-dark {
+  color: #ffffff !important;
+}
+
+/* Quasar Komponenten Dark Mode Anpassungen */
+body.body--dark :deep(.q-field--outlined .q-field__control) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+body.body--dark :deep(.q-field--outlined .q-field__label) {
+  color: #ffffff !important;
+}
+
+body.body--dark :deep(.q-field--outlined .q-field__native) {
+  color: #ffffff !important;
+}
+
+body.body--dark :deep(.q-field--outlined .q-field__control:before) {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+body.body--dark :deep(.q-btn) {
+  color: #ffffff !important;
+}
+
+body.body--dark :deep(.q-btn--flat) {
+  color: #42a5f5 !important;
+}
+
+/* Circular Progress Dark Mode */
+body.body--dark :deep(.q-circular-progress) {
+  color: #ffffff !important;
+}
+
+body.body--dark :deep(.q-circular-progress__text) {
+  color: #ffffff !important;
+}
+
+/* Badge Dark Mode */
+body.body--dark :deep(.q-badge) {
+  background: rgba(66, 165, 245, 0.2) !important;
+  color: #42a5f5 !important;
+  border: 1px solid rgba(66, 165, 245, 0.3) !important;
+}
+
+/* Icon Colors Dark Mode */
+body.body--dark :deep(.q-icon) {
+  color: inherit !important;
+}
+
+/* Primary Card Dark Mode */
+body.body--dark :deep(.bg-primary) {
+  background: linear-gradient(135deg, #1976d2, #1565c0) !important;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .details-card {
+    width: 95vw !important;
+    margin: 0 auto;
+  }
+  
+  .bg-edit-card .row.items-center {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+  
+  .bg-edit-card .col-auto {
+    width: 100%;
+  }
+  
+  .amount-input {
+    width: 100% !important;
+  }
+}
+
+/* Smooth transitions */
+.details-card,
+.bg-edit-card,
+.bg-detail-card,
+.bg-motivation,
+:deep(.q-field),
+:deep(.q-btn) {
+  transition: all 0.3s ease;
 }
 </style>

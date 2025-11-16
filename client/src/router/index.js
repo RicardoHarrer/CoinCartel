@@ -8,13 +8,17 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('../views/LoginView.vue'),
-      meta: { requiresGuest: true },
+      meta: { requiresGuest: true,
+        hideNavbar: true
+      },
     },
     {
       path: '/register',
       name: 'registerPage',
       component: () => import('../views/RegistrationView.vue'),
-      meta: { requiresGuest: true },
+      meta: { requiresGuest: true ,
+        hideNavbar:true
+      },
     },
     {
       path: '/chart',

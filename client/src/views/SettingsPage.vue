@@ -1,138 +1,147 @@
-//SettingsPage.vue
-<!-- ALTE TEMPLATE-SECTION LÖSCHEN UND DIESE EINFÜGEN -->
 <template>
-  <div class="modern-settings">
-    <div class="settings-header">
-      <h1>Settings</h1>
-      <p>Customize your financial dashboard experience</p>
-    </div>
+  <q-page class="q-pa-lg bg-page">
+    <div class="modern-settings">
+      <!-- Dark Mode Toggle -->
+      <div class="dark-mode-toggle">
+        <q-btn 
+          round 
+          :color="$q.dark.isActive ? 'grey-9' : 'yellow-9'" 
+          :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'" 
+          class="toggle-btn"
+          @click="toggleDarkMode"
+          size="lg"
+        />
+      </div>
 
-    <div class="settings-grid">
-      <!-- Preferences Card -->
-      <q-card class="settings-card">
-        <q-card-section class="card-header">
-          <q-icon name="tune" size="24px" class="header-icon" />
-          <div>
-            <h3>Financial Preferences</h3>
-            <p>Configure your currency and budget settings</p>
-          </div>
-        </q-card-section>
+      <!-- Header Section -->
+      <div class="settings-header q-mb-xl">
+        <h1 class="text-h3 text-weight-bold text-dark q-mb-xs">Settings</h1>
+        <p class="text-subtitle1 text-grey-7">Customize your financial dashboard experience</p>
+      </div>
 
-        <q-card-section>
-          <q-form @submit="savePreferences" class="settings-form">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Preferred Currency</label>
-                <q-select
-                  v-model="form.preferred_currency"
-                  :options="currencyOptions"
-                  outlined
-                  map-options
-                  emit-value
-                  :loading="loadingCurrencies"
-                  rules="required"
-                  class="modern-select"
-                >
-                  <template v-slot:selected>
-                    <div class="selected-currency">
-                      <span class="currency-flag">💰</span>
-                      {{ form.preferred_currency }}
+      <div class="settings-grid">
+        <!-- Preferences Card -->
+        <q-card class="settings-card">
+          <q-card-section class="card-section">
+            <div class="section-header">
+              <q-icon name="tune" size="24px" class="text-primary" />
+              <h3 class="text-h6 text-weight-medium">Financial Preferences</h3>
+            </div>
+            <p class="text-caption text-grey-6 q-mb-lg">Configure your currency and budget settings</p>
+
+            <q-form @submit="savePreferences" class="settings-form">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="text-weight-medium">Preferred Currency</label>
+                  <q-select
+                    v-model="form.preferred_currency"
+                    :options="currencyOptions"
+                    outlined
+                    map-options
+                    emit-value
+                    :loading="loadingCurrencies"
+                    rules="required"
+                    class="modern-select q-mb-md"
+                  >
+                    <template v-slot:selected>
+                      <div class="selected-currency">
+                        <span class="currency-flag">💰</span>
+                        {{ form.preferred_currency }}
+                      </div>
+                    </template>
+                  </q-select>
+                </div>
+
+                <div class="form-group">
+                  <label class="text-weight-medium">Monthly Budget</label>
+                  <q-input
+                    v-model.number="form.saldo"
+                    type="number"
+                    outlined
+                    :rules="[
+                      (val) => val >= 0 || 'Budget must be positive',
+                      (val) => val !== null || 'Budget is required',
+                    ]"
+                    step="0.01"
+                    min="0"
+                    class="modern-input q-mb-md"
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="euro" />
+                    </template>
+                    <template v-slot:append>
+                      <span class="currency-badge">{{ form.preferred_currency }}</span>
+                    </template>
+                  </q-input>
+
+                  <div class="budget-preview">
+                    <div class="preview-label">Monthly Overview</div>
+                    <div class="preview-amount">
+                      {{ form.saldo }} {{ form.preferred_currency }}
                     </div>
-                  </template>
-                </q-select>
+                  </div>
+                </div>
               </div>
 
-              <div class="form-group">
-                <label>Monthly Budget</label>
-                <q-input
-                  v-model.number="form.saldo"
-                  type="number"
-                  outlined
-                  :rules="[
-                    (val) => val >= 0 || 'Budget must be positive',
-                    (val) => val !== null || 'Budget is required',
-                  ]"
-                  step="0.01"
-                  min="0"
-                  class="modern-input"
-                >
-                  <template v-slot:prepend>
-                    <q-icon name="euro" />
-                  </template>
-                  <template v-slot:append>
-                    <span class="currency-badge">{{ form.preferred_currency }}</span>
-                  </template>
-                </q-input>
+              <div class="form-actions">
+                <q-btn
+                  label="Save Preferences"
+                  type="submit"
+                  color="primary"
+                  :loading="loading"
+                  class="save-btn"
+                  icon="save"
+                />
+              </div>
+            </q-form>
+          </q-card-section>
+        </q-card>
 
-                <div class="budget-preview">
-                  <div class="preview-label">Monthly Overview</div>
-                  <div class="preview-amount">
-                    {{ form.saldo }} {{ form.preferred_currency }}
+        <!-- Translation Card -->
+        <q-card class="settings-card">
+          <q-card-section class="card-section">
+            <div class="section-header">
+              <q-icon name="translate" size="24px" class="text-primary" />
+              <h3 class="text-h6 text-weight-medium">Language & Translation</h3>
+            </div>
+            <p class="text-caption text-grey-6 q-mb-lg">Translate the website to your preferred language</p>
+
+            <div class="translation-info">
+              <div class="info-icon">
+                <q-icon name="language" size="48px" color="primary" />
+              </div>
+              <div class="info-content">
+                <h4 class="text-h6 text-weight-medium q-mb-sm">Google Translate Widget</h4>
+                <p class="text-body2 text-grey-7 q-mb-lg">
+                  Use the Google Translate widget in the top right corner to translate the
+                  entire website to your preferred language.
+                </p>
+
+                <div class="translation-example">
+                  <div class="example-item">
+                    <span class="lang-flag">🇺🇸</span>
+                    <span class="text-caption">English</span>
+                  </div>
+                  <div class="example-item">
+                    <span class="lang-flag">🇩🇪</span>
+                    <span class="text-caption">Deutsch</span>
+                  </div>
+                  <div class="example-item">
+                    <span class="lang-flag">🇫🇷</span>
+                    <span class="text-caption">Français</span>
+                  </div>
+                  <div class="example-item">
+                    <span class="lang-flag">🇪🇸</span>
+                    <span class="text-caption">Español</span>
                   </div>
                 </div>
               </div>
             </div>
-
-            <div class="form-actions">
-              <q-btn
-                label="Save Preferences"
-                type="submit"
-                color="primary"
-                :loading="loading"
-                class="save-btn"
-                icon="save"
-              />
-            </div>
-          </q-form>
-        </q-card-section>
-      </q-card>
-
-      <!-- Translation Card -->
-      <q-card class="settings-card">
-        <q-card-section class="card-header">
-          <q-icon name="translate" size="24px" class="header-icon" />
-          <div>
-            <h3>Language & Translation</h3>
-            <p>Translate the website to your preferred language</p>
-          </div>
-        </q-card-section>
-
-        <q-card-section>
-          <div class="translation-info">
-            <div class="info-icon">
-              <q-icon name="language" size="48px" color="primary" />
-            </div>
-            <div class="info-content">
-              <h4>Google Translate Widget</h4>
-              <p>
-                Use the Google Translate widget in the top right corner to translate the
-                entire website to your preferred language.
-              </p>
-
-              <div class="translation-example">
-                <div class="example-item">
-                  <span class="lang-flag">🇺🇸</span>
-                  <span>English</span>
-                </div>
-                <div class="example-item">
-                  <span class="lang-flag">🇩🇪</span>
-                  <span>Deutsch</span>
-                </div>
-                <div class="example-item">
-                  <span class="lang-flag">🇫🇷</span>
-                  <span>Français</span>
-                </div>
-                <div class="example-item">
-                  <span class="lang-flag">🇪🇸</span>
-                  <span>Español</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
+          </q-card-section>
+        </q-card>
+      </div>
     </div>
-  </div>
+  </q-page>
 </template>
 
 <script>
@@ -246,6 +255,11 @@ export default defineComponent({
       ).toFixed(2);
     });
 
+    // Dark Mode Toggle
+    const toggleDarkMode = () => {
+      $q.dark.set(!$q.dark.isActive);
+    };
+
     onMounted(async () => {
       await fetchExchangeRates();
       await fetchUserPreferences();
@@ -258,258 +272,349 @@ export default defineComponent({
       loadingCurrencies,
       convertedBudget,
       savePreferences,
+      toggleDarkMode,
     };
   },
 });
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .modern-settings {
-  padding: 20px;
   max-width: 1200px;
   margin: 0 auto;
+  position: relative;
 }
 
+/* Dark Mode Toggle */
+.dark-mode-toggle {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 1000;
+}
+
+.toggle-btn {
+  width: 60px;
+  height: 60px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  border: 2px solid #dee2e6 !important;
+}
+
+.toggle-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  border-color: #adb5bd !important;
+}
+
+/* Header Section */
 .settings-header {
   text-align: center;
-  margin-bottom: 40px;
+  padding: 16px 0;
+  border-bottom: 2px solid #e9ecef;
 }
 
-.settings-header h1 {
-  font-size: 3rem;
-  margin-bottom: 10px;
-  background: linear-gradient(45deg, #667eea, #764ba2);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.settings-header p {
-  font-size: 1.2rem;
-  color: #718096;
-}
-
+/* Settings Grid */
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 30px;
-}
+  gap: 24px;
 
-@media (max-width: 968px) {
-  .settings-grid {
+  @media (max-width: 968px) {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
 }
 
+/* Settings Cards */
 .settings-card {
-  border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
-  max-width: 600px;
-  margin: 0 auto;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  border: 2px solid #dee2e6 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: white;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    border-color: #adb5bd !important;
+  }
 }
 
-.card-header {
+.card-section {
+  padding: 24px;
+}
+
+.section-header {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 30px;
-  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.header-icon {
-  color: #667eea;
-}
-
-.card-header h3 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #2d3748;
-}
-
-.card-header p {
-  margin: 5px 0 0 0;
-  color: #718096;
-}
-
-.settings-form {
-  padding: 20px 30px 30px;
-}
-
-.form-row {
-  display: grid;
-  gap: 25px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
+  gap: 12px;
   margin-bottom: 8px;
-  font-weight: 600;
-  color: #2d3748;
+
+  h3 {
+    margin: 0;
+    flex: 1;
+  }
 }
 
-.modern-select .q-field__control,
-.modern-input .q-field__control {
-  border-radius: 12px;
-  height: 56px;
+/* Form Styles */
+.settings-form {
+  .form-row {
+    display: grid;
+    gap: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 16px;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+  }
+}
+
+.modern-select,
+.modern-input {
+  .q-field__control {
+    border-radius: 8px;
+    height: 48px;
+  }
 }
 
 .selected-currency {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 8px;
+  padding: 4px 0;
 }
 
 .currency-flag {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
 }
 
 .currency-badge {
-  background: #667eea;
+  background: #1976d2;
   color: white;
   padding: 4px 8px;
   border-radius: 6px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .budget-preview {
-  margin-top: 15px;
-  padding: 15px;
-  background: #f7fafc;
-  border-radius: 12px;
-  border-left: 4px solid #667eea;
+  margin-top: 12px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #1976d2;
 }
 
 .preview-label {
-  font-size: 0.9rem;
-  color: #718096;
-  margin-bottom: 5px;
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 4px;
 }
 
 .preview-amount {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #2d3748;
 }
 
-/* KORRIGIERTER BUTTON-BEREICH - ZENTRIERT UND GESTYLET */
+/* Form Actions */
 .form-actions {
-  margin-top: 30px;
+  margin-top: 24px;
   display: flex;
   justify-content: center;
   width: 100%;
 }
 
 .save-btn {
-  padding: 14px 40px !important;
-  font-size: 1rem !important;
-  font-weight: 600 !important;
-  border-radius: 12px !important;
-  background: linear-gradient(45deg, #667eea, #764ba2) !important;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
-  transition: all 0.3s ease !important;
-  min-width: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
+  width: 100%;
+  border-radius: 8px;
+  font-weight: 600;
+  padding: 12px;
+  border: none !important;
+  background: #1976d2 !important;
+  color: white !important;
+  transition: all 0.3s ease;
 
-.save-btn:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4) !important;
-}
-
-.save-btn:active {
-  transform: translateY(0) !important;
+  &:hover {
+    background: #1565c0 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+  }
 }
 
 /* Translation Section */
 .translation-info {
-  padding: 20px;
+  text-align: center;
+  padding: 16px 0;
 }
 
 .info-icon {
-  text-align: center;
   margin-bottom: 20px;
 }
 
-.info-content h4 {
-  margin: 0 0 10px 0;
-  color: #2d3748;
-  font-size: 1.2rem;
-}
+.info-content {
+  h4 {
+    margin: 0 0 8px 0;
+  }
 
-.info-content p {
-  color: #718096;
-  line-height: 1.6;
-  margin-bottom: 20px;
+  p {
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
 }
 
 .translation-example {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .example-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px;
-  background: #f7fafc;
+  gap: 12px;
+  padding: 12px;
+  background: #f8f9fa;
   border-radius: 8px;
+  border: 1px solid #e9ecef;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
 }
 
 .lang-flag {
   font-size: 1.2rem;
 }
 
-/* Form Element Spacing */
-.q-input,
-.q-select {
-  margin-bottom: 20px;
+/* DARK MODE STYLES - Consistent with other pages */
+body.body--dark .bg-page {
+  background: #121212 !important;
 }
 
-/* Dark Mode */
-.body--dark .settings-card .card-header {
-  background: linear-gradient(135deg, #2d3748, #4a5568);
-  border-bottom-color: #4a5568;
+body.body--dark .settings-header {
+  border-bottom-color: rgba(255, 255, 255, 0.15) !important;
 }
 
-.body--dark .settings-card .card-header h3 {
-  color: #f7fafc;
+body.body--dark .settings-header .text-dark {
+  color: #ffffff !important;
 }
 
-.body--dark .settings-card .card-header p {
-  color: #cbd5e0;
+body.body--dark .settings-header .text-grey-7 {
+  color: #b0b0b0 !important;
 }
 
-.body--dark .settings-form .form-group label {
-  color: #f7fafc;
+body.body--dark .settings-card {
+  background: #1e1e1e !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
-.body--dark .budget-preview {
-  background: #2d3748;
+body.body--dark .settings-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
 }
 
-.body--dark .preview-amount {
-  color: #f7fafc;
+body.body--dark .settings-card .text-grey-6 {
+  color: #b0b0b0 !important;
 }
 
-.body--dark .info-content h4 {
-  color: #f7fafc;
+body.body--dark .budget-preview {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-left-color: #42a5f5 !important;
 }
 
-.body--dark .translation-example .example-item {
-  background: #2d3748;
-  color: #f7fafc;
+body.body--dark .budget-preview .preview-label {
+  color: #b0b0b0 !important;
+}
+
+body.body--dark .budget-preview .preview-amount {
+  color: #ffffff !important;
+}
+
+body.body--dark .translation-example .example-item {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.body--dark .translation-example .example-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.body--dark .translation-example .example-item .text-caption {
+  color: #ffffff !important;
+}
+
+/* Buttons in Dark Mode - No Borders */
+body.body--dark .save-btn {
+  border: none !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+body.body--dark .save-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Form Elements in Dark Mode */
+body.body--dark .modern-select .q-field__control,
+body.body--dark .modern-input .q-field__control {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+}
+
+body.body--dark .modern-select .q-field__label,
+body.body--dark .modern-input .q-field__label {
+  color: #b0b0b0 !important;
+}
+
+body.body--dark .currency-badge {
+  background: #42a5f5 !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .modern-settings {
+    padding: 8px;
+  }
+
+  .settings-grid {
+    gap: 16px;
+  }
+
+  .card-section {
+    padding: 20px;
+  }
+
+  .translation-example {
+    grid-template-columns: 1fr;
+  }
+
+  .dark-mode-toggle {
+    bottom: 16px;
+    left: 16px;
+  }
+
+  .toggle-btn {
+    width: 56px;
+    height: 56px;
+  }
+
+  .form-row {
+    gap: 16px;
+  }
+}
+
+/* Smooth transitions */
+.q-btn, .settings-card, .example-item, .toggle-btn, .save-btn {
+  transition: all 0.3s ease;
 }
 </style>

@@ -60,96 +60,221 @@ export default {
 </script>
 
 <template>
-  <q-header
-    elevated
-    :class="['navbar', $q.dark.isActive ? 'bg-dark text-white' : 'bg-white text-dark']"
-  >
-    <q-toolbar>
-      <q-toolbar-title class="text-h5">
-        <q-btn flat to="/">
+  <q-header elevated class="navbar">
+    <q-toolbar class="navbar__toolbar">
+      <!-- Logo Section -->
+      <div class="navbar__brand">
+        <q-btn flat to="/" class="navbar__logo-btn" padding="none">
           <q-img
             src="../../public/logovaultly.jpg"
             alt="Vaultly Logo"
-            width="50px"
-            height="50px"
-            class="logo-image"
-        /></q-btn>
-      </q-toolbar-title>
+            width="45px"
+            height="45px"
+            class="navbar__logo"
+          />
+        </q-btn>
+        <q-toolbar-title class="navbar__title text-h5">
+          Vaultly
+        </q-toolbar-title>
+      </div>
 
-      <q-tabs v-model="tab" shrink stretch class="gt-sm">
-        <q-route-tab name="home" label="Home" to="/" exact />
-        <q-route-tab name="chart" label="Chart" to="/chart" exact v-if="isLoggedIn" />
-        <!-- <q-route-tab
-          name="transaction"
-          label="Transaction"
-          to="/transactions"
-          exact
-          v-if="isLoggedIn"
-        /> -->
-        <q-route-tab name="goals" label="Goals" to="/goals" exact v-if="isLoggedIn" />
-        <q-route-tab name="login" label="Login" to="/login" exact v-if="!isLoggedIn" />
-        <q-route-tab
-          name="register"
-          label="Register"
-          to="/register"
-          exact
-          v-if="!isLoggedIn"
+      <!-- Desktop Navigation -->
+      <q-tabs 
+        v-model="tab" 
+        shrink 
+        stretch 
+        class="gt-sm navbar__tabs"
+        indicator-color="primary"
+        active-color="primary"
+      >
+        <q-route-tab 
+          name="home" 
+          label="Home" 
+          to="/" 
+          exact 
+          class="navbar__tab"
         />
-        <q-route-tab
-          name="settings"
-          label="Settings"
-          to="/settings"
-          exact
+        <q-route-tab 
+          name="chart" 
+          label="Analytics" 
+          to="/chart" 
+          exact 
           v-if="isLoggedIn"
+          class="navbar__tab"
         />
-        <q-route-tab
-          name="bank-import"
-          label="Bank Import"
-          to="/bank-import"
-          exact
+        <q-route-tab 
+          name="goals" 
+          label="Goals" 
+          to="/goals" 
+          exact 
           v-if="isLoggedIn"
+          class="navbar__tab"
         />
-        <q-btn v-if="isLoggedIn" flat label="Logout" @click="logout" class="q-ml-md" />
+        <q-route-tab 
+          name="bank-import" 
+          label="Bank Import" 
+          to="/bank-import" 
+          exact 
+          v-if="isLoggedIn"
+          class="navbar__tab"
+        />
+        <q-route-tab 
+          name="settings" 
+          label="Settings" 
+          to="/settings" 
+          exact 
+          v-if="isLoggedIn"
+          class="navbar__tab"
+        />
+        
+        <!-- Auth Buttons -->
+        <div class="navbar__auth" v-if="!isLoggedIn">
+          <q-route-tab 
+            name="login" 
+            label="Login" 
+            to="/login" 
+            exact 
+            class="navbar__tab navbar__tab--auth"
+          />
+          <q-btn 
+            name="register" 
+            label="Get Started" 
+            to="/register" 
+            unelevated 
+            color="primary"
+            class="navbar__register-btn"
+          />
+        </div>
+
+        <q-btn 
+          v-if="isLoggedIn" 
+          flat 
+          label="Logout" 
+          @click="logout" 
+          class="navbar__logout-btn"
+          icon="logout"
+        />
       </q-tabs>
-
-      <!-- <q-btn
-        flat
-        round
-        :icon="isDarkMode ? 'light_mode' : 'dark_mode'"
-        @click="toggleDarkMode"
-        class="q-ml-md"
-      /> -->
-
-      <q-btn flat round icon="menu" class="lt-md" @click="toggleMobileMenu" />
     </q-toolbar>
+    
 
-    <q-drawer v-model="mobileMenuOpen" side="right" overlay bordered>
-      <q-list>
-        <q-item clickable v-ripple to="/" exact>
+    <!-- Mobile Drawer -->
+    <q-drawer 
+      v-model="mobileMenuOpen" 
+      side="right" 
+      overlay 
+      bordered
+      class="navbar__drawer"
+    >
+      <q-list class="navbar__mobile-list">
+        <q-item 
+          clickable 
+          v-ripple 
+          to="/" 
+          exact
+          class="navbar__mobile-item"
+          @click="mobileMenuOpen = false"
+        >
+          <q-item-section avatar>
+            <q-icon name="home" />
+          </q-item-section>
           <q-item-section>Home</q-item-section>
         </q-item>
-        <q-item clickable v-ripple to="/chart" exact v-if="isLoggedIn">
-          <q-item-section>Chart</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple to="/transactions" exact v-if="isLoggedIn">
-          <q-item-section>Transaction</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple to="/goals" exact v-if="isLoggedIn">
-          <q-item-section>Savinggoals</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple to="/login" exact v-if="!isLoggedIn">
-          <q-item-section>Login</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple to="/register" exact v-if="!isLoggedIn">
-          <q-item-section>Register</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple to="/settings" exact v-if="isLoggedIn">
-          <q-item-section>Settings</q-item-section>
-        </q-item>
-        <q-item clickable v-ripple to="/bank-import" exact v-if="isLoggedIn">
-          <q-item-section>Bank Import</q-item-section>
-        </q-item>
-        <q-item v-if="isLoggedIn" clickable v-ripple @click="logout">
+        
+        <template v-if="isLoggedIn">
+          <q-item 
+            clickable 
+            v-ripple 
+            to="/chart" 
+            exact
+            class="navbar__mobile-item"
+            @click="mobileMenuOpen = false"
+          >
+            <q-item-section avatar>
+              <q-icon name="analytics" />
+            </q-item-section>
+            <q-item-section>Analytics</q-item-section>
+          </q-item>
+          <q-item 
+            clickable 
+            v-ripple 
+            to="/goals" 
+            exact
+            class="navbar__mobile-item"
+            @click="mobileMenuOpen = false"
+          >
+            <q-item-section avatar>
+              <q-icon name="savings" />
+            </q-item-section>
+            <q-item-section>Goals</q-item-section>
+          </q-item>
+          <q-item 
+            clickable 
+            v-ripple 
+            to="/bank-import" 
+            exact
+            class="navbar__mobile-item"
+            @click="mobileMenuOpen = false"
+          >
+            <q-item-section avatar>
+              <q-icon name="account_balance" />
+            </q-item-section>
+            <q-item-section>Bank Import</q-item-section>
+          </q-item>
+          <q-item 
+            clickable 
+            v-ripple 
+            to="/settings" 
+            exact
+            class="navbar__mobile-item"
+            @click="mobileMenuOpen = false"
+          >
+            <q-item-section avatar>
+              <q-icon name="settings" />
+            </q-item-section>
+            <q-item-section>Settings</q-item-section>
+          </q-item>
+        </template>
+
+        <template v-else>
+          <q-item 
+            clickable 
+            v-ripple 
+            to="/login" 
+            exact
+            class="navbar__mobile-item"
+            @click="mobileMenuOpen = false"
+          >
+            <q-item-section avatar>
+              <q-icon name="login" />
+            </q-item-section>
+            <q-item-section>Login</q-item-section>
+          </q-item>
+          <q-item 
+            clickable 
+            v-ripple 
+            to="/register" 
+            exact
+            class="navbar__mobile-item navbar__mobile-item--highlight"
+            @click="mobileMenuOpen = false"
+          >
+            <q-item-section avatar>
+              <q-icon name="person_add" />
+            </q-item-section>
+            <q-item-section>Get Started</q-item-section>
+          </q-item>
+        </template>
+
+        <q-item 
+          v-if="isLoggedIn" 
+          clickable 
+          v-ripple 
+          @click="logout"
+          class="navbar__mobile-item navbar__mobile-item--logout"
+        >
+          <q-item-section avatar>
+            <q-icon name="logout" />
+          </q-item-section>
           <q-item-section>Logout</q-item-section>
         </q-item>
       </q-list>
@@ -157,30 +282,209 @@ export default {
   </q-header>
 </template>
 
-<style scoped>
+<style lang="scss" scoped>
 .navbar {
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s ease, color 0.3s ease;
-  padding: 7px;
+  background: var(--q-primary);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--q-secondary);
+  
+  &::before {
+    display: none; // Remove any potential glow effect
+  }
+
+  &__toolbar {
+    padding: 8px 16px;
+    min-height: 70px;
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  &__logo-btn {
+    border-radius: 12px;
+    transition: transform 0.3s ease;
+
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+
+  &__logo {
+    border-radius: 10px;
+    object-fit: contain;
+  }
+
+  &__title {
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--q-primary) 0%, var(--q-accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  &__tabs {
+    margin-left: auto;
+    gap: 8px;
+  }
+
+  &__tab {
+    border-radius: 8px;
+    margin: 0 4px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    min-height: 40px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
+
+    &--active {
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    &--auth {
+      margin-right: 12px;
+    }
+  }
+
+  &__auth {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: 24px;
+  }
+
+  &__register-btn {
+    border-radius: 8px;
+    font-weight: 600;
+    text-transform: none;
+    padding: 8px 20px;
+    box-shadow: 0 2px 8px rgba(var(--q-primary-rgb), 0.3);
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(var(--q-primary-rgb), 0.4);
+    }
+  }
+
+  &__logout-btn {
+    border-radius: 8px;
+    margin-left: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 16px;
+  }
+
+  &__theme-toggle {
+    transition: transform 0.3s ease;
+
+    &:hover {
+      transform: rotate(15deg);
+    }
+  }
+
+  &__mobile-toggle {
+    margin-left: 8px;
+  }
+
+  // Mobile Drawer Styles
+  &__drawer {
+    .q-drawer__content {
+      background: var(--q-dark);
+    }
+  }
+
+  &__mobile-list {
+    padding: 16px 0;
+  }
+
+  &__mobile-item {
+    margin: 4px 12px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateX(4px);
+    }
+
+    &--highlight {
+      background: var(--q-primary);
+      color: white;
+      font-weight: 600;
+
+      &:hover {
+        background: var(--q-primary);
+        opacity: 0.9;
+      }
+    }
+
+    &--logout {
+      color: var(--q-negative);
+      
+      &:hover {
+        background: rgba(var(--q-negative-rgb), 0.1);
+      }
+    }
+  }
 }
 
-.q-toolbar-title {
-  font-weight: bold;
+// Dark mode adjustments
+.body--dark {
+  .navbar {
+    background: rgba(33, 33, 33, 0.95);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+  }
 }
 
-.q-tabs {
-  margin-left: auto;
+.body--light {
+  .navbar {
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom-color: rgba(0, 0, 0, 0.1);
+    
+    &__tab {
+      color: rgba(0, 0, 0, 0.7);
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.05);
+      }
+    }
+
+    &__logout-btn {
+      color: rgba(0, 0, 0, 0.7);
+    }
+  }
 }
 
-.q-drawer {
-  background-color: var(--q-primary);
-}
+// Responsive adjustments
+@media (max-width: $breakpoint-sm-max) {
+  .navbar {
+    &__toolbar {
+      padding: 8px 12px;
+      min-height: 64px;
+    }
 
-.q-item {
-  color: inherit;
-}
-
-.q-item--active {
-  background-color: rgba(255, 255, 255, 0.1);
+    &__title {
+      font-size: 1.25rem;
+    }
+  }
 }
 </style>

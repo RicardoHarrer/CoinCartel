@@ -19,17 +19,17 @@
             color="grey-6"
             @click.stop="$emit('menu', goal)"
           >
-            <q-menu auto-close class="bg-surface">
-              <q-list class="text-dark">
-                <q-item clickable class="text-dark" @click="$emit('edit', goal)">
+            <q-menu auto-close class="goal-card-menu">
+              <q-list class="goal-menu-list">
+                <q-item clickable @click="$emit('edit', goal)" class="goal-edit-item">
                   <q-item-section avatar>
-                    <q-icon name="edit" size="xs" color="primary" />
+                    <q-icon name="edit" size="xs" />
                   </q-item-section>
                   <q-item-section>Bearbeiten</q-item-section>
                 </q-item>
-                <q-item clickable class="text-dark" @click="$emit('delete', goal)">
+                <q-item clickable @click="$emit('delete', goal)" class="goal-delete-item">
                   <q-item-section avatar>
-                    <q-icon name="delete" size="xs" color="negative" />
+                    <q-icon name="delete" size="xs" />
                   </q-item-section>
                   <q-item-section>Löschen</q-item-section>
                 </q-item>
@@ -199,5 +199,58 @@ export default defineComponent({
 
 :deep(.q-linear-progress__model) {
   border-radius: 4px;
+}
+</style>
+
+<style lang="scss">
+/* GoalCard Menu Styles - Global (nicht scoped) */
+.goal-card-menu {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid #dee2e6 !important;
+  background: white !important;
+}
+
+.goal-menu-list .q-item {
+  color: #1a1a1a !important;
+  border-radius: 6px !important;
+  margin: 2px 4px !important;
+  transition: all 0.2s ease !important;
+}
+
+.goal-menu-list .q-item:hover {
+  background: rgba(25, 118, 210, 0.1) !important;
+  transform: translateX(2px) !important;
+}
+
+.goal-edit-item .q-icon {
+  color: #1976d2 !important;
+}
+
+.goal-delete-item .q-icon {
+  color: #c62828 !important;
+}
+
+/* Dark Mode Styles */
+body.body--dark .goal-card-menu {
+  background: #1e1e1e !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.body--dark .goal-menu-list .q-item {
+  color: #ffffff !important;
+}
+
+body.body--dark .goal-menu-list .q-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.body--dark .goal-edit-item .q-icon {
+  color: #42a5f5 !important;
+}
+
+body.body--dark .goal-delete-item .q-icon {
+  color: #ef5350 !important;
 }
 </style>

@@ -1,503 +1,435 @@
 <template>
-  <div class="modern-bank-import">
-    <!-- Compact Header -->
-    <div class="compact-header">
-      <div class="header-main">
-        <q-btn icon="arrow_back" flat round dense @click="$router.back()" />
-        <div class="header-title">
-          <h1>🏦 Bank Import</h1>
-          <p>Import transactions from Austrian banks</p>
+  <q-page class="q-pa-lg bg-page">
+    <div class="bank-import-view">
+      <!-- Dark Mode Toggle -->
+      <div class="dark-mode-toggle">
+        <q-btn 
+          round 
+          :color="$q.dark.isActive ? 'grey-9' : 'yellow-9'" 
+          :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'" 
+          class="toggle-btn"
+          @click="toggleDarkMode"
+          size="lg"
+        />
+      </div>
+
+      <!-- Compact Header -->
+      <div class="compact-header q-mb-lg">
+        <div class="header-content">
+          <q-btn 
+            icon="arrow_back" 
+            flat 
+            round 
+            dense 
+            @click="$router.back()" 
+            class="q-mr-sm"
+          />
+          <div>
+            <h1 class="text-h4 text-weight-bold text-dark q-mb-xs">🏦 Bank Import</h1>
+            <p class="text-subtitle1 text-grey-7">Import transactions from Austrian banks</p>
+          </div>
+        </div>
+        <q-btn 
+          icon="refresh" 
+          flat 
+          round 
+          dense 
+          @click="fetchRecentTransactions" 
+        />
+      </div>
+
+      <!-- Main Grid -->
+      <div class="main-grid">
+        <!-- Left Column - Import Functions -->
+        <div class="left-column">
+          <!-- Bank Selection & CSV Upload -->
+          <q-card class="compact-card">
+            <q-card-section class="card-section">
+              <div class="section-header">
+                <q-icon name="account_balance" size="20px" class="text-primary" />
+                <h3 class="text-h6 text-weight-medium">Bank Import</h3>
+              </div>
+              
+              <q-select
+                v-model="selectedBank"
+                :options="austrianBanks"
+                label="Select your bank"
+                filled
+                dense
+                emit-value
+                map-options
+                class="q-mb-md"
+              />
+
+              <div v-if="selectedBank" class="upload-section">
+                <q-uploader
+                  label="Upload CSV file"
+                  accept=".csv,.txt"
+                  @added="handleFileUpload"
+                  :disable="importingCSV"
+                  flat
+                  bordered
+                  dense
+                  class="q-mb-sm"
+                >
+                  <template v-slot:list="scope">
+                    <q-list dense>
+                      <q-item v-for="file in scope.files" :key="file.name">
+                        <q-item-section>
+                          <q-item-label class="ellipsis">{{ file.name }}</q-item-label>
+                        </q-item-section>
+                        <q-item-section side>
+                          <q-spinner v-if="importingCSV" color="primary" size="1em" />
+                          <q-btn
+                            v-else
+                            icon="delete"
+                            size="sm"
+                            flat
+                            round
+                            dense
+                            @click="scope.removeFile(file)"
+                          />
+                        </q-item-section>
+                      </q-item>
+                    </q-list>
+                  </template>
+                </q-uploader>
+
+                <div class="bank-actions">
+                  <q-btn
+                    label="Sample CSV"
+                    outline
+                    color="primary"
+                    size="sm"
+                    @click="downloadSampleCSV(selectedBank)"
+                    dense
+                    class="q-mr-sm"
+                  />
+                  <div class="bank-info">
+                    <div class="info-text">
+                      <strong>{{ getBankName(selectedBank) }}</strong>
+                    </div>
+                    <div class="format-text">{{ getBankFormat(selectedBank) }}</div>
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <!-- Quick Actions -->
+          <q-card class="compact-card">
+            <q-card-section class="card-section">
+              <div class="section-header">
+                <q-icon name="bolt" size="20px" class="text-primary" />
+                <h3 class="text-h6 text-weight-medium">Quick Actions</h3>
+              </div>
+              <div class="quick-grid">
+                <q-btn
+                  v-for="quickTx in quickTransactions"
+                  :key="quickTx.label"
+                  :label="quickTx.label"
+                  :color="quickTx.color"
+                  outline
+                  size="sm"
+                  @click="openQuickTransaction(quickTx)"
+                  class="quick-btn"
+                />
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <!-- Quick Summary -->
+          <q-card class="compact-card">
+            <q-card-section class="card-section">
+              <div class="section-header">
+                <q-icon name="analytics" size="20px" class="text-primary" />
+                <h3 class="text-h6 text-weight-medium">Quick Summary</h3>
+              </div>
+
+              <div class="summary-stats">
+                <div class="stat-item income">
+                  <div class="stat-icon">↑</div>
+                  <div class="stat-content">
+                    <div class="stat-value text-positive">
+                      +{{ formatCurrency(categorySummary.totalIncome) }}
+                    </div>
+                    <div class="stat-label">Income</div>
+                  </div>
+                </div>
+                <div class="stat-item expense">
+                  <div class="stat-icon">↓</div>
+                  <div class="stat-content">
+                    <div class="stat-value text-negative">
+                      -{{ formatCurrency(categorySummary.totalExpenses) }}
+                    </div>
+                    <div class="stat-label">Expenses</div>
+                  </div>
+                </div>
+                <div class="stat-item balance">
+                  <div class="stat-icon">⚖️</div>
+                  <div class="stat-content">
+                    <div class="stat-value" :class="categorySummary.balance >= 0 ? 'text-positive' : 'text-negative'">
+                      {{ categorySummary.balance >= 0 ? "+" : "" }}{{ formatCurrency(categorySummary.balance) }}
+                    </div>
+                    <div class="stat-label">Balance</div>
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <!-- Export Actions -->
+          <q-card class="compact-card">
+            <q-card-section class="card-section">
+              <div class="section-header">
+                <q-icon name="download" size="20px" class="text-primary" />
+                <h3 class="text-h6 text-weight-medium">Export</h3>
+              </div>
+              <div class="export-grid">
+                <q-btn
+                  color="primary"
+                  icon="picture_as_pdf"
+                  label="PDF"
+                  @click="exportPDF"
+                  outline
+                  dense
+                  class="export-btn"
+                />
+                <q-btn
+                  color="positive"
+                  icon="text_snippet"
+                  label="CSV"
+                  @click="exportCSV"
+                  outline
+                  dense
+                  class="export-btn"
+                />
+                <q-btn
+                  color="secondary"
+                  icon="pie_chart"
+                  label="Categories PDF"
+                  @click="exportCategoryPDF"
+                  outline
+                  dense
+                  class="export-btn"
+                />
+                <q-btn
+                  color="teal"
+                  icon="analytics"
+                  label="Categories CSV"
+                  @click="exportCategoryCSV"
+                  outline
+                  dense
+                  class="export-btn"
+                />
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Right Column - Forms & Data -->
+        <div class="right-column">
+          <!-- Manual Entry -->
+          <q-card class="compact-card">
+            <q-card-section class="card-section">
+              <div class="section-header">
+                <q-icon name="edit" size="20px" class="text-primary" />
+                <h3 class="text-h6 text-weight-medium">Manual Entry</h3>
+              </div>
+
+              <q-form @submit="addManualTransaction" class="compact-form">
+                <div class="form-grid">
+                  <q-input
+                    filled
+                    v-model="manualTransaction.date"
+                    label="Date"
+                    type="date"
+                    dense
+                    class="full-width"
+                    required
+                  />
+                  <q-input
+                    filled
+                    v-model.number="manualTransaction.amount"
+                    label="Amount (€)"
+                    type="number"
+                    step="0.01"
+                    dense
+                    required
+                  />
+                  <q-select
+                    filled
+                    v-model="manualTransaction.transaction_type"
+                    :options="transactionTypes"
+                    label="Type"
+                    dense
+                    required
+                    emit-value
+                    map-options
+                  />
+                  <q-select
+                    filled
+                    v-model.number="manualTransaction.category_id"
+                    :options="categories"
+                    label="Category"
+                    option-label="name"
+                    option-value="id"
+                    dense
+                    required
+                    emit-value
+                    map-options
+                  />
+                  <q-input
+                    filled
+                    v-model="manualTransaction.description"
+                    label="Description"
+                    dense
+                    required
+                    class="full-width"
+                  />
+                  <q-select
+                    filled
+                    v-model="manualTransaction.payment_method"
+                    :options="paymentMethods"
+                    label="Payment Method"
+                    dense
+                    emit-value
+                    map-options
+                    class="full-width"
+                  />
+                </div>
+
+                <div class="form-actions">
+                  <q-btn
+                    label="Save Transaction"
+                    type="submit"
+                    color="primary"
+                    icon="save"
+                    :loading="savingTransaction"
+                    class="save-btn"
+                    dense
+                  />
+                </div>
+              </q-form>
+            </q-card-section>
+          </q-card>
+
+          <!-- Category Summary -->
+          <q-card class="compact-card">
+            <q-card-section class="card-section">
+              <div class="section-header">
+                <q-icon name="pie_chart" size="20px" class="text-primary" />
+                <h3 class="text-h6 text-weight-medium">Category Summary</h3>
+              </div>
+
+              <!-- Categories Grid -->
+              <div class="categories-grid">
+                <div
+                  v-for="cat in categorySummaries"
+                  :key="cat.id"
+                  class="category-card"
+                  @click="openCategoryDialog(cat)"
+                >
+                  <div class="category-header">
+                    <div class="category-name">{{ cat.name }}</div>
+                    <div class="transaction-count">{{ cat.transactionCount }}</div>
+                  </div>
+                  <div class="category-amounts">
+                    <div class="amount income">+{{ formatCurrency(cat.income) }}</div>
+                    <div class="amount expense">-{{ formatCurrency(cat.expenses) }}</div>
+                    <div
+                      class="amount net"
+                      :class="cat.netAmount >= 0 ? 'positive' : 'negative'"
+                    >
+                      {{ cat.netAmount >= 0 ? "+" : "" }}{{ formatCurrency(cat.netAmount) }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="categorySummaries.length === 0" class="empty-state">
+                <q-icon name="pie_chart" size="32px" color="grey-4" />
+                <div>No category data available</div>
+                <div class="text-caption">Import transactions to see summary</div>
+              </div>
+            </q-card-section>
+          </q-card>
         </div>
       </div>
-      <div class="header-actions">
-        <q-btn icon="refresh" flat round dense @click="fetchRecentTransactions" />
-      </div>
-    </div>
 
-    <!-- Main Content Grid -->
-    <div class="compact-grid">
-      <!-- Left Column - Import Functions -->
-      <div class="import-section">
-        <!-- Bank Selection -->
-        <q-card class="compact-card">
-          <q-card-section class="card-section">
-            <div class="section-header">
-              <q-icon name="account_balance" size="20px" />
-              <h3>Select Bank</h3>
-            </div>
-            <q-select
-              v-model="selectedBank"
-              :options="austrianBanks"
-              label="Your bank"
-              option-label="name"
-              option-value="id"
-              filled
-              dense
-              emit-value
-              map-options
-              class="q-mb-sm"
-            />
+      <!-- Category Details Dialog -->
+      <q-dialog v-model="showCategoryDialog">
+        <q-card class="dialog-card">
+          <q-card-section class="dialog-header">
+            <div class="dialog-title">{{ activeCategory?.name }}</div>
+            <q-space />
+            <q-btn icon="close" flat round dense v-close-popup />
           </q-card-section>
-        </q-card>
 
-        <!-- CSV Upload -->
-        <q-card class="compact-card" v-if="selectedBank">
-          <q-card-section class="card-section">
-            <div class="section-header">
-              <q-icon name="upload" size="20px" />
-              <h3>Import Statement</h3>
-              <q-btn
-                label="Sample CSV"
-                outline
-                color="primary"
-                size="sm"
-                @click="downloadSampleCSV(selectedBank)"
-                dense
-              />
-            </div>
-
-            <q-uploader
-              label="Upload CSV file"
-              accept=".csv,.txt"
-              @added="handleFileUpload"
-              :disable="importingCSV"
-              flat
-              bordered
-              dense
-              class="q-mb-sm"
-            >
-              <template v-slot:list="scope">
-                <q-list dense>
-                  <q-item v-for="file in scope.files" :key="file.name">
-                    <q-item-section>
-                      <q-item-label class="ellipsis">{{ file.name }}</q-item-label>
-                    </q-item-section>
-                    <q-item-section side>
-                      <q-spinner v-if="importingCSV" color="primary" size="1em" />
-                      <q-btn
-                        v-else
-                        icon="delete"
-                        size="sm"
-                        flat
-                        round
-                        dense
-                        @click="scope.removeFile(file)"
-                      />
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-              </template>
-            </q-uploader>
-
-            <div class="bank-info">
-              <div class="info-text">
-                <strong>{{ getBankName(selectedBank) }}:</strong>
-                {{ getBankInstructions(selectedBank) }}
-              </div>
-              <div class="format-text">Format: {{ getBankFormat(selectedBank) }}</div>
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <!-- Quick Transactions -->
-        <q-card class="compact-card">
-          <q-card-section class="card-section">
-            <div class="section-header">
-              <q-icon name="bolt" size="20px" />
-              <h3>Quick Entries</h3>
-            </div>
-            <div class="quick-buttons">
-              <q-btn
-                v-for="quickTx in quickTransactions"
-                :key="quickTx.label"
-                :label="quickTx.label"
-                :color="quickTx.color"
-                outline
-                size="sm"
-                @click="openQuickTransaction(quickTx)"
-                class="quick-btn"
-              />
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <!-- Manual Entry -->
-        <q-card class="compact-card">
-          <q-card-section class="card-section">
-            <div class="section-header">
-              <q-icon name="edit" size="20px" />
-              <h3>Manual Entry</h3>
-            </div>
-
-            <q-form @submit="addManualTransaction" class="compact-form">
-              <div class="form-row">
-                <q-input
-                  filled
-                  v-model="manualTransaction.date"
-                  label="Date"
-                  type="date"
-                  dense
-                  class="col"
-                  required
-                />
-                <q-input
-                  filled
-                  v-model.number="manualTransaction.amount"
-                  label="Amount (€)"
-                  type="number"
-                  step="0.01"
-                  dense
-                  class="col"
-                  required
-                />
-              </div>
-
-              <div class="form-row">
-                <q-select
-                  filled
-                  v-model="manualTransaction.transaction_type"
-                  :options="transactionTypes"
-                  label="Type"
-                  dense
-                  class="col"
-                  required
-                  emit-value
-                  map-options
-                />
-                <q-select
-                  filled
-                  v-model.number="manualTransaction.category_id"
-                  :options="categories"
-                  label="Category"
-                  option-label="name"
-                  option-value="id"
-                  dense
-                  class="col"
-                  required
-                  emit-value
-                  map-options
-                />
-              </div>
-
-              <q-input
-                filled
-                v-model="manualTransaction.description"
-                label="Description"
-                dense
-                required
-                class="q-mb-sm"
-              />
-
-              <q-select
-                filled
-                v-model="manualTransaction.payment_method"
-                :options="paymentMethods"
-                label="Payment Method"
-                dense
-                emit-value
-                map-options
-              />
-
-              <div class="form-actions">
-                <q-btn
-                  label="Save Transaction"
-                  type="submit"
-                  color="primary"
-                  icon="save"
-                  :loading="savingTransaction"
-                  class="save-btn"
-                  dense
-                />
-              </div>
-            </q-form>
-          </q-card-section>
-        </q-card>
-      </div>
-
-      <!-- Right Column - Data & Filters -->
-      <div class="data-section">
-        <!-- Filters -->
-        <q-card class="compact-card">
-          <q-card-section class="card-section">
-            <div class="section-header">
-              <q-icon name="filter_alt" size="20px" />
-              <h3>Filters & Search</h3>
-              <q-btn
-                label="Reset"
-                color="negative"
-                flat
-                size="sm"
-                @click="resetFilters"
-                dense
-              />
-            </div>
-
-            <div class="filter-grid">
-              <q-input
-                v-model="searchText"
-                label="Search"
-                clearable
-                outlined
-                dense
-                class="full-width"
-              >
-                <template v-slot:append>
-                  <q-icon name="search" />
-                </template>
-              </q-input>
-
-              <q-select
-                v-model="transactionType"
-                :options="typeOptions"
-                label="Type"
-                outlined
-                dense
-                clearable
-                emit-value
-                map-options
-              />
-
-              <q-select
-                v-model="sortOption"
-                :options="sortOptions"
-                label="Sort by"
-                outlined
-                dense
-                emit-value
-                map-options
-              />
-
-              <q-select
-                v-model="selectedCategories"
-                :options="categoryOptions"
-                label="Categories"
-                multiple
-                outlined
-                dense
-                use-chips
-                emit-value
-                map-options
-              />
-            </div>
-
-            <div class="amount-range">
-              <div class="range-label">
-                Amount Range: {{ amountRange.min }}€ - {{ amountRange.max }}€
-              </div>
-              <q-range
-                v-model="amountRange"
-                :min="0"
-                :max="5000"
-                :step="10"
-                color="primary"
-                dense
-              />
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <!-- Export Buttons -->
-        <q-card class="compact-card">
-          <q-card-section class="card-section">
-            <div class="section-header">
-              <q-icon name="download" size="20px" />
-              <h3>Export Data</h3>
-            </div>
-            <div class="export-buttons">
-              <q-btn
-                color="primary"
-                icon="picture_as_pdf"
-                label="Transactions PDF"
-                @click="exportPDF"
-                outline
-                dense
-                class="export-btn"
-              />
-              <q-btn
-                color="positive"
-                icon="text_snippet"
-                label="Transactions CSV"
-                @click="exportCSV"
-                outline
-                dense
-                class="export-btn"
-              />
-              <q-btn
-                color="secondary"
-                icon="pie_chart"
-                label="Categories PDF"
-                @click="exportCategoryPDF"
-                outline
-                dense
-                class="export-btn"
-              />
-              <q-btn
-                color="teal"
-                icon="analytics"
-                label="Categories CSV"
-                @click="exportCategoryCSV"
-                outline
-                dense
-                class="export-btn"
-              />
-            </div>
-          </q-card-section>
-        </q-card>
-
-        <!-- Category Summary -->
-        <q-card class="compact-card">
-          <q-card-section class="card-section">
-            <div class="section-header">
-              <q-icon name="analytics" size="20px" />
-              <h3>Category Summary</h3>
-            </div>
-
-            <!-- Summary Stats -->
-            <div class="summary-stats">
-              <div class="stat-item income">
-                <div class="stat-icon">↑</div>
-                <div class="stat-content">
-                  <div class="stat-value">
-                    +{{ formatCurrency(categorySummary.totalIncome) }}
-                  </div>
-                  <div class="stat-label">Income</div>
+          <q-card-section>
+            <div class="dialog-stats">
+              <div class="dialog-stat">
+                <div class="stat-label">Income</div>
+                <div class="stat-value text-positive">
+                  +{{ formatCurrency(activeCategory?.income || 0) }}
                 </div>
               </div>
-              <div class="stat-item expense">
-                <div class="stat-icon">↓</div>
-                <div class="stat-content">
-                  <div class="stat-value">
-                    -{{ formatCurrency(categorySummary.totalExpenses) }}
-                  </div>
-                  <div class="stat-label">Expenses</div>
+              <div class="dialog-stat">
+                <div class="stat-label">Expenses</div>
+                <div class="stat-value text-negative">
+                  -{{ formatCurrency(activeCategory?.expenses || 0) }}
                 </div>
               </div>
-              <div
-                class="stat-item balance"
-                :class="categorySummary.balance >= 0 ? 'positive' : 'negative'"
-              >
-                <div class="stat-icon">⚖️</div>
-                <div class="stat-content">
-                  <div class="stat-value">
-                    {{ categorySummary.balance >= 0 ? "+" : ""
-                    }}{{ formatCurrency(categorySummary.balance) }}
-                  </div>
-                  <div class="stat-label">Balance</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Categories Grid -->
-            <div class="categories-grid">
-              <div
-                v-for="cat in categorySummaries"
-                :key="cat.id"
-                class="category-card"
-                @click="openCategoryDialog(cat)"
-              >
-                <div class="category-header">
-                  <div class="category-name">{{ cat.name }}</div>
-                  <div class="transaction-count">{{ cat.transactionCount }}</div>
-                </div>
-                <div class="category-amounts">
-                  <div class="amount income">+{{ formatCurrency(cat.income) }}</div>
-                  <div class="amount expense">-{{ formatCurrency(cat.expenses) }}</div>
-                  <div
-                    class="amount net"
-                    :class="cat.netAmount >= 0 ? 'positive' : 'negative'"
-                  >
-                    {{ cat.netAmount >= 0 ? "+" : "" }}{{ formatCurrency(cat.netAmount) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="categorySummaries.length === 0" class="empty-state">
-              <q-icon name="pie_chart" size="32px" color="grey-4" />
-              <div>No category data available</div>
-              <div class="text-caption">Adjust filters or import transactions</div>
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-    </div>
-
-    <!-- Category Details Dialog -->
-    <q-dialog v-model="showCategoryDialog">
-      <q-card style="min-width: 600px; max-width: 80vw">
-        <q-card-section class="dialog-header">
-          <div class="dialog-title">{{ activeCategory?.name }}</div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup />
-        </q-card-section>
-
-        <q-card-section>
-          <div class="dialog-stats">
-            <div class="dialog-stat">
-              <div class="stat-label">Income</div>
-              <div class="stat-value positive">
-                +{{ formatCurrency(activeCategory?.income || 0) }}
-              </div>
-            </div>
-            <div class="dialog-stat">
-              <div class="stat-label">Expenses</div>
-              <div class="stat-value negative">
-                -{{ formatCurrency(activeCategory?.expenses || 0) }}
-              </div>
-            </div>
-            <div class="dialog-stat">
-              <div class="stat-label">Net</div>
-              <div
-                class="stat-value"
-                :class="(activeCategory?.netAmount || 0) >= 0 ? 'positive' : 'negative'"
-              >
-                {{ (activeCategory?.netAmount || 0) >= 0 ? "+" : ""
-                }}{{ formatCurrency(activeCategory?.netAmount || 0) }}
-              </div>
-            </div>
-          </div>
-
-          <q-list separator dense>
-            <q-item
-              v-for="tx in activeCategory?.transactions || []"
-              :key="tx.id"
-              class="transaction-item"
-            >
-              <q-item-section avatar>
-                <q-icon
-                  :name="
-                    tx.transaction_type === 'Einnahme' ? 'arrow_upward' : 'arrow_downward'
-                  "
-                  :color="tx.transaction_type === 'Einnahme' ? 'positive' : 'negative'"
-                  size="sm"
-                />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="transaction-description">{{
-                  tx.description || "No description"
-                }}</q-item-label>
-                <q-item-label caption>
-                  {{ formatDate(tx.date) }}
-                  <span v-if="tx.payment_method">• {{ tx.payment_method }}</span>
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-item-label
-                  :class="
-                    tx.transaction_type === 'Einnahme' ? 'text-positive' : 'text-negative'
-                  "
-                  class="text-weight-bold"
+              <div class="dialog-stat">
+                <div class="stat-label">Net</div>
+                <div
+                  class="stat-value"
+                  :class="(activeCategory?.netAmount || 0) >= 0 ? 'text-positive' : 'text-negative'"
                 >
-                  {{ tx.transaction_type === "Einnahme" ? "+" : "-"
-                  }}{{ formatCurrency(tx.amount) }}
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-card-section>
-      </q-card>
-    </q-dialog>
-  </div>
+                  {{ (activeCategory?.netAmount || 0) >= 0 ? "+" : ""
+                  }}{{ formatCurrency(activeCategory?.netAmount || 0) }}
+                </div>
+              </div>
+            </div>
+
+            <q-list separator dense>
+              <q-item
+                v-for="tx in activeCategory?.transactions || []"
+                :key="tx.id"
+                class="transaction-item"
+              >
+                <q-item-section avatar>
+                  <q-icon
+                    :name="tx.transaction_type === 'Einnahme' ? 'arrow_upward' : 'arrow_downward'"
+                    :color="tx.transaction_type === 'Einnahme' ? 'positive' : 'negative'"
+                    size="sm"
+                  />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="transaction-description">{{
+                    tx.description || "No description"
+                  }}</q-item-label>
+                  <q-item-label caption>
+                    {{ formatDate(tx.date) }}
+                    <span v-if="tx.payment_method">• {{ tx.payment_method }}</span>
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <q-item-label
+                    :class="tx.transaction_type === 'Einnahme' ? 'text-positive' : 'text-negative'"
+                    class="text-weight-bold"
+                  >
+                    {{ tx.transaction_type === "Einnahme" ? "+" : "-"
+                    }}{{ formatCurrency(tx.amount) }}
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-card-section>
+        </q-card>
+      </q-dialog>
+    </div>
+  </q-page>
 </template>
 
 <script>
@@ -1501,6 +1433,11 @@ export default {
       window.URL.revokeObjectURL(url);
     };
 
+    // Dark Mode Toggle
+    const toggleDarkMode = () => {
+      $q.dark.set(!$q.dark.isActive);
+    };
+
     onMounted(async () => {
       await fetchCategories();
       await fetchRecentTransactions();
@@ -1556,172 +1493,176 @@ export default {
       exportPDF,
       exportCategoryCSV,
       exportCategoryPDF,
+      toggleDarkMode,
     };
   },
 };
 </script>
 
-<style scoped lang="scss">
-.modern-bank-import {
-  padding: 16px;
-  max-width: 1400px;
+<style lang="scss" scoped>
+.bank-import-view {
+  max-width: 1200px;
   margin: 0 auto;
+  position: relative;
 }
 
+/* Dark Mode Toggle */
+.dark-mode-toggle {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 1000;
+}
+
+.toggle-btn {
+  width: 60px;
+  height: 60px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  border: 2px solid #dee2e6 !important;
+}
+
+.toggle-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  border-color: #adb5bd !important;
+}
+
+/* Compact Header */
 .compact-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
   padding: 16px 0;
+  border-bottom: 2px solid #e9ecef;
+  margin-bottom: 24px;
 
-  .header-main {
+  .header-content {
     display: flex;
     align-items: center;
-    gap: 16px;
-
-    .header-title {
-      h1 {
-        margin: 0;
-        font-size: 1.8rem;
-        background: linear-gradient(45deg, #667eea, #764ba2);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-      }
-
-      p {
-        margin: 4px 0 0 0;
-        color: #6b7280;
-        font-size: 0.9rem;
-      }
-    }
   }
 }
 
-.compact-grid {
+/* Main Grid */
+.main-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 24px;
 
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 20px;
   }
 }
 
+/* Left and Right Columns */
+.left-column,
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Compact Cards */
 .compact-card {
   border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 2px solid #dee2e6 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: white;
+  margin: 0;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    border-color: #adb5bd !important;
+  }
+}
+
+.card-section {
+  padding: 20px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
 
-  .card-section {
-    padding: 20px;
+  h3 {
+    margin: 0;
+    flex: 1;
+  }
+}
 
-    .section-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
+/* Upload Section */
+.upload-section {
+  .bank-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
 
-      h3 {
-        margin: 0;
-        font-size: 1.1rem;
-        color: #2d3748;
-        flex: 1;
-      }
+  .bank-info {
+    flex: 1;
+    
+    .info-text {
+      font-size: 0.85rem;
+      color: #495057;
+      margin-bottom: 2px;
+    }
 
-      .q-icon {
-        color: #667eea;
-      }
+    .format-text {
+      font-size: 0.8rem;
+      color: #6c757d;
+      font-weight: 500;
     }
   }
 }
 
-.bank-info {
-  background: #f8fafc;
-  padding: 12px;
-  border-radius: 8px;
-  border-left: 3px solid #667eea;
-
-  .info-text {
-    font-size: 0.85rem;
-    color: #4b5563;
-    margin-bottom: 4px;
-  }
-
-  .format-text {
-    font-size: 0.8rem;
-    color: #6b7280;
-    font-weight: 500;
-  }
-}
-
-.quick-buttons {
+/* Quick Grid */
+.quick-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-
-  .quick-btn {
-    font-size: 0.8rem;
-  }
 }
 
+.quick-btn {
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
+/* Form Styles */
 .compact-form {
-  .form-row {
+  .form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+
+    .full-width {
+      grid-column: 1 / -1;
+    }
   }
 
   .form-actions {
     margin-top: 16px;
-    text-align: center;
 
     .save-btn {
       width: 100%;
       border-radius: 8px;
       font-weight: 600;
+      padding: 10px;
     }
   }
 }
 
-.filter-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-
-  .full-width {
-    grid-column: 1 / -1;
-  }
-}
-
-.amount-range {
-  .range-label {
-    font-size: 0.85rem;
-    color: #6b7280;
-    margin-bottom: 8px;
-    text-align: center;
-  }
-}
-
-.export-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-
-  .export-btn {
-    font-size: 0.8rem;
-  }
-}
-
+/* Summary Stats */
 .summary-stats {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
-  margin-bottom: 20px;
 
   .stat-item {
     display: flex;
@@ -1730,50 +1671,60 @@ export default {
     padding: 12px;
     background: white;
     border-radius: 8px;
-    border: 1px solid #e5e7eb;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
 
     &.income {
-      border-left: 3px solid #10b981;
+      border-left: 4px solid #2e7d32 !important;
     }
 
     &.expense {
-      border-left: 3px solid #ef4444;
+      border-left: 4px solid #c62828 !important;
     }
 
-    &.balance.positive {
-      border-left: 3px solid #3b82f6;
-    }
-
-    &.balance.negative {
-      border-left: 3px solid #f59e0b;
+    &.balance {
+      border-left: 4px solid #1976d2 !important;
     }
 
     .stat-icon {
       font-size: 1.2rem;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f8f9fa;
+      border-radius: 6px;
     }
 
     .stat-content {
       .stat-value {
-        font-size: 1rem;
+        font-size: 0.9rem;
         font-weight: 700;
         margin-bottom: 2px;
       }
 
       .stat-label {
         font-size: 0.75rem;
-        color: #6b7280;
+        color: #6c757d;
       }
     }
   }
 }
 
+/* Categories Grid */
 .categories-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 8px;
 
   .category-card {
-    padding: 16px;
+    padding: 12px;
     background: white;
     border-radius: 8px;
     border: 1px solid #e5e7eb;
@@ -1781,52 +1732,62 @@ export default {
     transition: all 0.2s ease;
 
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .category-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
 
       .category-name {
         font-weight: 600;
         color: #2d3748;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
       }
 
       .transaction-count {
         background: #667eea;
         color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
+        padding: 2px 6px;
+        border-radius: 10px;
+        font-size: 0.7rem;
         font-weight: 600;
       }
     }
 
     .category-amounts {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 4px;
+
       .amount {
-        font-size: 0.8rem;
-        margin-bottom: 2px;
+        font-size: 0.75rem;
+        text-align: center;
+        padding: 2px 4px;
+        border-radius: 4px;
 
         &.income {
           color: #10b981;
+          background: rgba(16, 185, 129, 0.1);
         }
 
         &.expense {
           color: #ef4444;
+          background: rgba(239, 68, 68, 0.1);
         }
 
         &.net.positive {
           color: #3b82f6;
+          background: rgba(59, 130, 246, 0.1);
           font-weight: 700;
         }
 
         &.net.negative {
           color: #f59e0b;
+          background: rgba(245, 158, 11, 0.1);
           font-weight: 700;
         }
       }
@@ -1836,16 +1797,37 @@ export default {
 
 .empty-state {
   text-align: center;
-  padding: 40px 20px;
+  padding: 30px 20px;
   color: #9ca3af;
 
   .q-icon {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     opacity: 0.5;
   }
 }
 
+/* Export Grid */
+.export-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.export-btn {
+  font-size: 0.8rem;
+  border-radius: 6px;
+  padding: 8px;
+}
+
 /* Dialog Styles */
+.dialog-card {
+  border-radius: 16px;
+  width: 600px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 2px solid #dee2e6 !important;
+}
+
 .dialog-header {
   display: flex;
   align-items: center;
@@ -1879,14 +1861,6 @@ export default {
     .stat-value {
       font-size: 1.1rem;
       font-weight: 700;
-
-      &.positive {
-        color: #10b981;
-      }
-
-      &.negative {
-        color: #ef4444;
-      }
     }
   }
 }
@@ -1900,60 +1874,162 @@ export default {
   }
 }
 
-/* Dark Mode */
-body.body--dark {
-  .compact-card {
-    background: #1f2937;
-
-    .card-section .section-header h3 {
-      color: #f9fafb;
-    }
-  }
-
-  .bank-info {
-    background: #374151;
-    color: #d1d5db;
-  }
-
-  .summary-stats .stat-item,
-  .categories-grid .category-card {
-    background: #374151;
-    border-color: #4b5563;
-
-    .stat-content .stat-label,
-    .category-header .category-name {
-      color: #d1d5db;
-    }
-  }
-
-  .dialog-stats .dialog-stat {
-    background: #374151;
-  }
+/* DARK MODE STYLES - Consistent with GoalView */
+body.body--dark .bg-page {
+  background: #121212 !important;
 }
 
+body.body--dark .compact-header {
+  border-bottom-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+body.body--dark .compact-header .text-dark {
+  color: #ffffff !important;
+}
+
+body.body--dark .compact-header .text-grey-7 {
+  color: #b0b0b0 !important;
+}
+
+body.body--dark .compact-card {
+  background: #1e1e1e !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.body--dark .compact-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+body.body--dark .upload-section .bank-info .info-text {
+  color: #e0e0e0 !important;
+}
+
+body.body--dark .upload-section .bank-info .format-text {
+  color: #b0b0b0 !important;
+}
+
+body.body--dark .summary-stats .stat-item {
+  background: #1e1e1e !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+body.body--dark .summary-stats .stat-item .stat-icon {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+body.body--dark .summary-stats .stat-item .stat-label {
+  color: #b0b0b0 !important;
+}
+
+body.body--dark .categories-grid .category-card {
+  background: #1e1e1e !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+body.body--dark .categories-grid .category-card .category-header .category-name {
+  color: #ffffff !important;
+}
+
+body.body--dark .categories-grid .category-card .category-amounts .amount.income {
+  background: rgba(16, 185, 129, 0.2) !important;
+}
+
+body.body--dark .categories-grid .category-card .category-amounts .amount.expense {
+  background: rgba(239, 68, 68, 0.2) !important;
+}
+
+body.body--dark .categories-grid .category-card .category-amounts .amount.net.positive {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+body.body--dark .categories-grid .category-card .category-amounts .amount.net.negative {
+  background: rgba(245, 158, 11, 0.2) !important;
+}
+
+body.body--dark .dialog-card {
+  background: #1e1e1e !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.body--dark .dialog-card .text-dark {
+  color: #ffffff !important;
+}
+
+body.body--dark .dialog-stats .dialog-stat {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+body.body--dark .dialog-stats .dialog-stat .stat-label {
+  color: #b0b0b0 !important;
+}
+
+/* Buttons in Dark Mode - No Borders like GoalView */
+body.body--dark .quick-btn,
+body.body--dark .export-btn,
+body.body--dark .save-btn {
+  border: none !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+body.body--dark .quick-btn:hover,
+body.body--dark .export-btn:hover,
+body.body--dark .save-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
-  .modern-bank-import {
-    padding: 12px;
+  .bank-import-view {
+    padding: 8px;
   }
 
-  .compact-grid {
-    gap: 12px;
+  .main-grid {
+    gap: 16px;
   }
 
-  .compact-card .card-section {
+  .left-column,
+  .right-column {
+    gap: 16px;
+  }
+
+  .card-section {
     padding: 16px;
   }
 
   .summary-stats,
-  .categories-grid,
-  .filter-grid,
-  .quick-buttons,
-  .export-buttons {
+  .quick-grid,
+  .export-grid,
+  .compact-form .form-grid {
     grid-template-columns: 1fr;
   }
 
-  .compact-form .form-row {
-    grid-template-columns: 1fr;
+  .dark-mode-toggle {
+    bottom: 16px;
+    left: 16px;
   }
+
+  .toggle-btn {
+    width: 56px;
+    height: 56px;
+  }
+
+  .upload-section .bank-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .categories-grid .category-card .category-amounts {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* Smooth transitions */
+.q-btn, .compact-card, .stat-item, .toggle-btn, .category-card {
+  transition: all 0.3s ease;
 }
 </style>
