@@ -712,17 +712,18 @@ export default defineComponent({
               label="Date Range"
               mask="date"
               class="date-input"
-              dark
+              :dark="$q.dark.isActive"
             >
               <template v-slot:append>
                 <q-icon name="event" class="cursor-pointer">
-                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                    <q-date
-                      v-model="dateRange"
-                      range
-                      mask="YYYY-MM-DD"
-                      @update:model-value="updateChart"
-                    />
+                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                  <q-date
+                    v-model="dateRange"
+                    range
+                    mask="YYYY-MM-DD"
+                    @update:model-value="updateChart"
+                    :dark="$q.dark.isActive"
+                  />
                   </q-popup-proxy>
                 </q-icon>
               </template>
@@ -737,20 +738,20 @@ export default defineComponent({
             :loading="loadingPreferences"
             @update:model-value="updateChart"
             filled
-            dark
+            :dark="$q.dark.isActive"
           />
 
           <q-btn
             label="Reset to Current Month"
             color="primary"
-            class="col-auto"
+            class="col-auto primary-action"
             @click="resetToCurrentMonth"
             outline
           />
 
           <q-space />
 
-          <q-btn-group class="col-auto">
+          <q-btn-group class="col-auto primary-action">
             <q-btn
               label="Crypto"
               color="secondary"
@@ -894,10 +895,12 @@ export default defineComponent({
       .q-btn {
         background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 1px solid rgba(148, 163, 184, 0.9); 
+        border-radius: 9999px;
         
         &:hover {
           background: rgba(255, 255, 255, 0.9);
+          border-color: rgba(129, 140, 248, 1);     /* optional: andere Farbe beim Hover */
           transform: translateY(-2px);
         }
       }
@@ -1213,6 +1216,16 @@ body.body--dark .modern-dashboard .progress-value {
 
 body.body--dark .modern-dashboard .progress-label {
   color: #b0b0b0 !important;
+}
+
+.modern-dashboard .controls-card .primary-action {
+  border-radius: 9999px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  overflow: hidden;
+}
+
+body.body--dark .modern-dashboard .controls-card .primary-action {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 body.body--dark :deep(.q-field--filled) .q-field__control {
