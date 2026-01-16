@@ -505,7 +505,7 @@ export default defineComponent({
             {
               left: "3%",
               right: "3%",
-              bottom: "25%",
+              bottom: "40%",
               top: "15%",
               containLabel: true,
             },
@@ -514,6 +514,7 @@ export default defineComponent({
               right: "3%",
               height: "20%",
               bottom: "5%",
+              top: "75%",
               containLabel: true,
             },
           ]

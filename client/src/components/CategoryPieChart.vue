@@ -5,6 +5,7 @@ import { PieChart } from "echarts/charts";
 import { TooltipComponent, LegendComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import VChart from "vue-echarts";
+import { useQuasar } from "quasar";
 
 use([CanvasRenderer, PieChart, TooltipComponent, LegendComponent]);
 
@@ -35,6 +36,7 @@ export default defineComponent({
     },
   },
   setup(props) {
+    const $q = useQuasar();
     const loading = ref(false);
 
     const getCategoryName = (categoryId) => {
@@ -82,23 +84,38 @@ export default defineComponent({
     const pieChartOptions = computed(() => {
       if (!hasData.value) return {};
 
+      const isDark = $q.dark.isActive; // NEU: Dark Mode check
+      const textColor = isDark ? "#ffffff" : "#2d3748"; // NEU: Textfarbe basierend auf Dark Mode
+      const tooltipBgColor = isDark
+        ? "rgba(30, 30, 30, 0.95)"
+        : "rgba(255, 255, 255, 0.95)"; // NEU: Tooltip Hintergrund
+      const tooltipBorderColor = isDark
+        ? "rgba(255, 255, 255, 0.2)"
+        : "rgba(0, 0, 0, 0.1)"; // NEU: Tooltip Border
+      const tooltipTextColor = isDark ? "#ffffff" : "#2d3748"; // NEU: Tooltip Textfarbe
+      const legendTextColor = isDark ? "#d1d5db" : "#6b7280"; // NEU: Legend Textfarbe
+      const labelColor = isDark ? "#ffffff" : "#2d3748"; // NEU: Label Textfarbe
+
       return {
         backgroundColor: "transparent",
+        textStyle: {
+          color: textColor, // NEU: Globale Textfarbe
+        },
         tooltip: {
           trigger: "item",
           formatter: ({ data }) => {
             return `
-              <div class="custom-tooltip">
-                <strong>${data.name}</strong><br/>
-                ${data.value} ${props.currency}<br/>
-                <small>${data.percentage}% of total</small>
-              </div>
-            `;
+          <div class="custom-tooltip" style="color: ${tooltipTextColor}">
+            <strong>${data.name}</strong><br/>
+            ${data.value} ${props.currency}<br/>
+            <small>${data.percentage}% of total</small>
+          </div>
+        `;
           },
-          backgroundColor: "rgba(255, 255, 255, 0.95)",
-          borderColor: "rgba(0, 0, 0, 0.1)",
+          backgroundColor: tooltipBgColor, // NEU: Dunkler Hintergrund für Dark Mode
+          borderColor: tooltipBorderColor, // NEU: Border Farbe für Dark Mode
           textStyle: {
-            color: "#2d3748",
+            color: tooltipTextColor, // NEU: Weißer Text für Dark Mode
           },
           extraCssText:
             "box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 8px; padding: 12px;",
@@ -108,7 +125,7 @@ export default defineComponent({
           right: 20,
           top: "center",
           textStyle: {
-            color: "#6b7280",
+            color: legendTextColor, // NEU: Hellerer Text für Dark Mode
             fontSize: 12,
           },
           itemGap: 15,
@@ -126,9 +143,9 @@ export default defineComponent({
             avoidLabelOverlap: true,
             itemStyle: {
               borderRadius: 8,
-              borderColor: "#fff",
+              borderColor: isDark ? "#374151" : "#fff", // NEU: Dunklerer Border für Dark Mode
               borderWidth: 3,
-              shadowColor: "rgba(0, 0, 0, 0.1)",
+              shadowColor: isDark ? "rgba(0, 0, 0, 0.3)" : "rgba(0, 0, 0, 0.1)", // NEU: Angepasster Shadow
               shadowBlur: 8,
               shadowOffsetX: 2,
               shadowOffsetY: 2,
@@ -139,7 +156,7 @@ export default defineComponent({
               formatter: "{b}\n{c} " + props.currency + "\n({d}%)",
               fontSize: 14,
               fontWeight: "bold",
-              color: "#2d3748",
+              color: labelColor, // NEU: Weißer Text für Dark Mode
             },
             emphasis: {
               label: {
@@ -147,9 +164,10 @@ export default defineComponent({
                 fontSize: 16,
                 fontWeight: "bold",
                 formatter: "{b}\n{c} " + props.currency,
+                color: labelColor, // NEU: Weißer Text für Dark Mode
               },
               itemStyle: {
-                shadowColor: "rgba(0, 0, 0, 0.3)",
+                shadowColor: isDark ? "rgba(0, 0, 0, 0.5)" : "rgba(0, 0, 0, 0.3)", // NEU: Angepasster Shadow
                 shadowBlur: 12,
                 shadowOffsetX: 4,
                 shadowOffsetY: 4,
@@ -164,12 +182,12 @@ export default defineComponent({
               percentage: item.percentage,
               itemStyle: {
                 color: getCategoryColor(item.name),
-                borderColor: "#ffffff",
+                borderColor: isDark ? "#374151" : "#ffffff", // NEU: Dunklerer Border für Dark Mode
               },
               emphasis: {
                 itemStyle: {
                   borderWidth: 4,
-                  shadowColor: "rgba(0, 0, 0, 0.3)",
+                  shadowColor: isDark ? "rgba(0, 0, 0, 0.5)" : "rgba(0, 0, 0, 0.3)", // NEU: Angepasster Shadow
                 },
               },
             })),

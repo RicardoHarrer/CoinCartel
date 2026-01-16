@@ -47,6 +47,14 @@ export default defineComponent({
       to: null,
     });
 
+    // Computed property für die Anzeige im Input-Feld
+    const dateRangeString = computed(() => {
+      if (dateRange.value.from && dateRange.value.to) {
+        return `${dateRange.value.from} - ${dateRange.value.to}`;
+      }
+      return "";
+    });
+
     function initDateRange() {
       const today = new Date();
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -414,18 +422,18 @@ export default defineComponent({
       });
 
       const isDark = $q.dark.isActive;
-      const textColor = isDark ? '#ffffff' : '#374151';
-      const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-      const backgroundColor = isDark ? '#121212' : '#ffffff';
+      const textColor = isDark ? "#ffffff" : "#374151";
+      const gridColor = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)";
+      const backgroundColor = isDark ? "#121212" : "#ffffff";
 
       return {
         backgroundColor: backgroundColor,
         tooltip: {
           trigger: "axis",
-          backgroundColor: isDark ? '#1e1e1e' : '#ffffff',
-          borderColor: isDark ? '#333333' : '#e2e8f0',
+          backgroundColor: isDark ? "#1e1e1e" : "#ffffff",
+          borderColor: isDark ? "#333333" : "#e2e8f0",
           textStyle: {
-            color: textColor
+            color: textColor,
           },
           formatter: (params) => {
             const date = new Date(params[0].value[0]);
@@ -435,7 +443,7 @@ export default defineComponent({
                 2
               )} ${currency}<br/>`;
             });
-            result += '</div>';
+            result += "</div>";
             return result;
           },
         },
@@ -452,36 +460,36 @@ export default defineComponent({
           },
           axisLine: {
             lineStyle: {
-              color: gridColor
-            }
+              color: gridColor,
+            },
           },
           splitLine: {
             lineStyle: {
               color: gridColor,
-              type: 'dashed'
-            }
-          }
+              type: "dashed",
+            },
+          },
         },
         yAxis: {
           type: "value",
           name: `Amount (${currency})`,
           nameTextStyle: {
-            color: textColor
+            color: textColor,
           },
           axisLabel: {
-            color: textColor
+            color: textColor,
           },
           axisLine: {
             lineStyle: {
-              color: gridColor
-            }
+              color: gridColor,
+            },
           },
           splitLine: {
             lineStyle: {
               color: gridColor,
-              type: 'dashed'
-            }
-          }
+              type: "dashed",
+            },
+          },
         },
         series: [
           {
@@ -515,29 +523,31 @@ export default defineComponent({
             smooth: false,
           },
         ],
-        dataZoom: [{
-          type: "slider",
-          start: 0,
-          end: 100,
-          backgroundColor: backgroundColor,
-          dataBackground: {
-            lineStyle: {
-              color: gridColor
+        dataZoom: [
+          {
+            type: "slider",
+            start: 0,
+            end: 100,
+            backgroundColor: backgroundColor,
+            dataBackground: {
+              lineStyle: {
+                color: gridColor,
+              },
+              areaStyle: {
+                color: gridColor,
+              },
             },
-            areaStyle: {
-              color: gridColor
-            }
+            borderColor: gridColor,
+            textStyle: {
+              color: textColor,
+            },
           },
-          borderColor: gridColor,
-          textStyle: {
-            color: textColor
-          }
-        }],
+        ],
         legend: {
           textStyle: {
-            color: textColor
-          }
-        }
+            color: textColor,
+          },
+        },
       };
     });
 
@@ -594,6 +604,7 @@ export default defineComponent({
 
     return {
       dateRange,
+      dateRangeString, // Neue computed property für die Anzeige
       chartOptions,
       updateChart,
       resetToCurrentMonth,
@@ -623,10 +634,10 @@ export default defineComponent({
 <template>
   <div v-if="isPreferencesLoaded" class="modern-dashboard">
     <div class="dark-mode-toggle">
-      <q-btn 
-        round 
-        :color="$q.dark.isActive ? 'grey-9' : 'yellow'" 
-        :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'" 
+      <q-btn
+        round
+        :color="$q.dark.isActive ? 'grey-9' : 'yellow'"
+        :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'"
         class="toggle-btn"
         @click="toggleDarkMode"
         size="lg"
@@ -708,22 +719,22 @@ export default defineComponent({
           <div class="col-auto">
             <q-input
               filled
-              v-model="dateRange"
+              v-model="dateRangeString"
               label="Date Range"
-              mask="date"
+              readonly
               class="date-input"
               :dark="$q.dark.isActive"
             >
               <template v-slot:append>
                 <q-icon name="event" class="cursor-pointer">
-                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                  <q-date
-                    v-model="dateRange"
-                    range
-                    mask="YYYY-MM-DD"
-                    @update:model-value="updateChart"
-                    :dark="$q.dark.isActive"
-                  />
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-date
+                      v-model="dateRange"
+                      range
+                      mask="YYYY-MM-DD"
+                      @update:model-value="updateChart"
+                      :dark="$q.dark.isActive"
+                    />
                   </q-popup-proxy>
                 </q-icon>
               </template>
@@ -734,11 +745,12 @@ export default defineComponent({
             v-model="userPreferences.preferred_currency"
             :options="Object.keys(exchangeRates)"
             label="Currency"
-            class="col-auto"
+            class="col-auto currency-select"
             :loading="loadingPreferences"
             @update:model-value="updateChart"
             filled
             :dark="$q.dark.isActive"
+            style="min-width: 120px"
           />
 
           <q-btn
@@ -832,22 +844,22 @@ export default defineComponent({
   bottom: 24px;
   right: 24px;
   z-index: 1000;
-  
+
   .toggle-btn {
     width: 60px;
     height: 60px;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     transition: all 0.3s ease;
-    
+
     &:hover {
       transform: scale(1.1);
       box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
     }
-    
+
     &:active {
       transform: scale(0.95);
     }
-    
+
     :deep(.q-icon) {
       font-size: 24px;
       width: 24px;
@@ -858,7 +870,11 @@ export default defineComponent({
 
 .modern-dashboard {
   .dashboard-header {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.8) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.8) 100%
+    );
     backdrop-filter: blur(20px);
     border-radius: 20px;
     padding: 30px;
@@ -891,16 +907,16 @@ export default defineComponent({
     .header-actions {
       display: flex;
       gap: 10px;
-      
+
       .q-btn {
         background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(148, 163, 184, 0.9); 
+        border: 1px solid rgba(148, 163, 184, 0.9);
         border-radius: 9999px;
-        
+
         &:hover {
           background: rgba(255, 255, 255, 0.9);
-          border-color: rgba(129, 140, 248, 1);     /* optional: andere Farbe beim Hover */
+          border-color: rgba(129, 140, 248, 1); /* optional: andere Farbe beim Hover */
           transform: translateY(-2px);
         }
       }
@@ -1119,7 +1135,11 @@ body.body--dark .modern-dashboard {
 }
 
 body.body--dark .modern-dashboard .dashboard-header {
-  background: linear-gradient(135deg, rgba(30, 30, 30, 0.9) 0%, rgba(18, 18, 18, 0.8) 100%) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 30, 0.9) 0%,
+    rgba(18, 18, 18, 0.8) 100%
+  ) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
 }
@@ -1199,7 +1219,12 @@ body.body--dark .modern-dashboard .chart-container .chart-header h3 {
   color: #ffffff !important;
 }
 
-body.body--dark .modern-dashboard .chart-container .chart-header .chart-legend .legend-item {
+body.body--dark
+  .modern-dashboard
+  .chart-container
+  .chart-header
+  .chart-legend
+  .legend-item {
   color: #ffffff !important;
 }
 
@@ -1276,7 +1301,7 @@ body.body--dark :deep(.q-btn--outline) {
       flex-direction: column;
       gap: 20px;
       text-align: center;
-      
+
       .header-content h1 {
         font-size: 2rem;
       }
@@ -1285,7 +1310,7 @@ body.body--dark :deep(.q-btn--outline) {
     .dark-mode-toggle {
       bottom: 16px;
       right: 16px;
-      
+
       .toggle-btn {
         width: 50px;
         height: 50px;
@@ -1294,7 +1319,10 @@ body.body--dark :deep(.q-btn--outline) {
   }
 }
 
-.q-btn, .stat-card, .controls-card, .chart-container {
+.q-btn,
+.stat-card,
+.controls-card,
+.chart-container {
   transition: all 0.3s ease;
 }
 
