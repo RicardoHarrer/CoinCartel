@@ -785,13 +785,9 @@ export default defineComponent({
         <p>Real-time cryptocurrency data with technical indicators & alerts</p>
       </div>
       <div class="header-actions">
-        <q-btn
-          icon="refresh"
-          round
-          flat
-          @click="fetchData"
-          :disable="!selectedCoin || loading"
-        />
+        <q-btn icon="refresh" round flat @click="fetchAllTransactions">
+          <q-tooltip>Aktualisieren</q-tooltip>
+        </q-btn>
         <q-btn
           icon="notifications"
           round
@@ -799,7 +795,9 @@ export default defineComponent({
           color="red"
           @click="showAlertDialog = true"
           :disable="!selectedCoin"
-        />
+        >
+          <q-tooltip>Alarm erstellen</q-tooltip>
+        </q-btn>
       </div>
     </div>
 
@@ -1079,6 +1077,19 @@ export default defineComponent({
     .header-actions {
       display: flex;
       gap: 10px;
+
+      .q-btn {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(148, 163, 184, 0.9);
+        border-radius: 9999px;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.9);
+          border-color: rgba(129, 140, 248, 1); /* optional: andere Farbe beim Hover */
+          transform: translateY(-2px);
+        }
+      }
     }
   }
 
