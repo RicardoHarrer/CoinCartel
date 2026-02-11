@@ -42,10 +42,13 @@ export default defineComponent({
     const loadingPreferences = ref(true);
     const error = ref(null);
     const exchangeRates = ref({});
-    const dateRange = ref({
-      from: null,
-      to: null,
-    });
+    const dateRange = ref({ from: null, to: null });
+
+    // ✅ Tips Feature state
+    const tipsLoading = ref(false);
+    const tipsDialog = ref(false);
+    const tips = ref([]);
+    const tipsError = ref(null);
 
     // Computed property für die Anzeige im Input-Feld
     const dateRangeString = computed(() => {
@@ -65,17 +68,10 @@ export default defineComponent({
       };
     }
 
-    const userid = decodeToken();
-    const userPreferences = ref({
-      preferred_currency: "EUR",
-      saldo: 1000.0,
-    });
-
     function decodeToken() {
       const token = auth.getToken();
       if (!token) return null;
       try {
-        console.log("Decoding token:", jwtDecode(token));
         return jwtDecode(token).id;
       } catch (error) {
         console.error("Invalid token:", error);
@@ -83,8 +79,54 @@ export default defineComponent({
       }
     }
 
+    const userid = decodeToken();
+
+    const userPreferences = ref({
+      preferred_currency: "EUR",
+      saldo: 1000.0,
+    });
+
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
+    };
+
+    const getCategoryName = (categoryId) => {
+      const category = categories.value.find((c) => c.id === categoryId);
+      return category ? category.name : "Uncategorized";
+    };
+
+    const computeCategorySummary = () => {
+      const categoryMap = new Map();
+
+      filteredTransactions.value.forEach((tx) => {
+        if (!tx.amount || isNaN(tx.amount)) return;
+
+        const categoryId = tx.category_id;
+        const categoryName = getCategoryName(categoryId);
+
+        if (!categoryMap.has(categoryId)) {
+          categoryMap.set(categoryId, {
+            id: categoryId,
+            name: categoryName,
+            income: 0,
+            expenses: 0,
+            transactionCount: 0,
+          });
+        }
+
+        const category = categoryMap.get(categoryId);
+
+        if (tx.transaction_type === "Einnahme") {
+          category.income += Number(tx.amount);
+        } else {
+          category.expenses += Number(tx.amount);
+        }
+        category.transactionCount++;
+      });
+
+      return Array.from(categoryMap.values()).sort(
+        (a, b) => Math.abs(b.income - b.expenses) - Math.abs(a.income - a.expenses)
+      );
     };
 
     const exportPDF = () => {
@@ -141,16 +183,10 @@ export default defineComponent({
         );
 
         doc.save(`financial_report_${dateRange.value.from}_to_${dateRange.value.to}.pdf`);
-        $q.notify({
-          type: "positive",
-          message: "PDF report successfully generated",
-        });
+        $q.notify({ type: "positive", message: "PDF report successfully generated" });
       } catch (err) {
         console.error("PDF Export Error:", err);
-        $q.notify({
-          type: "negative",
-          message: "Error generating PDF report",
-        });
+        $q.notify({ type: "negative", message: "Error generating PDF report" });
       }
     };
 
@@ -214,50 +250,8 @@ export default defineComponent({
         });
       } catch (err) {
         console.error("Category PDF Export Error:", err);
-        $q.notify({
-          type: "negative",
-          message: "Error generating category PDF report",
-        });
+        $q.notify({ type: "negative", message: "Error generating category PDF report" });
       }
-    };
-
-    const getCategoryName = (categoryId) => {
-      const category = categories.value.find((c) => c.id === categoryId);
-      return category ? category.name : "Uncategorized";
-    };
-
-    const computeCategorySummary = () => {
-      const categoryMap = new Map();
-
-      filteredTransactions.value.forEach((tx) => {
-        if (!tx.amount || isNaN(tx.amount)) return;
-
-        const categoryId = tx.category_id;
-        const categoryName = getCategoryName(categoryId);
-
-        if (!categoryMap.has(categoryId)) {
-          categoryMap.set(categoryId, {
-            id: categoryId,
-            name: categoryName,
-            income: 0,
-            expenses: 0,
-            transactionCount: 0,
-          });
-        }
-
-        const category = categoryMap.get(categoryId);
-
-        if (tx.transaction_type === "Einnahme") {
-          category.income += Number(tx.amount);
-        } else {
-          category.expenses += Number(tx.amount);
-        }
-        category.transactionCount++;
-      });
-
-      return Array.from(categoryMap.values()).sort(
-        (a, b) => Math.abs(b.income - b.expenses) - Math.abs(a.income - a.expenses)
-      );
     };
 
     const getExchangeRates = async () => {
@@ -272,9 +266,8 @@ export default defineComponent({
       } catch (error) {
         console.error("Failed to fetch exchange rates:", error);
         exchangeRates.value = { EUR: 1 };
-        if (currentCurrency.value !== "EUR") {
+        if (currentCurrency.value !== "EUR")
           exchangeRates.value[currentCurrency.value] = 1;
-        }
         $q.notify({
           type: "negative",
           message: "Failed to update exchange rates. Using default rates.",
@@ -314,10 +307,7 @@ export default defineComponent({
       } catch (err) {
         console.error("Error fetching transactions:", err);
         error.value = "Failed to fetch data.";
-        $q.notify({
-          type: "negative",
-          message: "Failed to load transaction data",
-        });
+        $q.notify({ type: "negative", message: "Failed to load transaction data" });
       } finally {
         loading.value = false;
       }
@@ -346,9 +336,9 @@ export default defineComponent({
       categories.value = Array.from(categoryMap.values());
     };
 
-    const currentCurrency = computed(() => {
-      return userPreferences.value?.preferred_currency || "EUR";
-    });
+    const currentCurrency = computed(
+      () => userPreferences.value?.preferred_currency || "EUR"
+    );
 
     const filteredData = computed(() => {
       const groupedData = {};
@@ -366,11 +356,10 @@ export default defineComponent({
         const rate =
           exchangeRates.value[currentCurrency.value] /
           (exchangeRates.value[t.currency] || 1);
-        if (t.transaction_type === "Einnahme") {
+
+        if (t.transaction_type === "Einnahme")
           groupedData[dateKey].income += t.amount * rate;
-        } else {
-          groupedData[dateKey].expense += t.amount * rate;
-        }
+        else groupedData[dateKey].expense += t.amount * rate;
       });
 
       return Object.values(groupedData).sort(
@@ -385,14 +374,45 @@ export default defineComponent({
       filteredData.value.reduce((sum, t) => sum + t.expense, 0)
     );
     const totalBalance = computed(() => totalIncome.value - totalExpense.value);
+
     const convertedBudget = computed(() => {
       if (!exchangeRates.value[currentCurrency.value]) return userPreferences.value.saldo;
       return userPreferences.value.saldo * exchangeRates.value[currentCurrency.value];
     });
+
     const budgetUsagePercentage = computed(() => {
       if (convertedBudget.value <= 0) return 0;
       return Math.min(totalExpense.value / convertedBudget.value, 1);
     });
+
+    // ✅ Tips holen (Backend rule-based)
+    const fetchTips = async () => {
+      tipsLoading.value = true;
+      tipsError.value = null;
+
+      try {
+        const params = {
+          startDate: dateRange.value.from,
+          endDate: dateRange.value.to,
+        };
+
+        const res = await axios.get(`http://localhost:3000/tips/users/${userid}`, {
+          params,
+        });
+        tips.value = res.data?.tips || [];
+        tipsDialog.value = true;
+
+        if (!tips.value.length) {
+          $q.notify({ type: "info", message: "Keine Tipps gefunden." });
+        }
+      } catch (e) {
+        console.error("fetchTips error:", e);
+        tipsError.value = "Tipps konnten nicht geladen werden.";
+        $q.notify({ type: "negative", message: tipsError.value });
+      } finally {
+        tipsLoading.value = false;
+      }
+    };
 
     const chartOptions = computed(() => {
       if (!userPreferences.value?.preferred_currency) return {};
@@ -427,14 +447,12 @@ export default defineComponent({
       const backgroundColor = isDark ? "#121212" : "#ffffff";
 
       return {
-        backgroundColor: backgroundColor,
+        backgroundColor,
         tooltip: {
           trigger: "axis",
           backgroundColor: isDark ? "#1e1e1e" : "#ffffff",
           borderColor: isDark ? "#333333" : "#e2e8f0",
-          textStyle: {
-            color: textColor,
-          },
+          textStyle: { color: textColor },
           formatter: (params) => {
             const date = new Date(params[0].value[0]);
             let result = `<div style="color: ${textColor}">${date.toLocaleDateString()}<br/>`;
@@ -458,38 +476,16 @@ export default defineComponent({
                 .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
             },
           },
-          axisLine: {
-            lineStyle: {
-              color: gridColor,
-            },
-          },
-          splitLine: {
-            lineStyle: {
-              color: gridColor,
-              type: "dashed",
-            },
-          },
+          axisLine: { lineStyle: { color: gridColor } },
+          splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
         },
         yAxis: {
           type: "value",
           name: `Amount (${currency})`,
-          nameTextStyle: {
-            color: textColor,
-          },
-          axisLabel: {
-            color: textColor,
-          },
-          axisLine: {
-            lineStyle: {
-              color: gridColor,
-            },
-          },
-          splitLine: {
-            lineStyle: {
-              color: gridColor,
-              type: "dashed",
-            },
-          },
+          nameTextStyle: { color: textColor },
+          axisLabel: { color: textColor },
+          axisLine: { lineStyle: { color: gridColor } },
+          splitLine: { lineStyle: { color: gridColor, type: "dashed" } },
         },
         series: [
           {
@@ -528,26 +524,16 @@ export default defineComponent({
             type: "slider",
             start: 0,
             end: 100,
-            backgroundColor: backgroundColor,
+            backgroundColor,
             dataBackground: {
-              lineStyle: {
-                color: gridColor,
-              },
-              areaStyle: {
-                color: gridColor,
-              },
+              lineStyle: { color: gridColor },
+              areaStyle: { color: gridColor },
             },
             borderColor: gridColor,
-            textStyle: {
-              color: textColor,
-            },
+            textStyle: { color: textColor },
           },
         ],
-        legend: {
-          textStyle: {
-            color: textColor,
-          },
-        },
+        legend: { textStyle: { color: textColor } },
       };
     });
 
@@ -568,9 +554,7 @@ export default defineComponent({
     watch(
       dateRange,
       (newRange) => {
-        if (newRange.from && newRange.to) {
-          applyDateFilter();
-        }
+        if (newRange.from && newRange.to) applyDateFilter();
       },
       { deep: true }
     );
@@ -590,10 +574,7 @@ export default defineComponent({
         await fetchAllTransactions();
 
         if (route.query.saved) {
-          $q.notify({
-            type: "positive",
-            message: "Preferences updated successfully!",
-          });
+          $q.notify({ type: "positive", message: "Preferences updated successfully!" });
         }
       } catch (error) {
         console.error("Initialization error:", error);
@@ -604,7 +585,7 @@ export default defineComponent({
 
     return {
       dateRange,
-      dateRangeString, // Neue computed property für die Anzeige
+      dateRangeString,
       chartOptions,
       updateChart,
       resetToCurrentMonth,
@@ -626,6 +607,16 @@ export default defineComponent({
       exportPDF,
       exportCategoryPDF,
       toggleDarkMode,
+
+      // ✅ fix: used in template
+      fetchAllTransactions,
+
+      // ✅ tips feature
+      tipsLoading,
+      tipsDialog,
+      tips,
+      tipsError,
+      fetchTips,
     };
   },
 });
@@ -641,8 +632,7 @@ export default defineComponent({
         class="toggle-btn"
         @click="toggleDarkMode"
         size="lg"
-      >
-      </q-btn>
+      />
     </div>
 
     <div class="dashboard-header">
@@ -650,10 +640,30 @@ export default defineComponent({
         <h1>Financial Dashboard</h1>
         <p>Real-time insights into your financial health</p>
       </div>
+
+      <
       <div class="header-actions">
-        <q-btn icon="refresh" round flat @click="fetchAllTransactions" />
-        <q-btn icon="download" round flat @click="exportPDF" />
-        <q-btn icon="pie_chart" round flat @click="exportCategoryPDF" />
+        <q-btn icon="refresh" round flat @click="fetchAllTransactions">
+          <q-tooltip>Aktualisieren</q-tooltip>
+        </q-btn>
+
+        <q-btn icon="download" round flat @click="exportPDF">
+          <q-tooltip>Transaktionen PDF</q-tooltip>
+        </q-btn>
+
+        <q-btn icon="pie_chart" round flat @click="exportCategoryPDF">
+          <q-tooltip>Kategorien PDF</q-tooltip>
+        </q-btn>
+
+        <q-btn
+          icon="tips_and_updates"
+          round
+          flat
+          @click="fetchTips"
+          :loading="tipsLoading"
+        >
+          <q-tooltip>Tipps holen</q-tooltip>
+        </q-btn>
       </div>
     </div>
 
@@ -822,7 +832,53 @@ export default defineComponent({
         class="widget"
       />
     </div>
+
+    <!-- ✅ Tips Dialog -->
+    <q-dialog v-model="tipsDialog">
+      <q-card style="min-width: 520px; max-width: 92vw">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Spar- & Finanz-Tipps</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section>
+          <div v-if="tipsError" class="text-negative">{{ tipsError }}</div>
+
+          <div v-else>
+            <q-banner v-if="tipsLoading" class="q-mb-md" rounded>
+              <q-spinner-dots class="q-mr-sm" /> Tipps werden analysiert...
+            </q-banner>
+
+            <q-list v-if="tips.length">
+              <q-item v-for="(t, i) in tips" :key="i">
+                <q-item-section avatar>
+                  <q-icon :name="t.icon || 'lightbulb'" />
+                </q-item-section>
+
+                <q-item-section>
+                  <q-item-label
+                    ><b>{{ t.title }}</b></q-item-label
+                  >
+                  <q-item-label caption>{{ t.reason }}</q-item-label>
+
+                  <div class="q-mt-sm">
+                    <q-badge v-if="t.priority" :label="t.priority" />
+                    <q-badge v-if="t.impact" class="q-ml-sm" :label="t.impact" />
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+
+            <div v-else class="text-grey-7">Keine Tipps verfügbar.</div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </div>
+
   <div v-else class="q-pa-md flex flex-center" style="height: 100vh">
     <q-spinner-gears size="xl" color="primary" />
     <div class="q-ml-md">Loading user preferences...</div>

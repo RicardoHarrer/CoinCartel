@@ -1,5 +1,6 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
+import { getTipsForUser } from '../../controller/tipscontroller.js';
 import {
   getUsers,
   getUserById,
@@ -73,5 +74,7 @@ router.post('/api/goals', asyncHandler(createGoal));
 router.put('/api/goals/:id', asyncHandler(updateGoal));
 router.patch('/api/goals/:id/amount', asyncHandler(updateGoalAmount));
 router.delete('/api/goals/:id', asyncHandler(deleteGoal));
+
+router.get('/tips/users/:id', asyncHandler(getTipsForUser));
 
 export default router;
