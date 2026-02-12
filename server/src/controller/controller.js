@@ -144,7 +144,7 @@ const addTransaction = async (req, res) => {
     return res.status(400).send('Invalid transaction type');
   }
 
-  if (isNaN(amount)) {
+  if (Number.isNaN(Number(amount))) {
     return res.status(400).send('Amount must be a number');
   }
 
@@ -209,31 +209,31 @@ const getTransactionsByUser = async (req, res) => {
     const { rows } = await model.getTransactionsByUser(id, startDate, endDate);
 
     if (!rows || rows.length === 0) {
-      res.status(404).send(`No transactions found for user with ID ${id}`);
+      return res.status(200).json([]);
     }
 
-    res.status(200).json(rows);
+    return res.status(200).json(rows);
   } catch (error) {
     console.error('Error fetching transactions:', error);
-    res.status(500).send('Failed to fetch transactions');
+    return res.status(500).send('Failed to fetch transactions');
   }
 };
 
 const updateUserPreferences = async (req, res) => {
   try {
     const { id } = req.params;
-    const { preferred_currency, saldo } = req.body;
+    const { preferred_currency: preferredCurrency, saldo } = req.body;
 
-    console.log('Updating preferences:', { id, preferred_currency, saldo });
+    console.log('Updating preferences:', { id, preferredCurrency, saldo });
 
-    if (!id || preferred_currency === undefined || saldo === undefined) {
+    if (!id || preferredCurrency === undefined || saldo === undefined) {
       return res.status(400).json({
         error: 'Missing required fields',
         received: req.body,
       });
     }
 
-    const updatedPreferences = await model.updateUserPreferences(id, preferred_currency, saldo);
+    const updatedPreferences = await model.updateUserPreferences(id, preferredCurrency, saldo);
 
     if (!updatedPreferences) {
       return res.status(404).json({ error: 'User preferences not found' });

@@ -2,28 +2,23 @@
   <q-page class="homepage">
     <!-- Enhanced Dark Mode Toggle -->
     <div class="dark-mode-toggle">
-      <q-btn 
-        round 
-        :color="$q.dark.isActive ? 'grey-9' : 'yellow-9'" 
-        :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'" 
+      <q-btn
+        round
+        :color="$q.dark.isActive ? 'grey-9' : 'yellow-9'"
+        :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'"
         class="toggle-btn"
         @click="toggleDarkMode"
         size="lg"
-      >
-      </q-btn>
+      />
     </div>
 
     <section class="hero-section text-center q-pa-xl">
       <div class="hero-background"></div>
       <div class="hero-content">
-        <h1
-          class="hero-title text-h2 text-weight-bold q-mb-md animate__animated animate__fadeInDown"
-        >
+        <h1 class="hero-title text-h2 text-weight-bold q-mb-md animate__animated animate__fadeInDown">
           Take Control of Your <span class="text-gradient">Finances</span>
         </h1>
-        <p
-          class="hero-subtitle text-h5 q-mb-xl animate__animated animate__fadeIn animate__delay-1s"
-        >
+        <p class="hero-subtitle text-h5 q-mb-xl animate__animated animate__fadeIn animate__delay-1s">
           Powerful tools to track, analyze and optimize your financial health
         </p>
         <q-btn
@@ -52,13 +47,10 @@
     </q-card>
 
     <section class="features-section q-px-xl q-pt-xl q-pb-lg">
-      <h2
-        class="section-title text-h4 text-center text-weight-bold q-mb-xl animate__animated animate__fadeIn"
-      >
+      <h2 class="section-title text-h4 text-center text-weight-bold q-mb-xl animate__animated animate__fadeIn">
         Why Choose Our Financial Tracker
       </h2>
 
-      <!-- Improved Carousel Container -->
       <div class="carousel-wrapper">
         <q-carousel
           v-model="slide"
@@ -77,54 +69,50 @@
             v-for="(feature, index) in features"
             :key="feature.title"
             :name="index"
-            class="column no-wrap flex-center"
+            class="column flex-center"
           >
-            <div class="row items-center q-col-gutter-xl full-height carousel-slide-content">
-              <div class="col-12 col-md-6">
-                <div
-                  class="feature-content animate__animated"
-                  :class="{ animate__fadeInLeft: slide === index }"
-                >
-                  <q-icon :name="feature.icon" size="xl" color="primary" class="q-mb-md" />
-                  <h3 class="feature-title text-h3 text-weight-bold q-mb-sm">
-                    {{ feature.title }}
-                  </h3>
-                  <p class="feature-description text-body1">
-                    {{ feature.description }}
-                  </p>
-                  <q-btn
-                    label="Learn more"
-                    color="primary"
-                    flat
-                    class="q-mt-md feature-btn"
-                    @click="navigateToAuth"
-                  />
+            <div class="slide-clipper">
+              <div class="row items-center full-height carousel-slide-content">
+                <div class="col-12 col-md-6 carousel-col">
+                  <div
+                    class="feature-content animate__animated"
+                    :class="{ animate__fadeInLeft: slide === index }"
+                  >
+                    <q-icon :name="feature.icon" size="xl" color="primary" class="q-mb-md" />
+                    <h3 class="feature-title text-h3 text-weight-bold q-mb-sm">
+                      {{ feature.title }}
+                    </h3>
+                    <p class="feature-description text-body1">
+                      {{ feature.description }}
+                    </p>
+                    <q-btn
+                      label="Learn more"
+                      color="primary"
+                      flat
+                      class="q-mt-md feature-btn"
+                      @click="navigateToAuth"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div class="col-12 col-md-6">
-                <div class="image-container">
-                  <q-img
-                    :src="feature.image"
-                    :alt="feature.title"
-                    class="feature-image animate__animated"
-                    :class="{ animate__zoomIn: slide === index }"
-                    loading="lazy"
-                  />
+
+                <div class="col-12 col-md-6 carousel-col">
+                  <div class="image-container">
+                    <q-img
+                      :src="feature.image"
+                      :alt="feature.title"
+                      class="feature-image animate__animated"
+                      :class="{ animate__zoomIn: slide === index }"
+                      loading="lazy"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </q-carousel-slide>
         </q-carousel>
-        
-        <!-- Custom Carousel Controls -->
+
         <div class="custom-carousel-controls">
-          <q-btn 
-            round 
-            icon="chevron_left" 
-            @click="previousSlide" 
-            class="control-btn"
-            size="md"
-          />
+          <q-btn round icon="chevron_left" @click="previousSlide" class="control-btn" size="md" />
           <div class="slide-indicators">
             <q-btn
               v-for="(feature, index) in features"
@@ -136,25 +124,19 @@
               class="indicator-btn"
             />
           </div>
-          <q-btn 
-            round 
-            icon="chevron_right" 
-            @click="nextSlide" 
-            class="control-btn"
-            size="md"
-          />
+          <q-btn round icon="chevron_right" @click="nextSlide" class="control-btn" size="md" />
         </div>
       </div>
     </section>
 
-    <!-- New Interactive Features Grid -->
     <section class="interactive-features q-px-xl q-py-xl">
       <h2 class="section-title text-h4 text-center text-weight-bold q-mb-xl">
         Smart Financial Features
       </h2>
+
       <div class="features-grid">
-        <div 
-          v-for="(feature, index) in interactiveFeatures" 
+        <div
+          v-for="(feature, index) in interactiveFeatures"
           :key="feature.title"
           class="feature-card"
           @mouseenter="hoveredFeature = index"
@@ -171,9 +153,7 @@
     </section>
 
     <section class="final-cta text-center q-px-xl q-py-xl">
-      <div
-        class="cta-content animate__animated animate__pulse animate__infinite animate__slower"
-      >
+      <div class="cta-content animate__animated animate__pulse animate__infinite animate__slower">
         <h2 class="cta-title text-h3 text-weight-bold q-mb-md">
           Ready to Transform Your Financial Life?
         </h2>
@@ -201,39 +181,24 @@ import "animate.css";
 import { auth } from "@/utils/auth";
 
 export default {
-  components: {
-    QCarousel,
-    QCarouselSlide,
-  },
+  components: { QCarousel, QCarouselSlide },
   setup() {
     const router = useRouter();
     const $q = useQuasar();
+
     const slide = ref(0);
     const hoveredFeature = ref(null);
 
     const navigateToAuth = () => {
-      if (auth.isAuthenticated()) {
-        router.push("/chart");
-      } else {
-        router.push("/register");
-      }
+      router.push(auth.isAuthenticated() ? "/chart" : "/register");
     };
 
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
-      // Add smooth transition for dark mode
-      document.documentElement.style.transition = 'all 0.5s ease';
-      setTimeout(() => {
-        document.documentElement.style.transition = '';
-      }, 500);
-    };
 
-    const nextSlide = () => {
-      slide.value = (slide.value + 1) % features.length;
-    };
-
-    const previousSlide = () => {
-      slide.value = (slide.value - 1 + features.length) % features.length;
+      // smooth transition
+      document.documentElement.style.transition = "background-color 0.5s ease, color 0.5s ease";
+      setTimeout(() => (document.documentElement.style.transition = ""), 500);
     };
 
     const stats = [
@@ -279,67 +244,52 @@ export default {
     ];
 
     const interactiveFeatures = [
-      {
-        title: "Real-time Analytics",
-        description: "Live tracking of your financial metrics with instant updates",
-        icon: "analytics"
-      },
-      {
-        title: "Smart Alerts",
-        description: "Get notified about unusual spending and budget limits",
-        icon: "notifications"
-      },
-      {
-        title: "Goal Tracking",
-        description: "Set and monitor your financial goals with progress tracking",
-        icon: "flag"
-      },
-      {
-        title: "Multi-Currency",
-        description: "Support for multiple currencies with automatic conversion",
-        icon: "currency_exchange"
-      },
-      {
-        title: "Export Reports",
-        description: "Generate detailed financial reports in multiple formats",
-        icon: "description"
-      },
-      {
-        title: "Mobile Sync",
-        description: "Access your data anywhere with seamless mobile synchronization",
-        icon: "smartphone"
-      }
+      { title: "Real-time Analytics", description: "Live tracking of your financial metrics with instant updates", icon: "analytics" },
+      { title: "Smart Alerts", description: "Get notified about unusual spending and budget limits", icon: "notifications" },
+      { title: "Goal Tracking", description: "Set and monitor your financial goals with progress tracking", icon: "flag" },
+      { title: "Multi-Currency", description: "Support for multiple currencies with automatic conversion", icon: "currency_exchange" },
+      { title: "Export Reports", description: "Generate detailed financial reports in multiple formats", icon: "description" },
+      { title: "Mobile Sync", description: "Access your data anywhere with seamless mobile synchronization", icon: "smartphone" },
     ];
 
+    const nextSlide = () => {
+      slide.value = (slide.value + 1) % features.length;
+    };
+
+    const previousSlide = () => {
+      slide.value = (slide.value - 1 + features.length) % features.length;
+    };
+
     onMounted(() => {
+      // FIX: Counter nur animieren, wenn target wirklich eine Zahl ist (sonst NaN/komische Effekte)
       const counters = document.querySelectorAll(".stat-value");
       const speed = 200;
 
       counters.forEach((counter) => {
-        const target = +counter.getAttribute("data-target");
-        const count = +counter.innerText.replace("%", "").replace("€", "");
+        const rawTarget = counter.getAttribute("data-target");
+        const target = Number(rawTarget);
+
+        if (!Number.isFinite(target)) return; // z.B. "24/7" oder "A+" -> überspringen
+
         const increment = target / speed;
 
-        if (count < target) {
-          const updateCount = () => {
-            const c = +counter.innerText.replace("%", "").replace("€", "");
-            let newCount;
+        const updateCount = () => {
+          const current = Number(counter.innerText.replace("%", "").replace("€", ""));
+          if (!Number.isFinite(current)) return;
 
-            if (c < target) {
-              newCount = Math.ceil(c + increment);
-              if (newCount > target) newCount = target;
-              counter.innerText = counter.getAttribute("data-target").includes("%")
-                ? newCount + "%"
-                : counter.getAttribute("data-target").includes("€")
-                ? newCount + "€"
-                : counter.getAttribute("data-target") === "A+"
-                ? "A+"
-                : newCount;
-              setTimeout(updateCount, 1);
-            }
-          };
-          updateCount();
-        }
+          if (current < target) {
+            const next = Math.min(target, Math.ceil(current + increment));
+            // format based on original initial value
+            const initial = counter.innerText;
+            const hasPercent = initial.includes("%");
+            const hasEuro = initial.includes("€");
+
+            counter.innerText = hasPercent ? `${next}%` : hasEuro ? `${next}€` : `${next}`;
+            setTimeout(updateCount, 12);
+          }
+        };
+
+        updateCount();
       });
     });
 
@@ -359,6 +309,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+/* ===== DEIN ORIGINAL CSS BLEIBT (ich habe nur Fixes ergänzt) ===== */
+
 .homepage {
   overflow-x: hidden;
   width: 100%;
@@ -388,10 +340,10 @@ export default {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: 3px solid white !important;
   backdrop-filter: blur(10px);
-  
+
   background: #ffd600 !important;
   color: #f5f5f5 !important;
-  
+
   &:hover {
     transform: scale(1.1) rotate(12deg);
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
@@ -470,10 +422,6 @@ export default {
       box-shadow: 0 12px 35px rgba(25, 118, 210, 0.4);
     }
   }
-
-  @media (min-width: $breakpoint-md-min) {
-    padding: 160px 20px;
-  }
 }
 
 .text-gradient {
@@ -530,6 +478,26 @@ export default {
   border-radius: 20px;
 }
 
+/* FIX: clipper kapselt negative/transforms sicher ein */
+.slide-clipper {
+  width: 100%;
+  overflow: hidden;
+}
+
+/* FIX: Keine Quasar "gutter"-negative margins mehr -> wir geben padding selbst */
+.carousel-slide-content {
+  width: 100%;
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+/* FIX: professionelle Grid-Sicherheit (verhindert Überbreite durch Text/Flex) */
+.carousel-col {
+  padding: 0 20px; /* entspricht deinem bisherigen Look */
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 .feature-carousel {
   border-radius: 20px;
   overflow: hidden;
@@ -538,12 +506,9 @@ export default {
   width: 100%;
   max-width: 100%;
 
-  /* Prevent horizontal overflow */
-  .carousel-slide-content {
-    width: 100%;
-    margin: 0;
-    padding: 0 20px;
-    box-sizing: border-box;
+  /* FIX: Quasar Slide selbst clippen */
+  :deep(.q-carousel__slide) {
+    overflow: hidden;
   }
 
   .feature-content {
@@ -584,6 +549,10 @@ export default {
     height: 100%;
     width: 100%;
     box-sizing: border-box;
+
+    /* FIX: harte Kapsel, damit Bild nie Overflow erzeugt */
+    overflow: hidden;
+    min-width: 0;
   }
 
   .feature-image {
@@ -594,6 +563,9 @@ export default {
     max-width: 500px;
     object-fit: cover;
     transition: all 0.5s ease;
+
+    /* FIX: verhindert horizontale Überbreite in flex contexts */
+    min-width: 0;
   }
 }
 
@@ -604,26 +576,26 @@ export default {
   gap: 20px;
   margin-top: 30px;
   width: 100%;
-  
+
   .control-btn {
     background: white !important;
     color: #1976d2 !important;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
-    
+
     &:hover {
       transform: scale(1.1);
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
     }
   }
-  
+
   .slide-indicators {
     display: flex;
     gap: 8px;
-    
+
     .indicator-btn {
       transition: all 0.3s ease;
-      
+
       &:hover {
         transform: scale(1.2);
       }
@@ -635,7 +607,7 @@ export default {
 .interactive-features {
   width: 100%;
   box-sizing: border-box;
-  
+
   .features-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -689,9 +661,8 @@ export default {
       color: #2d3748;
     }
 
-    /* Lighter text for feature descriptions */
     .feature-card-description {
-      color: #8e99a5 !important; /* Much lighter color */
+      color: #8e99a5 !important;
       line-height: 1.5;
       font-size: 0.95rem;
     }
@@ -770,29 +741,22 @@ export default {
 }
 
 @keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 0.5;
-  }
-  100% {
-    transform: scale(1.2);
-    opacity: 0.8;
-  }
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.2); opacity: 0.8; }
 }
 
-/* ENHANCED DARK MODE STYLES */
+/* ENHANCED DARK MODE STYLES (dein Original) */
 body.body--dark {
   .homepage {
     background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%) !important;
   }
 
-  /* Dark Mode Toggle - Grey with White Border */
   .dark-mode-toggle .toggle-btn {
     background: #424242 !important;
     color: #f5f5f5 !important;
     border: 3px solid white !important;
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-    
+
     &:hover {
       border-color: #e0e0e0 !important;
       background: #616161 !important;
@@ -802,11 +766,11 @@ body.body--dark {
 
   .hero-section .hero-background {
     background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%) !important;
-    
+
     &::before {
       background: radial-gradient(circle, rgba(66, 165, 245, 0.05) 0%, transparent 70%);
     }
-    
+
     &::after {
       opacity: 0.1;
       background: url('data:image/svg+xml;utf8,<svg viewBox="0 0 1200 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none"><path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" fill="white" opacity=".05"/></svg>') !important;
@@ -817,7 +781,7 @@ body.body--dark {
     background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%) !important;
     color: white !important;
     box-shadow: 0 8px 25px rgba(25, 118, 210, 0.3) !important;
-    
+
     &:hover {
       background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%) !important;
       box-shadow: 0 12px 35px rgba(25, 118, 210, 0.4) !important;
@@ -834,14 +798,9 @@ body.body--dark {
     background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
     border-color: rgba(255, 255, 255, 0.1) !important;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-    
-    .stat-value {
-      color: #42a5f5;
-    }
-    
-    .stat-label {
-      color: #b0b0b0;
-    }
+
+    .stat-value { color: #42a5f5; }
+    .stat-label { color: #b0b0b0; }
   }
 
   .feature-carousel {
@@ -849,15 +808,13 @@ body.body--dark {
     border-color: rgba(255, 255, 255, 0.1) !important;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
 
-    .feature-content {
-      .feature-btn {
-        background: rgba(66, 165, 245, 0.1) !important;
-        color: #42a5f5 !important;
-        
-        &:hover {
-          background: rgba(66, 165, 245, 0.2) !important;
-          box-shadow: 0 4px 15px rgba(66, 165, 245, 0.2);
-        }
+    .feature-content .feature-btn {
+      background: rgba(66, 165, 245, 0.1) !important;
+      color: #42a5f5 !important;
+
+      &:hover {
+        background: rgba(66, 165, 245, 0.2) !important;
+        box-shadow: 0 4px 15px rgba(66, 165, 245, 0.2);
       }
     }
   }
@@ -886,18 +843,9 @@ body.body--dark {
       background: linear-gradient(135deg, #42a5f5 0%, #1976d2 100%) !important;
     }
 
-    .feature-card-title {
-      color: #ffffff !important;
-    }
-
-    /* Lighter text in dark mode */
-    .feature-card-description {
-      color: #a0a0a0 !important; /* Lighter color for dark mode */
-    }
-
-    .feature-highlight {
-      background: linear-gradient(135deg, #42a5f5 0%, #1976d2 100%) !important;
-    }
+    .feature-card-title { color: #ffffff !important; }
+    .feature-card-description { color: #a0a0a0 !important; }
+    .feature-highlight { background: linear-gradient(135deg, #42a5f5 0%, #1976d2 100%) !important; }
   }
 
   .final-cta {
@@ -908,15 +856,13 @@ body.body--dark {
       background: rgba(30, 30, 30, 0.9) !important;
       color: #42a5f5 !important;
       border: 1px solid rgba(255, 255, 255, 0.1) !important;
-      
-      &:hover {
-        background: rgba(40, 40, 40, 0.9) !important;
-      }
+
+      &:hover { background: rgba(40, 40, 40, 0.9) !important; }
     }
   }
 }
 
-/* Responsive Design */
+/* Responsive Design (dein Original) */
 @media (max-width: 768px) {
   .dark-mode-toggle {
     bottom: 16px;
@@ -939,14 +885,9 @@ body.body--dark {
 
   .hero-section {
     padding: 80px 16px;
-    
-    .hero-title {
-      font-size: 2rem !important;
-    }
-    
-    .hero-subtitle {
-      font-size: 1.25rem !important;
-    }
+
+    .hero-title { font-size: 2rem !important; }
+    .hero-subtitle { font-size: 1.25rem !important; }
   }
 
   .features-section,
@@ -959,52 +900,52 @@ body.body--dark {
     .feature-carousel {
       height: auto !important;
       min-height: 400px;
-      
+
       .feature-content {
         padding: 20px !important;
         text-align: center;
       }
-      
+
       .feature-image {
         height: 250px !important;
         margin: 0 auto;
       }
     }
-    
+
     .custom-carousel-controls {
       flex-direction: column;
       gap: 15px;
-      
-      .slide-indicators {
-        order: -1;
-      }
+
+      .slide-indicators { order: -1; }
     }
   }
 }
 
-/* Fix horizontal scrolling - GLOBAL FIX */
-.q-page {
-  overflow-x: hidden;
-  width: 100%;
-  max-width: 100vw;
+/* ===== FIX: HARTE GLOBAL OVERFLOW-BREMSE (Quasar Wrapper) ===== */
+/* scoped -> wir müssen :global() nutzen */
+:global(html),
+:global(body),
+:global(#q-app),
+:global(.q-layout),
+:global(.q-page-container) {
+  overflow-x: clip; /* besser als hidden, verhindert seitliches Schieben */
+  max-width: 100%;
 }
 
-body, html {
-  overflow-x: hidden;
-  max-width: 100%;
+:global(body) {
   margin: 0;
   padding: 0;
 }
 
 /* Smooth transitions for all interactive elements */
-.q-btn, .stats-section, .feature-carousel, .feature-card, 
+.q-btn, .stats-section, .feature-carousel, .feature-card,
 .toggle-btn, .hero-btn, .feature-btn, .cta-button,
 .feature-icon, .control-btn, .indicator-btn {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Improved scroll behavior */
-html {
+:global(html) {
   scroll-behavior: smooth;
 }
 

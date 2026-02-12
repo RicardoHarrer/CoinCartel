@@ -1,13 +1,11 @@
 <script>
-import { ref, computed, onMounted, watchEffect } from "vue";
-import { useQuasar } from "quasar";
+import { ref, onMounted, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { auth } from "@/utils/auth";
 
 export default {
   name: "NavBar",
   setup() {
-    const $q = useQuasar();
     const router = useRouter();
     const tab = ref("home");
     const mobileMenuOpen = ref(false);
@@ -29,18 +27,12 @@ export default {
       };
     });
 
-    const isDarkMode = computed(() => $q.dark.isActive);
-
-    const toggleDarkMode = () => {
-      $q.dark.toggle();
-    };
-
     const toggleMobileMenu = () => {
       mobileMenuOpen.value = !mobileMenuOpen.value;
     };
 
     const logout = async () => {
-      auth.removeToken();
+      auth.logout();
       isLoggedIn.value = false;
       await router.push("/");
       window.location.reload();
@@ -50,8 +42,6 @@ export default {
       tab,
       mobileMenuOpen,
       isLoggedIn,
-      isDarkMode,
-      toggleDarkMode,
       toggleMobileMenu,
       logout,
     };
@@ -66,7 +56,7 @@ export default {
       <div class="navbar__brand">
         <q-btn flat to="/" class="navbar__logo-btn" padding="none">
           <q-img
-            src="../../public/logovaultly.jpg"
+            src="/logovaultly.jpg"
             alt="Vaultly Logo"
             width="45px"
             height="45px"
@@ -79,11 +69,11 @@ export default {
       </div>
 
       <!-- Desktop Navigation -->
-      <q-tabs 
+      <q-tabs
         v-model="tab" 
         shrink 
         stretch 
-        class="gt-sm navbar__tabs"
+        class="gt-md navbar__tabs"
         indicator-color="primary"
         active-color="primary"
       >
@@ -155,6 +145,16 @@ export default {
           icon="logout"
         />
       </q-tabs>
+
+      <q-btn
+        flat
+        round
+        dense
+        icon="menu"
+        class="lt-md navbar__mobile-toggle"
+        @click="toggleMobileMenu"
+        aria-label="Open navigation menu"
+      />
     </q-toolbar>
     
 
@@ -166,6 +166,22 @@ export default {
       bordered
       class="navbar__drawer"
     >
+      <div class="navbar__drawer-header">
+        <div class="navbar__drawer-brand">
+          <q-img src="/logovaultly.jpg" alt="Vaultly Logo" class="navbar__drawer-logo" />
+          <div class="navbar__drawer-title">Vaultly</div>
+        </div>
+        <q-btn
+          flat
+          round
+          dense
+          icon="close"
+          class="navbar__drawer-close"
+          @click="mobileMenuOpen = false"
+        />
+      </div>
+      <q-separator class="navbar__drawer-separator" />
+
       <q-list class="navbar__mobile-list">
         <q-item 
           clickable 
@@ -284,67 +300,66 @@ export default {
 
 <style lang="scss" scoped>
 .navbar {
-  background: var(--q-primary);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--q-secondary);
-  
-  &::before {
-    display: none; // Remove any potential glow effect
-  }
+  background: rgba(18, 18, 18, 0.96);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(71, 85, 105, 0.28);
+  box-shadow: none;
 
   &__toolbar {
-    padding: 8px 16px;
-    min-height: 70px;
+    padding: 10px 18px;
+    min-height: 72px;
   }
 
   &__brand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
+    min-width: 0;
   }
 
   &__logo-btn {
-    border-radius: 12px;
-    transition: transform 0.3s ease;
+    border-radius: 10px;
+    width: 42px;
+    height: 42px;
+    transition: transform 0.2s ease;
 
     &:hover {
-      transform: scale(1.05);
+      transform: translateY(-1px);
     }
   }
 
   &__logo {
-    border-radius: 10px;
+    border-radius: 8px;
     object-fit: contain;
   }
 
   &__title {
     font-weight: 700;
-    background: linear-gradient(135deg, var(--q-primary) 0%, var(--q-accent) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #f7fafc;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
   }
 
   &__tabs {
     margin-left: auto;
-    gap: 8px;
+    gap: 4px;
   }
 
   &__tab {
     border-radius: 8px;
-    margin: 0 4px;
-    transition: all 0.3s ease;
+    margin: 0 2px;
+    transition: all 0.2s ease;
     font-weight: 500;
     min-height: 40px;
+    padding: 0 10px;
+    color: #e2e8f0;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.1);
-      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.08);
     }
 
     &--active {
-      background: rgba(255, 255, 255, 0.15);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      background: rgba(255, 255, 255, 0.14);
     }
 
     &--auth {
@@ -356,126 +371,194 @@ export default {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-left: 24px;
+    margin-left: 18px;
   }
 
   &__register-btn {
     border-radius: 8px;
     font-weight: 600;
     text-transform: none;
-    padding: 8px 20px;
-    box-shadow: 0 2px 8px rgba(var(--q-primary-rgb), 0.3);
-    transition: all 0.3s ease;
+    padding: 8px 16px;
+    box-shadow: none;
+    transition: all 0.2s ease;
 
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(var(--q-primary-rgb), 0.4);
+      filter: brightness(1.06);
     }
   }
 
   &__logout-btn {
     border-radius: 8px;
-    margin-left: 16px;
+    margin-left: 10px;
     font-weight: 500;
-    transition: all 0.3s ease;
+    color: #f1f5f9;
+    transition: all 0.2s ease;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.1);
-      transform: translateY(-1px);
-    }
-  }
-
-  &__actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-left: 16px;
-  }
-
-  &__theme-toggle {
-    transition: transform 0.3s ease;
-
-    &:hover {
-      transform: rotate(15deg);
+      background: rgba(255, 255, 255, 0.08);
     }
   }
 
   &__mobile-toggle {
-    margin-left: 8px;
+    margin-left: auto;
+    color: #f8fafc;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
   }
 
-  // Mobile Drawer Styles
   &__drawer {
+    width: min(84vw, 320px);
+
     .q-drawer__content {
-      background: var(--q-dark);
+      background: #121212;
     }
+  }
+
+  &__drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 14px 12px;
+  }
+
+  &__drawer-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  &__drawer-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  &__drawer-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #e2e8f0;
+    letter-spacing: 0.2px;
+  }
+
+  &__drawer-close {
+    color: #cbd5e1;
+    background: rgba(148, 163, 184, 0.12);
+  }
+
+  &__drawer-separator {
+    background: rgba(148, 163, 184, 0.2);
+    height: 1px;
+    margin: 0 12px;
   }
 
   &__mobile-list {
-    padding: 16px 0;
+    padding: 10px 0;
   }
 
   &__mobile-item {
-    margin: 4px 12px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    font-weight: 500;
+    margin: 6px 10px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    color: #e2e8f0;
 
-    &:hover {
-      background: rgba(255, 255, 255, 0.1);
-      transform: translateX(4px);
-    }
-
-    &--highlight {
-      background: var(--q-primary);
-      color: white;
-      font-weight: 600;
-
-      &:hover {
-        background: var(--q-primary);
-        opacity: 0.9;
-      }
-    }
-
-    &--logout {
-      color: var(--q-negative);
-      
-      &:hover {
-        background: rgba(var(--q-negative-rgb), 0.1);
-      }
+    :deep(.q-item__section--avatar) {
+      min-width: 34px;
     }
   }
-}
 
-// Dark mode adjustments
-.body--dark {
-  .navbar {
-    background: rgba(33, 33, 33, 0.95);
-    border-bottom-color: rgba(255, 255, 255, 0.1);
+  &__mobile-item:hover {
+    background: rgba(148, 163, 184, 0.14);
+  }
+
+  &__mobile-item--highlight {
+    background: var(--q-primary);
+    color: white;
+    font-weight: 700;
+
+    &:hover {
+      background: var(--q-primary);
+      opacity: 0.95;
+    }
+  }
+
+  &__mobile-item--logout {
+    color: var(--q-negative);
+
+    &:hover {
+      background: rgba(var(--q-negative-rgb), 0.12);
+    }
   }
 }
 
 .body--light {
   .navbar {
-    background: rgba(255, 255, 255, 0.95);
+    background: rgba(255, 255, 255, 0.96);
     border-bottom-color: rgba(0, 0, 0, 0.1);
+    box-shadow: none;
     
+    &__title {
+      color: #0f172a;
+    }
+
     &__tab {
-      color: rgba(0, 0, 0, 0.7);
+      color: rgba(15, 23, 42, 0.78);
 
       &:hover {
-        background: rgba(0, 0, 0, 0.05);
+        background: rgba(15, 23, 42, 0.07);
       }
     }
 
     &__logout-btn {
-      color: rgba(0, 0, 0, 0.7);
+      color: rgba(15, 23, 42, 0.78);
+    }
+
+    &__mobile-toggle {
+      color: rgba(15, 23, 42, 0.9);
+      background: rgba(15, 23, 42, 0.06);
+      border-color: rgba(15, 23, 42, 0.12);
+    }
+
+    &__drawer {
+      .q-drawer__content {
+        background: #ffffff;
+      }
+    }
+
+    &__drawer-title {
+      color: #0f172a;
+    }
+
+    &__drawer-close {
+      color: #334155;
+      background: rgba(15, 23, 42, 0.08);
+    }
+
+    &__drawer-separator {
+      background: rgba(15, 23, 42, 0.12);
+    }
+
+    &__mobile-item {
+      color: #0f172a;
+
+      &:hover {
+        background: rgba(15, 23, 42, 0.06);
+      }
     }
   }
 }
 
-// Responsive adjustments
-@media (max-width: $breakpoint-sm-max) {
+.body--dark {
+  .navbar {
+    background: rgba(18, 18, 18, 0.96);
+    border-bottom-color: rgba(71, 85, 105, 0.28);
+    box-shadow: none;
+  }
+}
+
+@media (max-width: $breakpoint-md-max) {
   .navbar {
     &__toolbar {
       padding: 8px 12px;
@@ -484,6 +567,19 @@ export default {
 
     &__title {
       font-size: 1.25rem;
+    }
+  }
+}
+
+@media (max-width: 430px) {
+  .navbar {
+    &__title {
+      font-size: 1.05rem;
+    }
+
+    &__brand {
+      gap: 8px;
+      min-width: 0;
     }
   }
 }

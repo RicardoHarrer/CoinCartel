@@ -70,3 +70,34 @@ Content-Type: application/json
   "preferred_currency": "USD",
   "saldo": 1500
 }
+
+###
+
+POST http://localhost:3000/login
+Content-Type: application/json
+
+{
+  "username": "test",
+  "password": "test"
+}
+
+###
+
+GET http://localhost:3000/api/bank/link
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjQ5MTgzMDU0LTI4OTgtNGM0Yy05ZDA0LTkyYmM1MzJmNzI1MyIsImlhdCI6MTc3MDgxNzQzNiwiZXhwIjoxNzcwODIxMDM2fQ.Nl2UKPqIzr9-9yKdXob8M5uEDECqlz0zrHLk3U0EqZs
+
+###
+
+GET http://localhost:3000/api/bank/accounts
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjQ5MTgzMDU0LTI4OTgtNGM0Yy05ZDA0LTkyYmM1MzJmNzI1MyIsImlhdCI6MTc3MDgxNzQzNiwiZXhwIjoxNzcwODIxMDM2fQ.Nl2UKPqIzr9-9yKdXob8M5uEDECqlz0zrHLk3U0EqZs
+
+###
+
+POST http://localhost:3000/api/bank/sync/{ACCOUNT_ID}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjQ5MTgzMDU0LTI4OTgtNGM0Yy05ZDA0LTkyYmM1MzJmNzI1MyIsImlhdCI6MTc3MDYyMTUyNiwiZXhwIjoxNzcwNjI1MTI2fQ.c8qKiU5XjJ-mJdpMlvTR_LK1ZEZLRwdpxV6OLl69mCA
+
+###
+
+GET http://localhost:3000/api/bank/transactions/{ACCOUNT_ID}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjQ5MTgzMDU0LTI4OTgtNGM0Yy05ZDA0LTkyYmM1MzJmNzI1MyIsImlhdCI6MTc3MDgxNzQzNiwiZXhwIjoxNzcwODIxMDM2fQ.Nl2UKPqIzr9-9yKdXob8M5uEDECqlz0zrHLk3U0EqZs
+###

@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="q-pa-md transactions-page">
     <div class="column items-center q-mb-lg">
       <q-separator color="primary" class="full-width q-my-md" />
     </div>
@@ -85,7 +85,7 @@
     </q-card>
 
     <div class="row justify-end q-mb-md">
-      <q-btn-group>
+      <div class="export-actions">
         <q-btn
           color="secondary"
           icon="picture_as_pdf"
@@ -113,7 +113,7 @@
           label="Export CSV (Categories)"
           @click="exportCategoryCSV"
         />
-      </q-btn-group>
+      </div>
     </div>
 
     <div class="row q-col-gutter-md justify-center">
@@ -138,7 +138,7 @@
     </div>
 
     <q-dialog v-model="showCategoryDialog">
-      <q-card style="min-width: 400px">
+      <q-card class="category-dialog-card">
         <q-card-section>
           <div class="text-h6">{{ activeCategory?.category }}</div>
           <q-separator class="q-my-sm" />
@@ -164,8 +164,6 @@ import { defineComponent, ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { useQuasar } from 'quasar';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { auth } from '@/utils/auth';
 
 export default defineComponent({
@@ -195,6 +193,11 @@ export default defineComponent({
     const categoryOptions = computed(() =>
       categories.value.map((c) => ({ label: c.name, value: c.id })),
     );
+    const categoryNameById = computed(() => {
+      const map = new Map();
+      categories.value.forEach((c) => map.set(c.id, c.name));
+      return map;
+    });
 
     const userid = (() => {
       const token = auth.getToken();
@@ -207,8 +210,11 @@ export default defineComponent({
     })();
 
     onMounted(async () => {
-      await fetchCategories();
-      await fetchTransactions();
+      if (!userid) {
+        transactions.value = [];
+        return;
+      }
+      await Promise.all([fetchCategories(), fetchTransactions()]);
     });
 
     async function fetchCategories() {
@@ -226,6 +232,7 @@ export default defineComponent({
         transactions.value = res.data.map((t) => ({
           ...t,
           amount: Number(t.amount) || 0,
+          dateTs: new Date(t.date).getTime(),
           date: new Date(t.date).toLocaleDateString(),
         }));
       } catch (err) {
@@ -240,10 +247,7 @@ export default defineComponent({
         filtered = filtered.filter(
           (t) =>
             t.description?.toLowerCase().includes(s) ||
-            categories.value
-              .find((c) => c.id === t.category_id)
-              ?.name.toLowerCase()
-              .includes(s),
+            categoryNameById.value.get(t.category_id)?.toLowerCase().includes(s),
         );
       }
       if (transactionType.value)
@@ -255,10 +259,10 @@ export default defineComponent({
       );
       switch (sortOption.value) {
         case 'date_asc':
-          filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
+          filtered.sort((a, b) => (a.dateTs || 0) - (b.dateTs || 0));
           break;
         case 'date_desc':
-          filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+          filtered.sort((a, b) => (b.dateTs || 0) - (a.dateTs || 0));
           break;
         case 'amount_asc':
           filtered.sort((a, b) => a.amount - b.amount);
@@ -270,7 +274,7 @@ export default defineComponent({
       return filtered.map((t) => ({
         id: t.id,
         title: t.description || 'No description',
-        category: categories.value.find((c) => c.id === t.category_id)?.name || 'Unknown',
+        category: categoryNameById.value.get(t.category_id) || 'Unknown',
         amount: t.amount,
         type: t.transaction_type === 'Einnahme' ? 'income' : 'expense',
         currency: t.currency || '€',
@@ -311,6 +315,18 @@ export default defineComponent({
       sortOption.value = 'date_desc';
     }
 
+    let pdfToolsPromise = null;
+    const loadPdfTools = async () => {
+      if (!pdfToolsPromise) {
+        pdfToolsPromise = Promise.all([import('jspdf'), import('jspdf-autotable')]);
+      }
+      const [jspdfMod, autoTableMod] = await pdfToolsPromise;
+      return {
+        jsPDF: jspdfMod.jsPDF,
+        autoTable: autoTableMod.default || autoTableMod,
+      };
+    };
+
     const exportCSV = () => {
       try {
         const headers = ['Date', 'Description', 'Category', 'Type', 'Amount'];
@@ -342,8 +358,9 @@ export default defineComponent({
       }
     };
 
-    const exportPDF = () => {
+    const exportPDF = async () => {
       try {
+        const { jsPDF, autoTable } = await loadPdfTools();
         const doc = new jsPDF();
         doc.text('Transaction Report', 105, 20, { align: 'center' });
         const tableData = filteredTransactions.value.map((t) => [
@@ -392,8 +409,9 @@ export default defineComponent({
       }
     };
 
-    const exportCategoryPDF = () => {
+    const exportCategoryPDF = async () => {
       try {
+        const { jsPDF, autoTable } = await loadPdfTools();
         const doc = new jsPDF();
         doc.text('Category Summary Report', 105, 20, { align: 'center' });
         const tableData = categorySummaries.value.map((cat) => [
@@ -439,6 +457,10 @@ export default defineComponent({
 </script>
 
 <style scoped>
+.transactions-page {
+  overflow-x: hidden;
+}
+
 .my-card {
   width: 100%;
   transition: transform 0.3s;
@@ -449,5 +471,37 @@ export default defineComponent({
 }
 .q-btn-group {
   margin-bottom: 16px;
+}
+
+.export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.category-dialog-card {
+  min-width: min(400px, 92vw);
+}
+
+@media (max-width: 768px) {
+  .export-actions {
+    width: 100%;
+  }
+
+  .export-actions .q-btn {
+    flex: 1 1 240px;
+    margin-right: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .transactions-page {
+    padding: 12px !important;
+  }
+
+  .export-actions .q-btn {
+    flex: 1 1 100%;
+  }
 }
 </style>

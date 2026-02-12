@@ -771,6 +771,8 @@ export default defineComponent({
       removeAlert,
       removeNotification,
       getIndicatorColor,
+      fetchData,
+      timeframeMinutes,
     };
   },
 });
@@ -785,9 +787,13 @@ export default defineComponent({
         <p>Real-time cryptocurrency data with technical indicators & alerts</p>
       </div>
       <div class="header-actions">
-        <q-btn icon="refresh" round flat @click="fetchAllTransactions">
-          <q-tooltip>Aktualisieren</q-tooltip>
-        </q-btn>
+        <q-btn
+          icon="refresh"
+          round
+          flat
+          @click="fetchData"
+          :disable="!selectedCoin || loading"
+        />
         <q-btn
           icon="notifications"
           round
@@ -795,9 +801,7 @@ export default defineComponent({
           color="red"
           @click="showAlertDialog = true"
           :disable="!selectedCoin"
-        >
-          <q-tooltip>Alarm erstellen</q-tooltip>
-        </q-btn>
+        />
       </div>
     </div>
 
@@ -849,7 +853,7 @@ export default defineComponent({
     <!-- Controls Card -->
     <q-card class="controls-card">
       <q-card-section>
-        <div class="row q-gutter-md items-center">
+        <div class="row q-gutter-md items-center controls-row">
           <q-select
             v-model="selectedCoin"
             :options="topCoins"
@@ -872,7 +876,7 @@ export default defineComponent({
             emit-value
             map-options
             filled
-            style="min-width: 300px"
+            class="coin-select"
           />
 
           <q-select
@@ -898,7 +902,7 @@ export default defineComponent({
 
           <q-space />
 
-          <q-btn-group class="col-auto">
+          <q-btn-group class="col-auto nav-action-group">
             <q-btn
               label="Financial Dashboard"
               color="primary"
@@ -995,7 +999,7 @@ export default defineComponent({
 
     <!-- Alert Dialog -->
     <q-dialog v-model="showAlertDialog" persistent>
-      <q-card style="min-width: 400px">
+      <q-card class="alert-dialog-card">
         <q-card-section class="row items-center q-pb-none">
           <div class="text-h6">Create Price Alert</div>
           <q-space />
@@ -1077,19 +1081,6 @@ export default defineComponent({
     .header-actions {
       display: flex;
       gap: 10px;
-
-      .q-btn {
-        background: rgba(255, 255, 255, 0.7);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(148, 163, 184, 0.9);
-        border-radius: 9999px;
-
-        &:hover {
-          background: rgba(255, 255, 255, 0.9);
-          border-color: rgba(129, 140, 248, 1); /* optional: andere Farbe beim Hover */
-          transform: translateY(-2px);
-        }
-      }
     }
   }
 
@@ -1181,6 +1172,15 @@ export default defineComponent({
     border-radius: 16px;
     margin-bottom: 30px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+
+    .controls-row {
+      width: 100%;
+    }
+
+    .coin-select {
+      min-width: 300px;
+      max-width: 100%;
+    }
   }
 
   .alerts-section {
@@ -1258,6 +1258,10 @@ export default defineComponent({
     border-radius: 8px;
     margin-bottom: 15px;
   }
+
+  .alert-dialog-card {
+    min-width: min(400px, 92vw);
+  }
 }
 
 /* Dark Mode */
@@ -1306,6 +1310,25 @@ body.body--dark {
       flex-direction: column;
       gap: 15px;
       align-items: flex-start;
+    }
+
+    .controls-card {
+      .controls-row {
+        gap: 10px !important;
+      }
+
+      .controls-row > * {
+        width: 100%;
+      }
+
+      .controls-row .q-space {
+        display: none;
+      }
+
+      .coin-select,
+      .nav-action-group {
+        min-width: 0 !important;
+      }
     }
 
     .chart-wrapper {

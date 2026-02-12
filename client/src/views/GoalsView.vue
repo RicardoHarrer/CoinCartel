@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-lg bg-page">
+  <q-page class="q-pa-lg bg-page responsive-page-padding">
     <div class="goals-view">
       <!-- Dark Mode Toggle Button - Links -->
       <div class="dark-mode-toggle">
@@ -815,6 +815,10 @@ body.body--dark :deep(.q-card) {
 
 /* Responsive Design */
 @media (max-width: 599px) {
+  .responsive-page-padding {
+    padding: 12px !important;
+  }
+
   .header-section .row.items-center {
     flex-direction: column;
     align-items: flex-start;

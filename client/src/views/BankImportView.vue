@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-lg bg-page">
+  <q-page class="q-pa-lg bg-page responsive-page-padding">
     <div class="bank-import-view">
       <!-- Dark Mode Toggle -->
       <div class="dark-mode-toggle">
@@ -42,7 +42,7 @@
       <div class="main-grid">
         <!-- Left Column - Import Functions -->
         <div class="left-column">
-          <!-- Bank Selection & CSV Upload -->
+          <!-- Bank Connection -->
           <q-card class="compact-card">
             <q-card-section class="card-section">
               <div class="section-header">
@@ -50,69 +50,25 @@
                 <h3 class="text-h6 text-weight-medium">Bank Import</h3>
               </div>
               
-              <q-select
-                v-model="selectedBank"
-                :options="austrianBanks"
-                label="Select your bank"
-                filled
-                dense
-                emit-value
-                map-options
-                class="q-mb-md"
-              />
 
-              <div v-if="selectedBank" class="upload-section">
-                <q-uploader
-                  label="Upload CSV file"
-                  accept=".csv,.txt"
-                  @added="handleFileUpload"
-                  :disable="importingCSV"
-                  flat
-                  bordered
-                  dense
-                  class="q-mb-sm"
-                >
-                  <template v-slot:list="scope">
-                    <q-list dense>
-                      <q-item v-for="file in scope.files" :key="file.name">
-                        <q-item-section>
-                          <q-item-label class="ellipsis">{{ file.name }}</q-item-label>
-                        </q-item-section>
-                        <q-item-section side>
-                          <q-spinner v-if="importingCSV" color="primary" size="1em" />
-                          <q-btn
-                            v-else
-                            icon="delete"
-                            size="sm"
-                            flat
-                            round
-                            dense
-                            @click="scope.removeFile(file)"
-                          />
-                        </q-item-section>
-                      </q-item>
-                    </q-list>
-                  </template>
-                </q-uploader>
+<q-btn
+  v-if="!bankConnected"
+  color="primary"
+  icon="account_balance"
+  label="Bank verbinden (Online)"
+  class="q-mb-md full-width"
+  @click="connectBank"
+/>
 
-                <div class="bank-actions">
-                  <q-btn
-                    label="Sample CSV"
-                    outline
-                    color="primary"
-                    size="sm"
-                    @click="downloadSampleCSV(selectedBank)"
-                    dense
-                    class="q-mr-sm"
-                  />
-                  <div class="bank-info">
-                    <div class="info-text">
-                      <strong>{{ getBankName(selectedBank) }}</strong>
-                    </div>
-                    <div class="format-text">{{ getBankFormat(selectedBank) }}</div>
-                  </div>
-                </div>
-              </div>
+<q-banner
+  v-else
+  dense
+  rounded
+  class="bg-positive text-white q-mb-md"
+>
+  ✅ Bank erfolgreich verbunden
+</q-banner>
+
             </q-card-section>
           </q-card>
 
@@ -137,47 +93,6 @@
               </div>
             </q-card-section>
           </q-card>
-
-          <!-- Quick Summary -->
-          <q-card class="compact-card">
-            <q-card-section class="card-section">
-              <div class="section-header">
-                <q-icon name="analytics" size="20px" class="text-primary" />
-                <h3 class="text-h6 text-weight-medium">Quick Summary</h3>
-              </div>
-
-              <div class="summary-stats">
-                <div class="stat-item income">
-                  <div class="stat-icon">↑</div>
-                  <div class="stat-content">
-                    <div class="stat-value text-positive">
-                      +{{ formatCurrency(categorySummary.totalIncome) }}
-                    </div>
-                    <div class="stat-label">Income</div>
-                  </div>
-                </div>
-                <div class="stat-item expense">
-                  <div class="stat-icon">↓</div>
-                  <div class="stat-content">
-                    <div class="stat-value text-negative">
-                      -{{ formatCurrency(categorySummary.totalExpenses) }}
-                    </div>
-                    <div class="stat-label">Expenses</div>
-                  </div>
-                </div>
-                <div class="stat-item balance">
-                  <div class="stat-icon">⚖️</div>
-                  <div class="stat-content">
-                    <div class="stat-value" :class="categorySummary.balance >= 0 ? 'text-positive' : 'text-negative'">
-                      {{ categorySummary.balance >= 0 ? "+" : "" }}{{ formatCurrency(categorySummary.balance) }}
-                    </div>
-                    <div class="stat-label">Balance</div>
-                  </div>
-                </div>
-              </div>
-            </q-card-section>
-          </q-card>
-
           <!-- Export Actions -->
           <q-card class="compact-card">
             <q-card-section class="card-section">
@@ -322,6 +237,42 @@
                 <h3 class="text-h6 text-weight-medium">Category Summary</h3>
               </div>
 
+                            <div class="summary-stats q-mb-md">
+                <div class="stat-item income">
+                  <div class="stat-icon">
+                    <q-icon name="north" size="18px" />
+                  </div>
+                  <div class="stat-content">
+                    <div class="stat-value text-positive">
+                      +{{ formatCurrency(categorySummary.totalIncome) }}
+                    </div>
+                    <div class="stat-label">Income</div>
+                  </div>
+                </div>
+                <div class="stat-item expense">
+                  <div class="stat-icon">
+                    <q-icon name="south" size="18px" />
+                  </div>
+                  <div class="stat-content">
+                    <div class="stat-value text-negative">
+                      -{{ formatCurrency(categorySummary.totalExpenses) }}
+                    </div>
+                    <div class="stat-label">Expenses</div>
+                  </div>
+                </div>
+                <div class="stat-item balance">
+                  <div class="stat-icon">
+                    <q-icon name="account_balance_wallet" size="18px" />
+                  </div>
+                  <div class="stat-content">
+                    <div class="stat-value" :class="categorySummary.balance >= 0 ? 'text-positive' : 'text-negative'">
+                      {{ categorySummary.balance >= 0 ? "+" : "" }}{{ formatCurrency(categorySummary.balance) }}
+                    </div>
+                    <div class="stat-label">Balance</div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Categories Grid -->
               <div class="categories-grid">
                 <div
@@ -433,7 +384,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import axios from "axios";
 import { useQuasar } from "quasar";
 import { useRouter } from "vue-router";
@@ -445,10 +396,14 @@ import autoTable from "jspdf-autotable";
 export default {
   name: "AustrianBankImport",
   setup() {
+   
     const $q = useQuasar();
     const router = useRouter();
+    let bankSyncIntervalId = null;
 
-    const selectedBank = ref(null);
+ const bankConnected = ref(false);
+
+    const selectedBank = ref("other");
     const manualTransaction = ref({
       date: new Date().toISOString().split("T")[0],
       amount: 0,
@@ -598,6 +553,45 @@ export default {
         return null;
       }
     };
+
+const api = axios.create({
+  baseURL: "http://localhost:3000",
+});
+
+const getAuthHeader = () => {
+  const token = auth.getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const connectBank = () => {
+  const userId = getUserId();
+  if (!userId) {
+    $q.notify({ type: "negative", message: "Bitte zuerst einloggen" });
+    return;
+  }
+
+  // OAuth = Redirect, NICHT axios
+  window.location.href = `http://localhost:3000/api/bank/link?userId=${userId}`;
+};
+
+const checkBankConnection = async () => {
+  try {
+    const token = auth.getToken();
+    if (!token) {
+      bankConnected.value = false;
+      return;
+    }
+
+    const res = await api.get("/api/bank/status", {
+      headers: getAuthHeader(),
+    });
+
+    bankConnected.value = Boolean(res.data?.connected);
+  } catch (err) {
+    bankConnected.value = false;
+  }
+};
+
 
     const fetchCategories = async () => {
       try {
@@ -918,60 +912,52 @@ export default {
     };
 
     const parseAmount = (columns, bankId, returnRaw = false) => {
-      for (let i = columns.length - 1; i >= 0; i--) {
-        let rawColumn = columns[i].replace(/"/g, "").trim();
+  for (let i = columns.length - 1; i >= 0; i--) {
+    let raw = columns[i];
+    if (!raw) continue;
 
-        if (!rawColumn) continue;
-        if (!rawColumn.match(/[0-9]/)) continue;
+    raw = raw.replace(/"/g, "").trim();
+    if (!raw.match(/\d/)) continue;
 
-        let amountStr = rawColumn;
-        amountStr = amountStr.replace(/[€$£]/g, "").trim();
+    // Detect negative
+    let negative =
+      raw.startsWith("-") ||
+      raw.includes(" -") ||
+      raw.toLowerCase().includes("soll");
 
-        // Handle European number formats
-        if (amountStr.includes(",") && amountStr.includes(".")) {
-          amountStr = amountStr.replace(/\./g, "");
-          amountStr = amountStr.replace(",", ".");
-        } else if (amountStr.includes(",") && !amountStr.includes(".")) {
-          const parts = amountStr.split(",");
-          if (parts.length === 2) {
-            if (parts[1].length <= 2) {
-              amountStr = amountStr.replace(",", ".");
-            } else {
-              amountStr = amountStr.replace(",", "");
-            }
-          } else {
-            amountStr = amountStr.replace(/,/g, "");
-          }
-        } else if (amountStr.includes(".") && amountStr.match(/\.\d{3}/)) {
-          amountStr = amountStr.replace(/,/g, "");
-        }
+    // Remove currency & spaces
+    let value = raw
+      .replace(/[€$]/g, "")
+      .replace(/\s/g, "");
 
-        amountStr = amountStr.replace(/[^\d.-]/g, "");
+    // CASE 1: European format → 1.234,56
+    if (value.match(/^\d{1,3}(\.\d{3})*,\d{2}$/)) {
+      value = value.replace(/\./g, "").replace(",", ".");
+    }
 
-        let isNegative =
-          rawColumn.includes("-") ||
-          rawColumn.toLowerCase().includes("soll") ||
-          rawColumn.trim().startsWith("-") ||
-          (bankId === "volksbank" && i === 2);
+    // CASE 2: Decimal comma → 123,45
+    else if (value.match(/^\d+,\d{2}$/)) {
+      value = value.replace(",", ".");
+    }
 
-        if (bankId === "volksbank") {
-          if (i === 2 && rawColumn && !rawColumn.includes("Haben")) {
-            isNegative = true;
-          } else if (i === 3 && rawColumn) {
-            isNegative = false;
-            amountStr = rawColumn.replace(/[^\d.-]/g, "");
-          }
-        }
+    // CASE 3: Integer or decimal dot → 321 or 321.50
+    else if (value.match(/^\d+(\.\d+)?$/)) {
+      // keep as-is
+    }
 
-        const amount = parseFloat(amountStr);
+    // Remove any leftover junk
+    value = value.replace(/[^\d.-]/g, "");
 
-        if (!isNaN(amount) && amount !== 0) {
-          const finalAmount = isNegative ? -Math.abs(amount) : Math.abs(amount);
-          return returnRaw ? finalAmount : Math.abs(amount);
-        }
-      }
-      return 0;
-    };
+    const amount = Number(value);
+    if (isNaN(amount) || amount === 0) continue;
+
+    const final = negative ? -Math.abs(amount) : Math.abs(amount);
+    return returnRaw ? final : Math.abs(final);
+  }
+
+  return 0;
+};
+
 
     const parseDescription = (columns, bankId) => {
       const potentialDescriptionColumns = [];
@@ -1246,8 +1232,11 @@ export default {
       if (!userId) return;
 
       try {
-        const response = await axios.get(
-          `http://localhost:3000/transactions/users/${userId}?limit=100`
+        const response = await api.get(
+          `/api/bank/users/${userId}?limit=100&sync=true`,
+          {
+            headers: getAuthHeader(),
+          }
         );
         recentTransactions.value = response.data.map((t) => ({
           ...t,
@@ -1257,6 +1246,8 @@ export default {
         updateCategorySummary();
       } catch (error) {
         console.error("Error fetching transactions:", error);
+        recentTransactions.value = [];
+        updateCategorySummary();
       }
     };
 
@@ -1438,9 +1429,29 @@ export default {
       $q.dark.set(!$q.dark.isActive);
     };
 
+    const startBankSyncInterval = () => {
+      if (bankSyncIntervalId) {
+        clearInterval(bankSyncIntervalId);
+      }
+
+      bankSyncIntervalId = setInterval(() => {
+        if (bankConnected.value) {
+          fetchRecentTransactions();
+        }
+      }, 60000);
+    };
+
     onMounted(async () => {
       await fetchCategories();
+      await checkBankConnection();
       await fetchRecentTransactions();
+      startBankSyncInterval();
+    });
+
+    onUnmounted(() => {
+      if (bankSyncIntervalId) {
+        clearInterval(bankSyncIntervalId);
+      }
     });
 
     return {
@@ -1494,6 +1505,10 @@ export default {
       exportCategoryCSV,
       exportCategoryPDF,
       toggleDarkMode,
+      connectBank,
+      checkBankConnection,
+      fetchRecentTransactions,
+  bankConnected,
     };
   },
 };
@@ -1533,21 +1548,29 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 0;
-  border-bottom: 2px solid #e9ecef;
-  margin-bottom: 24px;
+  padding: 14px 16px;
+  border: 1px solid #dde5ef;
+  border-radius: 14px;
+  background: #ffffff;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
 
   .header-content {
     display: flex;
     align-items: center;
+    min-width: 0;
   }
 }
 
 /* Main Grid */
 .main-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
+  gap: 20px;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+  }
 
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
@@ -1560,34 +1583,35 @@ export default {
 .right-column {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
 }
 
 /* Compact Cards */
 .compact-card {
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  border: 2px solid #dee2e6 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
   background: white;
   margin: 0;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-    border-color: #adb5bd !important;
+    box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+    border-color: #cfd9e6 !important;
   }
 }
 
 .card-section {
-  padding: 20px;
+  padding: 16px;
 }
 
 .section-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e6edf5;
 
   h3 {
     margin: 0;
@@ -1597,6 +1621,13 @@ export default {
 
 /* Upload Section */
 .upload-section {
+  .upload-hint {
+    background: #f7fafc;
+    border: 1px solid #e5edf6;
+    color: #334155;
+    padding: 8px 10px;
+  }
+
   .bank-actions {
     display: flex;
     align-items: center;
@@ -1621,6 +1652,12 @@ export default {
   }
 }
 
+:deep(.upload-section .q-uploader) {
+  border-radius: 12px;
+  border: 1px dashed #c9d6e4;
+  background: #fcfdff;
+}
+
 /* Quick Grid */
 .quick-grid {
   display: grid;
@@ -1629,8 +1666,10 @@ export default {
 }
 
 .quick-btn {
-  font-size: 0.8rem;
-  border-radius: 6px;
+  font-size: 0.78rem;
+  border-radius: 8px;
+  text-transform: none;
+  min-height: 34px;
 }
 
 /* Form Styles */
@@ -1662,21 +1701,20 @@ export default {
 .summary-stats {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
 
   .stat-item {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 12px;
-    background: white;
+    gap: 10px;
+    padding: 10px;
+    background: #f9fbfd;
     border-radius: 8px;
-    border: 2px solid #e9ecef;
+    border: 1px solid #e4ebf3;
     transition: all 0.3s ease;
 
     &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
     }
 
     &.income {
@@ -1815,8 +1853,9 @@ export default {
 
 .export-btn {
   font-size: 0.8rem;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 8px;
+  text-transform: none;
 }
 
 /* Dialog Styles */
@@ -1880,7 +1919,9 @@ body.body--dark .bg-page {
 }
 
 body.body--dark .compact-header {
-  border-bottom-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  background: #1e1e1e !important;
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.45) !important;
 }
 
 body.body--dark .compact-header .text-dark {
@@ -1893,13 +1934,23 @@ body.body--dark .compact-header .text-grey-7 {
 
 body.body--dark .compact-card {
   background: #1e1e1e !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.34) !important;
 }
 
 body.body--dark .compact-card:hover {
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4) !important;
-  border-color: rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 12px 24px rgba(2, 6, 23, 0.45) !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+}
+
+body.body--dark .section-header {
+  border-bottom-color: rgba(148, 163, 184, 0.2) !important;
+}
+
+body.body--dark .upload-section .upload-hint {
+  background: rgba(148, 163, 184, 0.1) !important;
+  border-color: rgba(148, 163, 184, 0.24) !important;
+  color: #d8e1ea !important;
 }
 
 body.body--dark .upload-section .bank-info .info-text {
@@ -1911,8 +1962,8 @@ body.body--dark .upload-section .bank-info .format-text {
 }
 
 body.body--dark .summary-stats .stat-item {
-  background: #1e1e1e !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: rgba(148, 163, 184, 0.08) !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
 }
 
 body.body--dark .summary-stats .stat-item .stat-icon {
@@ -1924,8 +1975,8 @@ body.body--dark .summary-stats .stat-item .stat-label {
 }
 
 body.body--dark .categories-grid .category-card {
-  background: #1e1e1e !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  background: #1f1f1f !important;
+  border-color: rgba(148, 163, 184, 0.2) !important;
 }
 
 body.body--dark .categories-grid .category-card .category-header .category-name {
@@ -1983,6 +2034,10 @@ body.body--dark .save-btn:hover {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .responsive-page-padding {
+    padding: 12px !important;
+  }
+
   .bank-import-view {
     padding: 8px;
   }
@@ -2033,3 +2088,7 @@ body.body--dark .save-btn:hover {
   transition: all 0.3s ease;
 }
 </style>
+
+
+
+

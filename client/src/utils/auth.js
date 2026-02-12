@@ -15,6 +15,10 @@ export const auth = {
     window.dispatchEvent(new CustomEvent('auth-change', { detail: { isAuthenticated: false } }));
   },
 
+  logout() {
+    this.removeToken();
+  },
+
   isAuthenticated() {
     const token = this.getToken();
     if (!token) return false;

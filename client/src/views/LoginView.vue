@@ -225,9 +225,10 @@
 <script>
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { auth } from '@/utils/auth';
+
 
 export default {
   name: 'LoginPage',
@@ -240,7 +241,9 @@ export default {
     const forgotPasswordEmail = ref('');
     const loading = ref(false);
     const router = useRouter();
+    const route = useRouter();
     const $q = useQuasar();
+
 
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
@@ -253,6 +256,15 @@ export default {
     const onInputBlur = (event) => {
       event.target.closest('.q-field').classList.remove('focused');
     };
+    
+    const redirectAfterLogin = () => {
+  if (route.query?.bank === 'connected') {
+    router.push('/bank-import');
+  } else {
+    router.push('/chart');
+  }
+};
+
 
     const loginUser = async () => {
       if (!username.value || !password.value) {
@@ -280,8 +292,8 @@ export default {
           message: 'Login successful!',
           position: 'top'
         });
+        redirectAfterLogin();
         
-        await router.push('/chart');
       } catch (error) {
         console.error(error);
         $q.notify({
@@ -293,6 +305,9 @@ export default {
         loading.value = false;
       }
     };
+
+
+
 
     const sendResetLink = () => {
       $q.notify({

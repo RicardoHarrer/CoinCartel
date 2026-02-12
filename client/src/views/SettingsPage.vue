@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-lg bg-page">
+  <q-page class="q-pa-lg bg-page responsive-page-padding">
     <div class="modern-settings">
       <!-- Dark Mode Toggle -->
       <div class="dark-mode-toggle">
@@ -582,6 +582,10 @@ body.body--dark .currency-badge {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .responsive-page-padding {
+    padding: 12px !important;
+  }
+
   .modern-settings {
     padding: 8px;
   }

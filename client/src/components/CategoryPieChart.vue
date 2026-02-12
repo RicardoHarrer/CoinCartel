@@ -599,6 +599,37 @@ body.body--dark {
   }
 }
 
+@media (max-width: 480px) {
+  .category-pie-chart {
+    .chart-header {
+      padding: 16px;
+    }
+
+    .chart-content .chart-container {
+      min-height: 0;
+
+      .chart-wrapper {
+        padding: 12px;
+      }
+
+      .category-details {
+        padding: 14px;
+
+        .categories-list .category-item {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+
+          .category-amount {
+            width: 100%;
+            text-align: left;
+          }
+        }
+      }
+    }
+  }
+}
+
 /* Custom Tooltip Styling */
 :deep(.custom-tooltip) {
   font-family: inherit;

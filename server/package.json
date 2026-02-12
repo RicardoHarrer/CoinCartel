@@ -5,8 +5,8 @@
   "main": "app.js",
   "type": "module",
   "scripts": {
-    "dev": "set MODE=development && nodemon src/app.js",
-    "start": "set MODE=production && set DEBUG=startup && node src/app.js",
+    "dev": "set MODE=development && nodemon src/bootstrap.js",
+    "start": "set MODE=production && set DEBUG=startup && node src/bootstrap.js",
     "lint": "eslint . --ext .js"
   },
   "keywords": [
@@ -19,6 +19,7 @@
     "axios": "^1.12.2",
     "bcrypt": "^5.1.1",
     "chalk": "^5.4.1",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "debug": "^4.4.0",
     "dotenv": "^16.4.5",
@@ -26,7 +27,8 @@
     "express-async-handler": "^1.2.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "plaid": "^41.0.0"
   },
   "devDependencies": {
     "eslint": "^8.57.1",
