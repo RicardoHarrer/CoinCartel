@@ -8,7 +8,6 @@
 
     <q-card-section class="q-pt-md">
       <q-form @submit="submitGoal" class="q-gutter-y-md">
-        <!-- Schnellauswahl -->
         <div v-if="!editGoal" class="q-mb-lg">
           <div class="text-subtitle1 text-weight-medium text-dark q-mb-sm">
             Schnellauswahl
@@ -112,7 +111,6 @@
           :dark="$q.dark.isActive"
         />
 
-        <!-- Spar-Informationen -->
         <q-card
           v-if="formData.target_amount && formData.target_date"
           flat
@@ -144,7 +142,6 @@
           </q-card-section>
         </q-card>
 
-        <!-- Buttons -->
         <div class="row justify-end q-gutter-sm q-mt-lg">
           <q-btn
             label="Abbrechen"
@@ -408,7 +405,6 @@ export default defineComponent({
   font-weight: 500;
 }
 
-/* DARK MODE STYLES */
 body.body--dark .creator-card {
   background: #1e1e1e !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -445,7 +441,6 @@ body.body--dark .bg-info-card .text-grey-7 {
   color: #b0b0b0 !important;
 }
 
-/* Quasar Komponenten Dark Mode Anpassungen */
 body.body--dark :deep(.q-field--filled .q-field__control) {
   background: rgba(255, 255, 255, 0.05) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
@@ -471,7 +466,6 @@ body.body--dark :deep(.q-field--filled .q-field__append) {
   color: #ffffff !important;
 }
 
-/* Buttons im Dark Mode */
 body.body--dark .action-button {
   background: #1976d2 !important;
   color: white !important;
@@ -488,19 +482,16 @@ body.body--dark .cancel-button:hover {
   background: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Badge Dark Mode */
 body.body--dark :deep(.q-badge) {
   background: rgba(66, 165, 245, 0.2) !important;
   color: #42a5f5 !important;
   border: 1px solid rgba(66, 165, 245, 0.3) !important;
 }
 
-/* Progress Bar Dark Mode */
 body.body--dark :deep(.q-linear-progress__track) {
   background: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Date Picker Dark Mode */
 body.body--dark :deep(.q-date) {
   background: #1e1e1e !important;
   color: #ffffff !important;
@@ -523,7 +514,6 @@ body.body--dark :deep(.q-date .q-date__calendar-item--in) {
   background: rgba(66, 165, 245, 0.2) !important;
 }
 
-/* Select Dropdown Dark Mode */
 body.body--dark :deep(.q-menu) {
   background: #1e1e1e !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -542,7 +532,6 @@ body.body--dark :deep(.q-item:hover) {
   background: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Responsive Design */
 @media (max-width: 600px) {
   .creator-card {
     width: 95vw !important;
@@ -558,7 +547,6 @@ body.body--dark :deep(.q-item:hover) {
   }
 }
 
-/* Smooth transitions */
 .creator-card,
 .suggestion-card,
 .bg-info-card,

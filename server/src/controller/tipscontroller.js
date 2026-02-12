@@ -120,7 +120,6 @@ const getTipsForUser = async (req, res) => {
     const savingSum = sum(savingCosts, (t) => t.amount);
     const transportSum = sum(transportCosts, (t) => t.amount);
 
-    const fixedRatio = totalIncome > 0 ? fixedSum / totalIncome : null;
     const savingRatio = totalIncome > 0 ? savingSum / totalIncome : null;
 
     const variableExpenses = expenses.filter(

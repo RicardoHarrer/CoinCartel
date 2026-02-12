@@ -5,7 +5,6 @@
     @click="$emit('click', goal)"
   >
     <q-card-section class="q-pa-md">
-      <!-- Header mit Titel und Menu -->
       <div class="row items-center no-wrap q-mb-sm">
         <div class="col">
           <div class="text-h6 text-weight-bold text-primary">{{ goal.title }}</div>
@@ -39,7 +38,6 @@
         </div>
       </div>
 
-      <!-- Status und Kategorie -->
       <div class="row q-gutter-xs q-mb-md">
         <q-badge
           :color="statusColor"
@@ -53,7 +51,6 @@
         </q-badge>
       </div>
 
-      <!-- Fortschrittsbalken -->
       <div class="q-mb-md">
         <div class="row justify-between items-center q-mb-xs">
           <div class="text-caption text-grey-6">Fortschritt</div>
@@ -78,7 +75,6 @@
         </div>
       </div>
 
-      <!-- Datum -->
       <div class="row items-center justify-between">
         <div class="row items-center">
           <q-icon name="event" size="xs" color="grey-6" class="q-mr-xs" />
@@ -203,7 +199,6 @@ export default defineComponent({
 </style>
 
 <style lang="scss">
-/* GoalCard Menu Styles - Global (nicht scoped) */
 .goal-card-menu {
   border-radius: 8px !important;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
@@ -231,7 +226,6 @@ export default defineComponent({
   color: #c62828 !important;
 }
 
-/* Dark Mode Styles */
 body.body--dark .goal-card-menu {
   background: #1e1e1e !important;
   border: 1px solid rgba(255, 255, 255, 0.15) !important;

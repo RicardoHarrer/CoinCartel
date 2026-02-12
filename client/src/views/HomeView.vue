@@ -1,6 +1,5 @@
 <template>
   <q-page class="homepage">
-    <!-- Enhanced Dark Mode Toggle -->
     <div class="dark-mode-toggle">
       <q-btn
         round
@@ -16,18 +15,28 @@
       <div class="hero-background"></div>
       <div class="hero-content">
         <h1 class="hero-title text-h2 text-weight-bold q-mb-md animate__animated animate__fadeInDown">
-          Take Control of Your <span class="text-gradient">Finances</span>
+          <template v-if="isLoggedIn">
+            Welcome back to your <span class="text-gradient">Finance Hub</span>
+          </template>
+          <template v-else>
+            Take Control of Your <span class="text-gradient">Finances</span>
+          </template>
         </h1>
         <p class="hero-subtitle text-h5 q-mb-xl animate__animated animate__fadeIn animate__delay-1s">
-          Powerful tools to track, analyze and optimize your financial health
+          <template v-if="isLoggedIn">
+            Continue where you left off and jump directly into your analytics.
+          </template>
+          <template v-else>
+            Powerful tools to track, analyze and optimize your financial health
+          </template>
         </p>
         <q-btn
-          label="Get Started"
+          :label="isLoggedIn ? 'Open Dashboard' : 'Get Started'"
           color="white"
           text-color="primary"
           size="lg"
           class="animate__animated animate__fadeInUp animate__delay-1s hero-btn"
-          @click="navigateToAuth"
+          @click="navigatePrimary"
         />
       </div>
     </section>
@@ -86,11 +95,11 @@
                       {{ feature.description }}
                     </p>
                     <q-btn
-                      label="Learn more"
+                      :label="isLoggedIn ? 'Open Dashboard' : 'Learn more'"
                       color="primary"
                       flat
                       class="q-mt-md feature-btn"
-                      @click="navigateToAuth"
+                      @click="navigatePrimary"
                     />
                   </div>
                 </div>
@@ -152,21 +161,21 @@
       </div>
     </section>
 
-    <section class="final-cta text-center q-px-xl q-py-xl">
+    <section v-if="!isLoggedIn" class="final-cta text-center q-px-xl q-py-xl">
       <div class="cta-content animate__animated animate__pulse animate__infinite animate__slower">
         <h2 class="cta-title text-h3 text-weight-bold q-mb-md">
           Ready to Transform Your Financial Life?
         </h2>
         <q-btn
-          label="Get Started for free"
+          :label="isLoggedIn ? 'Go to Dashboard' : 'Get Started for free'"
           color="white"
           text-color="primary"
           size="lg"
           class="cta-button"
-          @click="navigateToAuth"
+          @click="navigatePrimary"
         />
         <p class="cta-subtitle q-mt-md text-caption">
-          No credit card required · Cancel anytime
+          {{ isLoggedIn ? "You are currently signed in." : "No credit card required · Cancel anytime" }}
         </p>
       </div>
     </section>
@@ -174,29 +183,34 @@
 </template>
 
 <script>
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useQuasar, QCarousel, QCarouselSlide } from "quasar";
-import { ref, onMounted } from "vue";
+import { onMounted, ref, watch } from "vue";
 import "animate.css";
 import { auth } from "@/utils/auth";
 
 export default {
   components: { QCarousel, QCarouselSlide },
   setup() {
+    const route = useRoute();
     const router = useRouter();
     const $q = useQuasar();
 
     const slide = ref(0);
     const hoveredFeature = ref(null);
+    const isLoggedIn = ref(false);
 
-    const navigateToAuth = () => {
+    const syncAuthState = () => {
+      isLoggedIn.value = auth.isAuthenticated();
+    };
+
+    const navigatePrimary = () => {
       router.push(auth.isAuthenticated() ? "/chart" : "/register");
     };
 
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
 
-      // smooth transition
       document.documentElement.style.transition = "background-color 0.5s ease, color 0.5s ease";
       setTimeout(() => (document.documentElement.style.transition = ""), 500);
     };
@@ -261,7 +275,7 @@ export default {
     };
 
     onMounted(() => {
-      // FIX: Counter nur animieren, wenn target wirklich eine Zahl ist (sonst NaN/komische Effekte)
+      syncAuthState();
       const counters = document.querySelectorAll(".stat-value");
       const speed = 200;
 
@@ -279,7 +293,6 @@ export default {
 
           if (current < target) {
             const next = Math.min(target, Math.ceil(current + increment));
-            // format based on original initial value
             const initial = counter.innerText;
             const hasPercent = initial.includes("%");
             const hasEuro = initial.includes("€");
@@ -293,12 +306,20 @@ export default {
       });
     });
 
+    watch(
+      () => route.fullPath,
+      () => {
+        syncAuthState();
+      }
+    );
+
     return {
-      navigateToAuth,
+      navigatePrimary,
       toggleDarkMode,
       stats,
       features,
       interactiveFeatures,
+      isLoggedIn,
       slide,
       hoveredFeature,
       nextSlide,
@@ -309,7 +330,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-/* ===== DEIN ORIGINAL CSS BLEIBT (ich habe nur Fixes ergänzt) ===== */
 
 .homepage {
   overflow-x: hidden;
@@ -318,14 +338,12 @@ export default {
   box-sizing: border-box;
 }
 
-/* Light Mode Background */
 .homepage {
   background: #f8f9fa;
   min-height: 100vh;
   transition: all 0.5s ease;
 }
 
-/* Enhanced Dark Mode Toggle - Yellow/Grey with White Border */
 .dark-mode-toggle {
   position: fixed;
   bottom: 24px;
@@ -468,32 +486,28 @@ export default {
   overflow: hidden;
 }
 
-/* FIXED CAROUSEL CONTAINER - No Horizontal Scroll */
 .carousel-wrapper {
   position: relative;
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 20px;
 }
 
-/* FIX: clipper kapselt negative/transforms sicher ein */
 .slide-clipper {
   width: 100%;
   overflow: hidden;
 }
 
-/* FIX: Keine Quasar "gutter"-negative margins mehr -> wir geben padding selbst */
 .carousel-slide-content {
   width: 100%;
   margin: 0 !important;
   box-sizing: border-box;
 }
 
-/* FIX: professionelle Grid-Sicherheit (verhindert Überbreite durch Text/Flex) */
 .carousel-col {
-  padding: 0 20px; /* entspricht deinem bisherigen Look */
+  padding: 0 20px;
   min-width: 0;
   box-sizing: border-box;
 }
@@ -506,7 +520,6 @@ export default {
   width: 100%;
   max-width: 100%;
 
-  /* FIX: Quasar Slide selbst clippen */
   :deep(.q-carousel__slide) {
     overflow: hidden;
   }
@@ -550,7 +563,6 @@ export default {
     width: 100%;
     box-sizing: border-box;
 
-    /* FIX: harte Kapsel, damit Bild nie Overflow erzeugt */
     overflow: hidden;
     min-width: 0;
   }
@@ -564,7 +576,6 @@ export default {
     object-fit: cover;
     transition: all 0.5s ease;
 
-    /* FIX: verhindert horizontale Überbreite in flex contexts */
     min-width: 0;
   }
 }
@@ -575,6 +586,7 @@ export default {
   justify-content: center;
   gap: 20px;
   margin-top: 30px;
+  padding-bottom: 10px;
   width: 100%;
 
   .control-btn {
@@ -603,7 +615,6 @@ export default {
   }
 }
 
-/* New Interactive Features Grid */
 .interactive-features {
   width: 100%;
   box-sizing: border-box;
@@ -745,7 +756,6 @@ export default {
   100% { transform: scale(1.2); opacity: 0.8; }
 }
 
-/* ENHANCED DARK MODE STYLES (dein Original) */
 body.body--dark {
   .homepage {
     background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%) !important;
@@ -862,7 +872,6 @@ body.body--dark {
   }
 }
 
-/* Responsive Design (dein Original) */
 @media (max-width: 768px) {
   .dark-mode-toggle {
     bottom: 16px;
@@ -921,14 +930,12 @@ body.body--dark {
   }
 }
 
-/* ===== FIX: HARTE GLOBAL OVERFLOW-BREMSE (Quasar Wrapper) ===== */
-/* scoped -> wir müssen :global() nutzen */
 :global(html),
 :global(body),
 :global(#q-app),
 :global(.q-layout),
 :global(.q-page-container) {
-  overflow-x: clip; /* besser als hidden, verhindert seitliches Schieben */
+  overflow-x: clip;
   max-width: 100%;
 }
 
@@ -937,19 +944,16 @@ body.body--dark {
   padding: 0;
 }
 
-/* Smooth transitions for all interactive elements */
 .q-btn, .stats-section, .feature-carousel, .feature-card,
 .toggle-btn, .hero-btn, .feature-btn, .cta-button,
 .feature-icon, .control-btn, .indicator-btn {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Improved scroll behavior */
 :global(html) {
   scroll-behavior: smooth;
 }
 
-/* Performance optimizations */
 .feature-image {
   transform: translateZ(0);
   backface-visibility: hidden;

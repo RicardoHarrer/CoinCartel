@@ -38,6 +38,8 @@ export default defineComponent({
   setup(props) {
     const $q = useQuasar();
     const loading = ref(false);
+    const chartRef = ref(null);
+    const hoveredCategory = ref(null);
 
     const getCategoryName = (categoryId) => {
       const category = props.categories.find((c) => c.id === categoryId);
@@ -84,22 +86,22 @@ export default defineComponent({
     const pieChartOptions = computed(() => {
       if (!hasData.value) return {};
 
-      const isDark = $q.dark.isActive; // NEU: Dark Mode check
-      const textColor = isDark ? "#ffffff" : "#2d3748"; // NEU: Textfarbe basierend auf Dark Mode
+      const isDark = $q.dark.isActive;
+      const textColor = isDark ? "#f8fafc" : "#2d3748";
       const tooltipBgColor = isDark
-        ? "rgba(30, 30, 30, 0.95)"
-        : "rgba(255, 255, 255, 0.95)"; // NEU: Tooltip Hintergrund
+        ? "rgba(30, 30, 30, 0.96)"
+        : "rgba(255, 255, 255, 0.95)";
       const tooltipBorderColor = isDark
-        ? "rgba(255, 255, 255, 0.2)"
-        : "rgba(0, 0, 0, 0.1)"; // NEU: Tooltip Border
-      const tooltipTextColor = isDark ? "#ffffff" : "#2d3748"; // NEU: Tooltip Textfarbe
-      const legendTextColor = isDark ? "#d1d5db" : "#6b7280"; // NEU: Legend Textfarbe
-      const labelColor = isDark ? "#ffffff" : "#2d3748"; // NEU: Label Textfarbe
+        ? "rgba(255, 255, 255, 0.18)"
+        : "rgba(0, 0, 0, 0.1)";
+      const tooltipTextColor = isDark ? "#f8fafc" : "#2d3748";
+      const legendTextColor = isDark ? "#cbd5e1" : "#6b7280";
+      const labelColor = isDark ? "#f8fafc" : "#2d3748";
 
       return {
         backgroundColor: "transparent",
         textStyle: {
-          color: textColor, // NEU: Globale Textfarbe
+          color: textColor,
         },
         tooltip: {
           trigger: "item",
@@ -112,10 +114,10 @@ export default defineComponent({
           </div>
         `;
           },
-          backgroundColor: tooltipBgColor, // NEU: Dunkler Hintergrund für Dark Mode
-          borderColor: tooltipBorderColor, // NEU: Border Farbe für Dark Mode
+          backgroundColor: tooltipBgColor,
+          borderColor: tooltipBorderColor,
           textStyle: {
-            color: tooltipTextColor, // NEU: Weißer Text für Dark Mode
+            color: tooltipTextColor,
           },
           extraCssText:
             "box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-radius: 8px; padding: 12px;",
@@ -125,7 +127,7 @@ export default defineComponent({
           right: 20,
           top: "center",
           textStyle: {
-            color: legendTextColor, // NEU: Hellerer Text für Dark Mode
+            color: legendTextColor,
             fontSize: 12,
           },
           itemGap: 15,
@@ -143,31 +145,34 @@ export default defineComponent({
             avoidLabelOverlap: true,
             itemStyle: {
               borderRadius: 8,
-              borderColor: isDark ? "#374151" : "#fff", // NEU: Dunklerer Border für Dark Mode
+              borderColor: isDark ? "#1e1e1e" : "#fff",
               borderWidth: 3,
-              shadowColor: isDark ? "rgba(0, 0, 0, 0.3)" : "rgba(0, 0, 0, 0.1)", // NEU: Angepasster Shadow
+              shadowColor: isDark ? "rgba(0, 0, 0, 0.32)" : "rgba(0, 0, 0, 0.1)",
               shadowBlur: 8,
               shadowOffsetX: 2,
               shadowOffsetY: 2,
             },
+            animationDurationUpdate: 350,
             label: {
               show: false,
               position: "center",
               formatter: "{b}\n{c} " + props.currency + "\n({d}%)",
               fontSize: 14,
               fontWeight: "bold",
-              color: labelColor, // NEU: Weißer Text für Dark Mode
+              color: labelColor,
             },
             emphasis: {
+              scale: true,
+              scaleSize: 8,
               label: {
                 show: true,
                 fontSize: 16,
                 fontWeight: "bold",
                 formatter: "{b}\n{c} " + props.currency,
-                color: labelColor, // NEU: Weißer Text für Dark Mode
+                color: labelColor,
               },
               itemStyle: {
-                shadowColor: isDark ? "rgba(0, 0, 0, 0.5)" : "rgba(0, 0, 0, 0.3)", // NEU: Angepasster Shadow
+                shadowColor: isDark ? "rgba(0, 0, 0, 0.45)" : "rgba(0, 0, 0, 0.3)",
                 shadowBlur: 12,
                 shadowOffsetX: 4,
                 shadowOffsetY: 4,
@@ -182,12 +187,12 @@ export default defineComponent({
               percentage: item.percentage,
               itemStyle: {
                 color: getCategoryColor(item.name),
-                borderColor: isDark ? "#374151" : "#ffffff", // NEU: Dunklerer Border für Dark Mode
+                borderColor: isDark ? "#1e1e1e" : "#ffffff",
               },
               emphasis: {
                 itemStyle: {
                   borderWidth: 4,
-                  shadowColor: isDark ? "rgba(0, 0, 0, 0.5)" : "rgba(0, 0, 0, 0.3)", // NEU: Angepasster Shadow
+                  shadowColor: isDark ? "rgba(0, 0, 0, 0.45)" : "rgba(0, 0, 0, 0.3)",
                 },
               },
             })),
@@ -240,12 +245,40 @@ export default defineComponent({
       { deep: true }
     );
 
+    const getCategoryIndex = (categoryName) =>
+      categoryBreakdown.value.findIndex((item) => item.name === categoryName);
+
+    const getChartInstance = () => chartRef.value?.chart || chartRef.value || null;
+
+    const onCategoryHover = (categoryName) => {
+      const dataIndex = getCategoryIndex(categoryName);
+      const chart = getChartInstance();
+      if (dataIndex < 0 || !chart?.dispatchAction) return;
+
+      hoveredCategory.value = categoryName;
+      chart.dispatchAction({ type: "downplay", seriesIndex: 0 });
+      chart.dispatchAction({ type: "highlight", seriesIndex: 0, dataIndex });
+      chart.dispatchAction({ type: "showTip", seriesIndex: 0, dataIndex });
+    };
+
+    const onCategoryLeave = () => {
+      hoveredCategory.value = null;
+      const chart = getChartInstance();
+      if (!chart?.dispatchAction) return;
+      chart.dispatchAction({ type: "downplay", seriesIndex: 0 });
+      chart.dispatchAction({ type: "hideTip" });
+    };
+
     return {
       loading,
       hasData,
       categoryBreakdown,
       pieChartOptions,
       getCategoryColor,
+      chartRef,
+      hoveredCategory,
+      onCategoryHover,
+      onCategoryLeave,
     };
   },
 });
@@ -276,6 +309,7 @@ export default defineComponent({
       <div v-if="hasData" class="chart-container">
         <div class="chart-wrapper">
           <v-chart
+            ref="chartRef"
             class="chart"
             :option="pieChartOptions"
             autoresize
@@ -299,7 +333,10 @@ export default defineComponent({
               v-for="item in categoryBreakdown"
               :key="item.name"
               class="category-item"
+              :class="{ 'category-item--active': hoveredCategory === item.name }"
               :style="{ '--category-color': getCategoryColor(item.name) }"
+              @mouseenter="onCategoryHover(item.name)"
+              @mouseleave="onCategoryLeave"
             >
               <div class="category-info">
                 <div class="category-color-indicator"></div>
@@ -450,10 +487,16 @@ export default defineComponent({
             border-left: 4px solid var(--category-color);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
             transition: all 0.3s ease;
+            cursor: pointer;
 
             &:hover {
               transform: translateY(-2px);
               box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            }
+
+            &.category-item--active {
+              transform: translateY(-2px);
+              box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
             }
 
             .category-info {
@@ -522,31 +565,58 @@ export default defineComponent({
   }
 }
 
-/* Dark Mode Support */
 body.body--dark {
   .category-pie-chart {
+    background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+
     .chart-header {
-      background: linear-gradient(135deg, #4c51bf 0%, #7e22ce 100%);
+      background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
     }
 
     .chart-content {
+      background: transparent;
+
+      .chart-wrapper {
+        background: transparent;
+      }
+
       .category-details {
-        background: #1f2937;
-        border-left-color: #374151;
+        background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+        border-left-color: rgba(255, 255, 255, 0.14);
 
         .details-header h4 {
-          color: #f9fafb;
+          color: #ffffff;
+        }
+
+        .details-header .summary-stats .stat .stat-label {
+          color: #cbd5e1;
+        }
+
+        .details-header .summary-stats .stat .stat-value {
+          color: #ffffff;
         }
 
         .categories-list .category-item {
-          background: #374151;
+          background: #262626;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
 
           .category-info .category-text .category-name {
-            color: #f9fafb;
+            color: #ffffff;
+          }
+
+          .category-info .category-text .category-percentage {
+            color: #cbd5e1;
           }
 
           .category-amount {
-            color: #f9fafb;
+            color: #ffffff;
+          }
+
+          &.category-item--active {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
           }
         }
       }
@@ -563,7 +633,6 @@ body.body--dark {
   }
 }
 
-/* Responsive Design */
 @media (max-width: 1024px) {
   .category-pie-chart .chart-content .chart-container {
     grid-template-columns: 1fr;
@@ -572,6 +641,10 @@ body.body--dark {
       border-left: none;
       border-top: 1px solid #e5e7eb;
     }
+  }
+
+  body.body--dark .category-pie-chart .chart-content .chart-container .category-details {
+    border-top-color: rgba(255, 255, 255, 0.14);
   }
 }
 
@@ -630,7 +703,6 @@ body.body--dark {
   }
 }
 
-/* Custom Tooltip Styling */
 :deep(.custom-tooltip) {
   font-family: inherit;
 
@@ -640,6 +712,16 @@ body.body--dark {
 
   small {
     color: #6b7280;
+  }
+}
+
+body.body--dark :deep(.custom-tooltip) {
+  strong {
+    color: #ffffff;
+  }
+
+  small {
+    color: #cbd5e1;
   }
 }
 </style>

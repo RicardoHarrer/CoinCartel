@@ -65,7 +65,6 @@ export default defineComponent({
       $q.dark.set(!$q.dark.isActive);
     };
 
-    // Hilfsfunktion für Indikator-Farben
     const getIndicatorColor = (indicator) => {
       switch (indicator) {
         case "ema20":
@@ -157,7 +156,7 @@ export default defineComponent({
 
       const sortedPrices = [...prices].sort((a, b) => a[0] - b[0]);
 
-      sortedPrices.forEach((price, index) => {
+      sortedPrices.forEach((price) => {
         const timestamp = price[0];
         const value = price[1];
 
@@ -203,7 +202,7 @@ export default defineComponent({
 
       const sortedVolumes = [...volumes].sort((a, b) => a[0] - b[0]);
 
-      sortedVolumes.forEach((volume, index) => {
+      sortedVolumes.forEach((volume) => {
         const timestamp = volume[0];
         const volumeValue = volume[1];
 
@@ -448,7 +447,6 @@ export default defineComponent({
           });
         });
 
-      // Haupt-Chart-Serie
       if (selectedChartType.value === "candlestick") {
         series.push({
           name: coin.toUpperCase(),
@@ -477,7 +475,6 @@ export default defineComponent({
         });
       }
 
-      // Technische Indikatoren
       if (selectedIndicators.value.length > 0 && rawPriceData.value[coin]) {
         const priceData = rawPriceData.value[coin];
 
@@ -514,7 +511,6 @@ export default defineComponent({
         });
       }
 
-      // Volumen
       if (showVolume.value && volumeData.value[coin]) {
         series.push({
           name: `${coin.toUpperCase()} Volume`,
@@ -734,7 +730,6 @@ export default defineComponent({
       };
     }
 
-    // Watch-Funktionen korrigiert
     watch(selectedCoin, (newCoin, oldCoin) => {
       if (newCoin !== oldCoin) {
         fetchData();
@@ -819,7 +814,6 @@ export default defineComponent({
       />
     </div>
 
-    <!-- Header mit Glas-Effekt -->
     <div class="dashboard-header">
       <div class="header-content">
         <h1>Crypto Chart Analysis</h1>
@@ -844,7 +838,6 @@ export default defineComponent({
       </div>
     </div>
 
-    <!-- Quick Stats -->
     <div class="quick-stats">
       <div class="stat-card selected-coin">
         <div class="stat-icon">
@@ -889,7 +882,6 @@ export default defineComponent({
       </div>
     </div>
 
-    <!-- Controls Card -->
     <q-card class="controls-card">
       <q-card-section>
         <div class="row q-gutter-md items-center controls-row">
@@ -938,10 +930,10 @@ export default defineComponent({
               outline
             />
             <q-btn
-              label="Bank Import"
+              label="Settings"
               color="deep-purple"
-              icon="account_balance"
-              to="/bank-import"
+              icon="settings"
+              to="/settings"
               outline
             />
           </q-btn-group>
@@ -949,7 +941,6 @@ export default defineComponent({
       </q-card-section>
     </q-card>
 
-    <!-- Active Alerts -->
     <div
       v-if="selectedCoin && priceAlerts.filter((a) => a.coin === selectedCoin).length > 0"
       class="alerts-section"
@@ -980,7 +971,6 @@ export default defineComponent({
       </q-card>
     </div>
 
-    <!-- Main Chart Area -->
     <div class="chart-container">
       <div class="chart-header">
         <h3 v-if="selectedCoin">
@@ -1024,7 +1014,6 @@ export default defineComponent({
       </div>
     </div>
 
-    <!-- Alert Dialog -->
     <q-dialog v-model="showAlertDialog" persistent>
       <q-card class="alert-dialog-card">
         <q-card-section class="row items-center q-pb-none">
@@ -1320,7 +1309,6 @@ export default defineComponent({
   }
 }
 
-/* Dark Mode */
 body.body--dark {
   .modern-dashboard {
     background: #111827;

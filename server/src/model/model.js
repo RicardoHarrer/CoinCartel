@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { query } from '../../boilerplate/db/index.js';
 
-// eslint-disable-next-line import/prefer-default-export
 const getUsers = () => query('SELECT * from users');
 
 const getUserById = (id) => query('Select * from users where id = $1', [id]);
@@ -13,6 +12,9 @@ const getCurrencies = () => query('Select * from currencies');
 const getUserPreferences = () => query('Select * from user_preferences');
 
 const getCategories = () => query('Select * from categories');
+
+const getCategoryByName = (name) =>
+  query('SELECT * FROM categories WHERE LOWER(name) = LOWER($1) LIMIT 1', [name]);
 
 const findUserByUsername = async (username) => {
   const result = await query('SELECT * FROM users WHERE username = $1', [username]);
@@ -85,19 +87,29 @@ const getUserPreferencesByUser = (id) =>
 
 const deleteTransaction = (id) => query('Delete from transactions where id = $1 returning *', [id]);
 
-const resetTransactionSequence = () =>
-  query(
+const resetTransactionSequence = async () => {
+  const seq = await query("SELECT to_regclass('transactions_id_seq') AS seq");
+  if (!seq.rows[0]?.seq) {
+    return { rows: [] };
+  }
+  return query(
     `SELECT setval('transactions_id_seq', COALESCE((SELECT MAX(id)+1 FROM transactions),
      1),
      false);`,
   );
+};
 
-const resetRegisterSequence = () =>
-  query(
+const resetRegisterSequence = async () => {
+  const seq = await query("SELECT to_regclass('users_id_seq') AS seq");
+  if (!seq.rows[0]?.seq) {
+    return { rows: [] };
+  }
+  return query(
     `SELECT setval('users_id_seq', COALESCE((SELECT MAX(id)+1 FROM users),
        1),
        false);`,
   );
+};
 
 const getTransactionsByUser = (userId, startDate, endDate) => {
   let queryText = 'SELECT * FROM transactions WHERE user_id = $1';
@@ -233,7 +245,6 @@ export const fetchCryptoData = async (coin) => {
   }
 };
 
-// Goals Funktionen
 const getGoalsByUser = (userId) =>
   query('SELECT * FROM goals WHERE user_id = $1 ORDER BY target_date ASC', [userId]);
 
@@ -289,7 +300,6 @@ const deleteGoal = (id) => query('DELETE FROM goals WHERE id = $1 RETURNING *', 
 const resetGoalSequence = () =>
   query("SELECT setval('goals_id_seq', COALESCE((SELECT MAX(id)+1 FROM goals), 1), false)");
 
-// Goal Progress Berechnung
 const getGoalProgress = async (userId) => {
   const { rows } = await query(
     `SELECT
@@ -319,6 +329,7 @@ export {
   getCurrencies,
   addCurrency,
   getCategories,
+  getCategoryByName,
   addCategory,
   getTransactionsByUser,
   getTransactionByID,

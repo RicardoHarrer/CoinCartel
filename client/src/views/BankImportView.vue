@@ -1,8 +1,6 @@
 <template>
-  <q-page class="q-pa-lg bg-page responsive-page-padding">
-    <div class="bank-import-view">
-      <!-- Dark Mode Toggle -->
-      <div class="dark-mode-toggle">
+  <div class="bank-import-view" :class="{ 'bank-import-view--embedded': embedded }">
+      <div v-if="!embedded" class="dark-mode-toggle">
         <q-btn 
           round 
           :color="$q.dark.isActive ? 'grey-9' : 'yellow-9'" 
@@ -13,10 +11,10 @@
         />
       </div>
 
-      <!-- Compact Header -->
       <div class="compact-header q-mb-lg">
         <div class="header-content">
-          <q-btn 
+          <q-btn
+            v-if="!embedded"
             icon="arrow_back" 
             flat 
             round 
@@ -38,11 +36,8 @@
         />
       </div>
 
-      <!-- Main Grid -->
       <div class="main-grid">
-        <!-- Left Column - Import Functions -->
         <div class="left-column">
-          <!-- Bank Connection -->
           <q-card class="compact-card">
             <q-card-section class="card-section">
               <div class="section-header">
@@ -72,7 +67,6 @@
             </q-card-section>
           </q-card>
 
-          <!-- Quick Actions -->
           <q-card class="compact-card">
             <q-card-section class="card-section">
               <div class="section-header">
@@ -93,7 +87,6 @@
               </div>
             </q-card-section>
           </q-card>
-          <!-- Export Actions -->
           <q-card class="compact-card">
             <q-card-section class="card-section">
               <div class="section-header">
@@ -142,17 +135,18 @@
           </q-card>
         </div>
 
-        <!-- Right Column - Forms & Data -->
         <div class="right-column">
-          <!-- Manual Entry -->
-          <q-card class="compact-card">
+          <q-card
+            class="compact-card"
+            :class="{ 'manual-entry-card--embedded': embedded }"
+          >
             <q-card-section class="card-section">
               <div class="section-header">
                 <q-icon name="edit" size="20px" class="text-primary" />
                 <h3 class="text-h6 text-weight-medium">Manual Entry</h3>
               </div>
 
-              <q-form @submit="addManualTransaction" class="compact-form">
+              <q-form @submit.prevent="addManualTransaction" class="compact-form">
                 <div class="form-grid">
                   <q-input
                     filled
@@ -229,8 +223,7 @@
             </q-card-section>
           </q-card>
 
-          <!-- Category Summary -->
-          <q-card class="compact-card">
+          <q-card v-if="!embedded" class="compact-card">
             <q-card-section class="card-section">
               <div class="section-header">
                 <q-icon name="pie_chart" size="20px" class="text-primary" />
@@ -273,7 +266,6 @@
                 </div>
               </div>
 
-              <!-- Categories Grid -->
               <div class="categories-grid">
                 <div
                   v-for="cat in categorySummaries"
@@ -308,7 +300,6 @@
         </div>
       </div>
 
-      <!-- Category Details Dialog -->
       <q-dialog v-model="showCategoryDialog">
         <q-card class="dialog-card">
           <q-card-section class="dialog-header">
@@ -379,15 +370,13 @@
           </q-card-section>
         </q-card>
       </q-dialog>
-    </div>
-  </q-page>
+  </div>
 </template>
 
 <script>
 import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import axios from "axios";
 import { useQuasar } from "quasar";
-import { useRouter } from "vue-router";
 import { auth } from "@/utils/auth";
 import { jwtDecode } from "jwt-decode";
 import { jsPDF } from "jspdf";
@@ -395,13 +384,17 @@ import autoTable from "jspdf-autotable";
 
 export default {
   name: "AustrianBankImport",
+  props: {
+    embedded: {
+      type: Boolean,
+      default: false,
+    },
+  },
   setup() {
-   
     const $q = useQuasar();
-    const router = useRouter();
     let bankSyncIntervalId = null;
 
- const bankConnected = ref(false);
+    const bankConnected = ref(false);
 
     const selectedBank = ref("other");
     const manualTransaction = ref({
@@ -417,7 +410,6 @@ export default {
     const savingTransaction = ref(false);
     const importingCSV = ref(false);
 
-    // Filter variables
     const searchText = ref("");
     const transactionType = ref(null);
     const selectedCategories = ref([]);
@@ -440,7 +432,24 @@ export default {
       categories.value.map((c) => ({ label: c.name, value: c.id }))
     );
 
-    // Category summary data - properly initialized
+    const DEFAULT_CATEGORIES = [
+      { name: "Lebensmittel", description: "Einkaeufe im Supermarkt, Restaurant, etc." },
+      { name: "Miete", description: "Monatliche Miete fuer Wohnung/Haus" },
+      { name: "Freizeit", description: "Ausgaben fuer Hobbys, Reisen, etc." },
+      { name: "Kleidung", description: "Ausgaben fuer Kleidung" },
+      { name: "Transport", description: "Oeffentliche Verkehrsmittel, Taxi, Benzin, etc." },
+      { name: "Versicherungen", description: "Krankenversicherung, Haftpflicht, etc." },
+      { name: "Strom/Gas", description: "Monatliche Energiekosten" },
+      { name: "Internet/Telefon", description: "Monatliche Kommunikationskosten" },
+      { name: "Gesundheit", description: "Arztbesuche, Medikamente, etc." },
+      { name: "Bildung", description: "Buecher, Kurse, Schulmaterial, etc." },
+      { name: "Sparen", description: "Ersparnisse, Investitionen" },
+      { name: "Gehalt", description: "Regelmaessiges Einkommen" },
+      { name: "Geschenke", description: "Geschenke fuer Freunde und Familie" },
+      { name: "Gastronomie", description: "Restaurants, Bars, Festivitaeten etc." },
+      { name: "Sonstiges", description: "Verschiedene Ausgaben/Einnahmen" },
+    ];
+
     const categorySummary = ref({
       totalIncome: 0,
       totalExpenses: 0,
@@ -448,12 +457,10 @@ export default {
       categories: [],
     });
 
-    // Safe computed properties
     const categorySummaries = computed(() => {
       return categorySummary.value?.categories || [];
     });
 
-    // Dialog state
     const showCategoryDialog = ref(false);
     const activeCategory = ref(null);
 
@@ -509,7 +516,7 @@ export default {
       {
         label: "🏠 Miete",
         amount: -850,
-        category_id: 2,
+        category_name: "Miete",
         transaction_type: "Ausgabe",
         description: "Monatsmiete",
         payment_method: "Überweisung",
@@ -518,7 +525,7 @@ export default {
       {
         label: "🛒 Einkauf",
         amount: -120,
-        category_id: 1,
+        category_name: "Lebensmittel",
         transaction_type: "Ausgabe",
         description: "Wocheneinkauf",
         payment_method: "Karte",
@@ -527,7 +534,7 @@ export default {
       {
         label: "💼 Gehalt",
         amount: 2500,
-        category_id: 3,
+        category_name: "Gehalt",
         transaction_type: "Einnahme",
         description: "Monatsgehalt",
         payment_method: "Überweisung",
@@ -536,7 +543,7 @@ export default {
       {
         label: "🚗 Tanken",
         amount: -80,
-        category_id: 4,
+        category_name: "Transport",
         transaction_type: "Ausgabe",
         description: "Tankfüllung",
         payment_method: "Karte",
@@ -570,7 +577,6 @@ const connectBank = () => {
     return;
   }
 
-  // OAuth = Redirect, NICHT axios
   window.location.href = `http://localhost:3000/api/bank/link?userId=${userId}`;
 };
 
@@ -596,10 +602,43 @@ const checkBankConnection = async () => {
     const fetchCategories = async () => {
       try {
         const response = await axios.get("http://localhost:3000/categories");
-        categories.value = response.data;
+        categories.value = Array.isArray(response.data) ? response.data : [];
       } catch (error) {
         console.error("Error fetching categories:", error);
       }
+    };
+
+    const resolveCategoryIdByName = (name) => {
+      if (!name) return null;
+      const normalized = String(name).trim().toLowerCase();
+      const match = categories.value.find(
+        (category) => String(category.name || "").trim().toLowerCase() === normalized
+      );
+      return match ? Number(match.id) : null;
+    };
+
+    const ensureDefaultCategories = async () => {
+      await fetchCategories();
+
+      const existing = new Set(
+        categories.value.map((category) => String(category.name || "").trim().toLowerCase())
+      );
+
+      const missing = DEFAULT_CATEGORIES.filter(
+        (category) => !existing.has(category.name.trim().toLowerCase())
+      );
+
+      if (!missing.length) return;
+
+      for (const category of missing) {
+        try {
+          await axios.post("http://localhost:3000/categories", category);
+        } catch (error) {
+          console.error("Error creating default category:", category.name, error);
+        }
+      }
+
+      await fetchCategories();
     };
 
     const getBankName = (bankId) => {
@@ -618,15 +657,13 @@ const checkBankConnection = async () => {
     };
 
     const getCategoryName = (categoryId) => {
-      const category = categories.value.find((c) => c.id === categoryId);
+      const category = categories.value.find((c) => Number(c.id) === Number(categoryId));
       return category ? category.name : "Unkategorisiert";
     };
 
-    // Filtered transactions based on current filters
     const filteredTransactions = computed(() => {
       let filtered = [...recentTransactions.value];
 
-      // Search filter
       if (searchText.value) {
         const search = searchText.value.toLowerCase();
         filtered = filtered.filter(
@@ -636,24 +673,20 @@ const checkBankConnection = async () => {
         );
       }
 
-      // Transaction type filter
       if (transactionType.value) {
         filtered = filtered.filter((tx) => tx.transaction_type === transactionType.value);
       }
 
-      // Category filter
       if (selectedCategories.value.length > 0) {
         filtered = filtered.filter((tx) =>
           selectedCategories.value.includes(tx.category_id)
         );
       }
 
-      // Amount range filter
       filtered = filtered.filter(
         (tx) => tx.amount >= amountRange.value.min && tx.amount <= amountRange.value.max
       );
 
-      // Sorting
       switch (sortOption.value) {
         case "date_asc":
           filtered.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -672,7 +705,6 @@ const checkBankConnection = async () => {
       return filtered;
     });
 
-    // Update category summary with current transactions
     const updateCategorySummary = () => {
       const transactionsToUse = filteredTransactions.value;
 
@@ -683,17 +715,14 @@ const checkBankConnection = async () => {
         categories: [],
       };
 
-      // Return empty summary if no transactions
       if (!transactionsToUse || transactionsToUse.length === 0) {
         categorySummary.value = summary;
         return;
       }
 
-      // Group transactions by category
       const categoryMap = new Map();
 
       transactionsToUse.forEach((tx) => {
-        // Ensure transaction has valid amount
         if (!tx.amount || isNaN(tx.amount)) {
           console.warn("Skipping transaction with invalid amount:", tx);
           return;
@@ -729,7 +758,6 @@ const checkBankConnection = async () => {
         category.transactions.push(tx);
       });
 
-      // Convert map to array and sort by net amount (highest first)
       summary.categories = Array.from(categoryMap.values()).sort(
         (a, b) => Math.abs(b.netAmount) - Math.abs(a.netAmount)
       );
@@ -738,7 +766,6 @@ const checkBankConnection = async () => {
       categorySummary.value = summary;
     };
 
-    // Watch for filter changes to update the summary
     watch(
       [searchText, transactionType, selectedCategories, amountRange, sortOption],
       () => {
@@ -750,7 +777,6 @@ const checkBankConnection = async () => {
       if (!files || files.length === 0) return;
 
       const file = files[0];
-      // Check file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         $q.notify({
           type: "negative",
@@ -830,7 +856,6 @@ const checkBankConnection = async () => {
 
       for (let i = 0; i < lines.length; i++) {
         try {
-          // Skip header lines
           if (
             i === 0 &&
             lines[i].toLowerCase().includes("datum") &&
@@ -841,12 +866,10 @@ const checkBankConnection = async () => {
 
           let cleanLine = lines[i].trim();
 
-          // Handle quoted CSV lines
           if (cleanLine.startsWith('"') && cleanLine.endsWith('"')) {
             cleanLine = cleanLine.slice(1, -1);
           }
 
-          // Split by semicolon, handling quoted fields
           const columns = [];
           let currentField = "";
           let inQuotes = false;
@@ -868,11 +891,11 @@ const checkBankConnection = async () => {
 
             if (rawAmount !== 0) {
               const transaction = {
-                date: parseDate(columns[0], bankId),
+                date: parseDate(columns[0]),
                 amount: Math.abs(rawAmount),
-                description: parseDescription(columns, bankId),
+                description: parseDescription(columns),
                 transaction_type: rawAmount > 0 ? "Einnahme" : "Ausgabe",
-                category_id: autoCategorize(parseDescription(columns, bankId)),
+                category_id: autoCategorize(parseDescription(columns)),
                 payment_method: "Bank",
                 currency: "EUR",
               };
@@ -890,7 +913,7 @@ const checkBankConnection = async () => {
       return transactions;
     };
 
-    const parseDate = (dateString, bankId) => {
+    const parseDate = (dateString) => {
       if (!dateString) return null;
 
       dateString = dateString.replace(/"/g, "");
@@ -919,33 +942,23 @@ const checkBankConnection = async () => {
     raw = raw.replace(/"/g, "").trim();
     if (!raw.match(/\d/)) continue;
 
-    // Detect negative
     let negative =
       raw.startsWith("-") ||
       raw.includes(" -") ||
       raw.toLowerCase().includes("soll");
 
-    // Remove currency & spaces
     let value = raw
       .replace(/[€$]/g, "")
       .replace(/\s/g, "");
 
-    // CASE 1: European format → 1.234,56
     if (value.match(/^\d{1,3}(\.\d{3})*,\d{2}$/)) {
       value = value.replace(/\./g, "").replace(",", ".");
     }
 
-    // CASE 2: Decimal comma → 123,45
     else if (value.match(/^\d+,\d{2}$/)) {
       value = value.replace(",", ".");
     }
 
-    // CASE 3: Integer or decimal dot → 321 or 321.50
-    else if (value.match(/^\d+(\.\d+)?$/)) {
-      // keep as-is
-    }
-
-    // Remove any leftover junk
     value = value.replace(/[^\d.-]/g, "");
 
     const amount = Number(value);
@@ -959,7 +972,7 @@ const checkBankConnection = async () => {
 };
 
 
-    const parseDescription = (columns, bankId) => {
+    const parseDescription = (columns) => {
       const potentialDescriptionColumns = [];
 
       for (let i = 1; i < columns.length - 1; i++) {
@@ -1014,7 +1027,7 @@ const checkBankConnection = async () => {
             "dm ",
             "bipa",
           ],
-          category_id: 1,
+          category_name: "Lebensmittel",
         },
         {
           keywords: [
@@ -1026,11 +1039,11 @@ const checkBankConnection = async () => {
             "wohnbau",
             "genossenschaft",
           ],
-          category_id: 2,
+          category_name: "Miete",
         },
         {
           keywords: ["gehalt", "lohn", "entgelt", "salary", "payroll", "arbeitsentgelt"],
-          category_id: 3,
+          category_name: "Gehalt",
         },
         {
           keywords: [
@@ -1045,7 +1058,7 @@ const checkBankConnection = async () => {
             "eneco",
             "tankstelle",
           ],
-          category_id: 4,
+          category_name: "Transport",
         },
         {
           keywords: [
@@ -1060,7 +1073,7 @@ const checkBankConnection = async () => {
             "döner",
             "kebab",
           ],
-          category_id: 5,
+          category_name: "Gastronomie",
         },
         {
           keywords: [
@@ -1074,7 +1087,7 @@ const checkBankConnection = async () => {
             "gas",
             "fernwärme",
           ],
-          category_id: 6,
+          category_name: "Strom/Gas",
         },
         {
           keywords: [
@@ -1089,7 +1102,30 @@ const checkBankConnection = async () => {
             "telefon",
             "internet",
           ],
-          category_id: 7,
+          category_name: "Internet/Telefon",
+        },
+        {
+          keywords: [
+            "versicherung",
+            "haftpflicht",
+            "allianz",
+            "uniqa",
+            "generali",
+            "wiener staedtische",
+          ],
+          category_name: "Versicherungen",
+        },
+        {
+          keywords: ["schule", "kurs", "seminar", "udemy", "coursera", "buchhandlung", "bildung"],
+          category_name: "Bildung",
+        },
+        {
+          keywords: ["sparplan", "broker", "etf", "aktie", "invest", "sparen", "ruecklage"],
+          category_name: "Sparen",
+        },
+        {
+          keywords: ["geschenk", "geburtstag", "weihnachten", "jubil", "blumen"],
+          category_name: "Geschenke",
         },
         {
           keywords: [
@@ -1102,7 +1138,7 @@ const checkBankConnection = async () => {
             "pharmacy",
             "medizin",
           ],
-          category_id: 8,
+          category_name: "Gesundheit",
         },
         {
           keywords: [
@@ -1115,7 +1151,7 @@ const checkBankConnection = async () => {
             "kino",
             "film",
           ],
-          category_id: 9,
+          category_name: "Freizeit",
         },
         {
           keywords: [
@@ -1130,23 +1166,29 @@ const checkBankConnection = async () => {
             "mode",
             "bekleidung",
           ],
-          category_id: 10,
+          category_name: "Kleidung",
         },
       ];
 
       for (const rule of rules) {
         if (rule.keywords.some((keyword) => desc.includes(keyword))) {
-          return rule.category_id;
+          const categoryId = resolveCategoryIdByName(rule.category_name);
+          if (categoryId) {
+            return categoryId;
+          }
         }
       }
 
-      return 9;
+      return resolveCategoryIdByName("Sonstiges") || categories.value[0]?.id || null;
     };
 
     const saveTransaction = async (transactionData) => {
       const userId = getUserId();
       if (!userId) {
         throw new Error("User not authenticated");
+      }
+      if (!transactionData.category_id) {
+        throw new Error("Category is required");
       }
 
       const payload = {
@@ -1175,6 +1217,14 @@ const checkBankConnection = async () => {
 
       savingTransaction.value = true;
       try {
+        if (!manualTransaction.value.category_id) {
+          $q.notify({
+            type: "warning",
+            message: "Bitte eine Kategorie auswahlen",
+          });
+          return;
+        }
+
         const payload = {
           userId: userId,
           categoryId: manualTransaction.value.category_id,
@@ -1217,14 +1267,24 @@ const checkBankConnection = async () => {
     };
 
     const openQuickTransaction = (quickTx) => {
+      const resolvedCategoryId =
+        quickTx.category_id || resolveCategoryIdByName(quickTx.category_name);
+
       manualTransaction.value = {
         date: new Date().toISOString().split("T")[0],
         amount: Math.abs(quickTx.amount),
         transaction_type: quickTx.transaction_type,
-        category_id: quickTx.category_id,
+        category_id: resolvedCategoryId || null,
         description: quickTx.description,
         payment_method: quickTx.payment_method,
       };
+
+      if (!resolvedCategoryId) {
+        $q.notify({
+          type: "warning",
+          message: `Kategorie fur "${quickTx.label}" nicht gefunden. Bitte Kategorie auswahlen.`,
+        });
+      }
     };
 
     const fetchRecentTransactions = async () => {
@@ -1251,7 +1311,6 @@ const checkBankConnection = async () => {
       }
     };
 
-    // Filter functions
     const resetFilters = () => {
       searchText.value = "";
       transactionType.value = null;
@@ -1260,13 +1319,11 @@ const checkBankConnection = async () => {
       sortOption.value = "date_desc";
     };
 
-    // Dialog function
     const openCategoryDialog = (cat) => {
       activeCategory.value = cat;
       showCategoryDialog.value = true;
     };
 
-    // Export functions
     const exportCSV = () => {
       try {
         const headers = ["Datum", "Beschreibung", "Kategorie", "Typ", "Betrag"];
@@ -1424,7 +1481,6 @@ const checkBankConnection = async () => {
       window.URL.revokeObjectURL(url);
     };
 
-    // Dark Mode Toggle
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
     };
@@ -1442,7 +1498,7 @@ const checkBankConnection = async () => {
     };
 
     onMounted(async () => {
-      await fetchCategories();
+      await ensureDefaultCategories();
       await checkBankConnection();
       await fetchRecentTransactions();
       startBankSyncInterval();
@@ -1464,7 +1520,6 @@ const checkBankConnection = async () => {
       categorySummary,
       categorySummaries,
 
-      // Filter variables
       searchText,
       transactionType,
       selectedCategories,
@@ -1474,7 +1529,6 @@ const checkBankConnection = async () => {
       sortOptions,
       categoryOptions,
 
-      // Dialog state
       showCategoryDialog,
       activeCategory,
 
@@ -1493,13 +1547,10 @@ const checkBankConnection = async () => {
       formatCurrency,
       downloadSampleCSV,
 
-      // Filter functions
       resetFilters,
 
-      // Dialog function
       openCategoryDialog,
 
-      // Export functions
       exportCSV,
       exportPDF,
       exportCategoryCSV,
@@ -1521,7 +1572,11 @@ const checkBankConnection = async () => {
   position: relative;
 }
 
-/* Dark Mode Toggle */
+.bank-import-view--embedded {
+  max-width: 100%;
+  margin-top: 8px;
+}
+
 .dark-mode-toggle {
   position: fixed;
   bottom: 24px;
@@ -1543,7 +1598,6 @@ const checkBankConnection = async () => {
   border-color: #adb5bd !important;
 }
 
-/* Compact Header */
 .compact-header {
   display: flex;
   justify-content: space-between;
@@ -1562,7 +1616,6 @@ const checkBankConnection = async () => {
   }
 }
 
-/* Main Grid */
 .main-grid {
   display: grid;
   grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
@@ -1578,7 +1631,6 @@ const checkBankConnection = async () => {
   }
 }
 
-/* Left and Right Columns */
 .left-column,
 .right-column {
   display: flex;
@@ -1586,7 +1638,6 @@ const checkBankConnection = async () => {
   gap: 14px;
 }
 
-/* Compact Cards */
 .compact-card {
   border-radius: 14px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -1619,7 +1670,6 @@ const checkBankConnection = async () => {
   }
 }
 
-/* Upload Section */
 .upload-section {
   .upload-hint {
     background: #f7fafc;
@@ -1658,7 +1708,6 @@ const checkBankConnection = async () => {
   background: #fcfdff;
 }
 
-/* Quick Grid */
 .quick-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1672,7 +1721,6 @@ const checkBankConnection = async () => {
   min-height: 34px;
 }
 
-/* Form Styles */
 .compact-form {
   .form-grid {
     display: grid;
@@ -1697,7 +1745,27 @@ const checkBankConnection = async () => {
   }
 }
 
-/* Summary Stats */
+.manual-entry-card--embedded {
+  height: 100%;
+}
+
+.manual-entry-card--embedded .card-section {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.manual-entry-card--embedded .compact-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.manual-entry-card--embedded .compact-form .form-grid {
+  flex: 1;
+  align-content: start;
+}
+
 .summary-stats {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -1755,7 +1823,6 @@ const checkBankConnection = async () => {
   }
 }
 
-/* Categories Grid */
 .categories-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1844,7 +1911,6 @@ const checkBankConnection = async () => {
   }
 }
 
-/* Export Grid */
 .export-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1858,7 +1924,6 @@ const checkBankConnection = async () => {
   text-transform: none;
 }
 
-/* Dialog Styles */
 .dialog-card {
   border-radius: 16px;
   width: 600px;
@@ -1913,7 +1978,6 @@ const checkBankConnection = async () => {
   }
 }
 
-/* DARK MODE STYLES - Consistent with GoalView */
 body.body--dark .bg-page {
   background: #121212 !important;
 }
@@ -2017,7 +2081,6 @@ body.body--dark .dialog-stats .dialog-stat .stat-label {
   color: #b0b0b0 !important;
 }
 
-/* Buttons in Dark Mode - No Borders like GoalView */
 body.body--dark .quick-btn,
 body.body--dark .export-btn,
 body.body--dark .save-btn {
@@ -2032,7 +2095,6 @@ body.body--dark .save-btn:hover {
   background: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .responsive-page-padding {
     padding: 12px !important;
@@ -2062,6 +2124,10 @@ body.body--dark .save-btn:hover {
     grid-template-columns: 1fr;
   }
 
+  .manual-entry-card--embedded {
+    min-height: auto;
+  }
+
   .dark-mode-toggle {
     bottom: 16px;
     left: 16px;
@@ -2083,7 +2149,6 @@ body.body--dark .save-btn:hover {
   }
 }
 
-/* Smooth transitions */
 .q-btn, .compact-card, .stat-item, .toggle-btn, .category-card {
   transition: all 0.3s ease;
 }

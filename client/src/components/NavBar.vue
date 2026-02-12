@@ -55,7 +55,6 @@ export default {
 <template>
   <q-header elevated class="navbar">
     <q-toolbar class="navbar__toolbar">
-      <!-- Logo Section -->
       <div class="navbar__brand">
         <q-btn flat to="/" class="navbar__logo-btn" padding="none">
           <q-img
@@ -71,7 +70,6 @@ export default {
         </q-toolbar-title>
       </div>
 
-      <!-- Desktop Navigation -->
       <q-tabs
         v-model="tab" 
         shrink 
@@ -104,14 +102,6 @@ export default {
           class="navbar__tab"
         />
         <q-route-tab 
-          name="bank-import" 
-          label="Bank Import" 
-          to="/bank-import" 
-          exact 
-          v-if="isLoggedIn"
-          class="navbar__tab"
-        />
-        <q-route-tab 
           name="settings" 
           label="Settings" 
           to="/settings" 
@@ -120,7 +110,6 @@ export default {
           class="navbar__tab"
         />
         
-        <!-- Auth Buttons -->
         <div class="navbar__auth" v-if="!isLoggedIn">
           <q-route-tab 
             name="login" 
@@ -160,7 +149,6 @@ export default {
       />
     </q-toolbar>
   </q-header>
-  <!-- Mobile Drawer must be a sibling of q-header in q-layout -->
   <q-drawer 
     v-model="mobileMenuOpen" 
     side="right" 
@@ -225,19 +213,6 @@ export default {
             <q-icon name="savings" />
           </q-item-section>
           <q-item-section>Goals</q-item-section>
-        </q-item>
-        <q-item 
-          clickable 
-          v-ripple 
-          to="/bank-import" 
-          exact
-          class="navbar__mobile-item"
-          @click="mobileMenuOpen = false"
-        >
-          <q-item-section avatar>
-            <q-icon name="account_balance" />
-          </q-item-section>
-          <q-item-section>Bank Import</q-item-section>
         </q-item>
         <q-item 
           clickable 

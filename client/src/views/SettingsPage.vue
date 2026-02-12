@@ -1,7 +1,6 @@
 <template>
   <q-page class="q-pa-lg bg-page responsive-page-padding">
     <div class="modern-settings">
-      <!-- Dark Mode Toggle -->
       <div class="dark-mode-toggle">
         <q-btn 
           round 
@@ -13,14 +12,12 @@
         />
       </div>
 
-      <!-- Header Section -->
       <div class="settings-header q-mb-xl">
         <h1 class="text-h3 text-weight-bold text-dark q-mb-xs">Settings</h1>
         <p class="text-subtitle1 text-grey-7">Customize your financial dashboard experience</p>
       </div>
 
       <div class="settings-grid">
-        <!-- Preferences Card -->
         <q-card class="settings-card">
           <q-card-section class="card-section">
             <div class="section-header">
@@ -97,7 +94,6 @@
           </q-card-section>
         </q-card>
 
-        <!-- Translation Card -->
         <q-card class="settings-card">
           <q-card-section class="card-section">
             <div class="section-header">
@@ -140,6 +136,19 @@
           </q-card-section>
         </q-card>
       </div>
+
+      <q-card class="settings-card settings-card--full q-mt-lg">
+        <q-card-section class="card-section">
+          <div class="section-header">
+            <q-icon name="account_balance" size="24px" class="text-primary" />
+            <h3 class="text-h6 text-weight-medium">Bank Import</h3>
+          </div>
+          <p class="text-caption text-grey-6 q-mb-md">
+            Alle Bank-Import-Funktionen sind jetzt direkt in den Settings verfugbar.
+          </p>
+          <BankImportView :embedded="true" />
+        </q-card-section>
+      </q-card>
     </div>
   </q-page>
 </template>
@@ -151,9 +160,13 @@ import { useQuasar } from "quasar";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "vue-router";
 import { auth } from "@/utils/auth";
+import BankImportView from "@/views/BankImportView.vue";
 
 export default defineComponent({
   name: "SettingsPage",
+  components: {
+    BankImportView,
+  },
   setup() {
     const $q = useQuasar();
     const router = useRouter();
@@ -255,7 +268,6 @@ export default defineComponent({
       ).toFixed(2);
     });
 
-    // Dark Mode Toggle
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
     };
@@ -285,7 +297,6 @@ export default defineComponent({
   position: relative;
 }
 
-/* Dark Mode Toggle */
 .dark-mode-toggle {
   position: fixed;
   bottom: 24px;
@@ -307,14 +318,12 @@ export default defineComponent({
   border-color: #adb5bd !important;
 }
 
-/* Header Section */
 .settings-header {
   text-align: center;
   padding: 16px 0;
   border-bottom: 2px solid #e9ecef;
 }
 
-/* Settings Grid */
 .settings-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -326,7 +335,6 @@ export default defineComponent({
   }
 }
 
-/* Settings Cards */
 .settings-card {
   border-radius: 12px;
   transition: all 0.3s ease;
@@ -339,6 +347,10 @@ export default defineComponent({
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
     border-color: #adb5bd !important;
   }
+}
+
+.settings-card--full {
+  grid-column: 1 / -1;
 }
 
 .card-section {
@@ -357,7 +369,6 @@ export default defineComponent({
   }
 }
 
-/* Form Styles */
 .settings-form {
   .form-row {
     display: grid;
@@ -422,7 +433,6 @@ export default defineComponent({
   color: #2d3748;
 }
 
-/* Form Actions */
 .form-actions {
   margin-top: 24px;
   display: flex;
@@ -447,7 +457,6 @@ export default defineComponent({
   }
 }
 
-/* Translation Section */
 .translation-info {
   text-align: center;
   padding: 16px 0;
@@ -494,7 +503,6 @@ export default defineComponent({
   font-size: 1.2rem;
 }
 
-/* DARK MODE STYLES - Consistent with other pages */
 body.body--dark .bg-page {
   background: #121212 !important;
 }
@@ -552,7 +560,6 @@ body.body--dark .translation-example .example-item .text-caption {
   color: #ffffff !important;
 }
 
-/* Buttons in Dark Mode - No Borders */
 body.body--dark .save-btn {
   border: none !important;
   background: rgba(255, 255, 255, 0.1) !important;
@@ -563,7 +570,6 @@ body.body--dark .save-btn:hover {
   background: rgba(255, 255, 255, 0.2) !important;
 }
 
-/* Form Elements in Dark Mode */
 body.body--dark .modern-select .q-field__control,
 body.body--dark .modern-input .q-field__control {
   background: rgba(255, 255, 255, 0.05) !important;
@@ -580,7 +586,6 @@ body.body--dark .currency-badge {
   background: #42a5f5 !important;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .responsive-page-padding {
     padding: 12px !important;
@@ -617,7 +622,6 @@ body.body--dark .currency-badge {
   }
 }
 
-/* Smooth transitions */
 .q-btn, .settings-card, .example-item, .toggle-btn, .save-btn {
   transition: all 0.3s ease;
 }

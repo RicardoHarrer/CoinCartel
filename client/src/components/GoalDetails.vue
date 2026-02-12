@@ -8,7 +8,6 @@
     </q-card-section>
 
     <q-card-section class="q-pt-md">
-      <!-- Fortschritts-Kreis -->
       <div class="row justify-center q-mb-lg">
         <div class="relative-position" style="width: 140px; height: 140px">
           <q-circular-progress
@@ -30,7 +29,6 @@
         </div>
       </div>
 
-      <!-- Beträge -->
       <div class="row justify-between items-center q-mb-lg">
         <div class="text-center">
           <div class="text-caption text-grey-7">Gespart</div>
@@ -47,7 +45,6 @@
         </div>
       </div>
 
-      <!-- Aktuellen Betrag bearbeiten -->
       <q-card flat class="bg-edit-card q-mb-lg">
         <q-card-section class="q-pa-md">
           <div class="row items-center">
@@ -76,7 +73,6 @@
         </q-card-section>
       </q-card>
 
-      <!-- Details Grid -->
       <div class="row q-col-gutter-sm q-mb-lg">
         <div class="col-6">
           <q-card flat class="bg-detail-card">
@@ -106,7 +102,6 @@
         </div>
       </div>
 
-      <!-- Kategorie -->
       <div v-if="goal.category_name" class="row items-center justify-center q-mb-lg">
         <q-icon name="category" size="sm" :color="$q.dark.isActive ? 'grey-5' : 'grey-6'" class="q-mr-sm" />
         <div class="text-caption text-grey-7">Kategorie:</div>
@@ -117,7 +112,6 @@
         />
       </div>
 
-      <!-- Verbleibender Betrag -->
       <q-card flat class="bg-primary text-white q-mb-md">
         <q-card-section class="text-center q-py-sm">
           <div class="text-caption">Noch zu sparen</div>
@@ -125,7 +119,6 @@
         </q-card-section>
       </q-card>
 
-      <!-- Motivations-Nachricht -->
       <q-card v-if="progress < 100" flat class="bg-motivation text-dark">
         <q-card-section class="text-center q-py-sm">
           <div class="text-caption">{{ motivationMessage }}</div>
@@ -293,7 +286,6 @@ export default defineComponent({
   font-weight: 600;
 }
 
-/* DARK MODE STYLES */
 body.body--dark .details-card {
   background: #1e1e1e !important;
 }
@@ -325,7 +317,6 @@ body.body--dark .bg-motivation.text-dark {
   color: #ffffff !important;
 }
 
-/* Quasar Komponenten Dark Mode Anpassungen */
 body.body--dark :deep(.q-field--outlined .q-field__control) {
   background: rgba(255, 255, 255, 0.05) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
@@ -351,7 +342,6 @@ body.body--dark :deep(.q-btn--flat) {
   color: #42a5f5 !important;
 }
 
-/* Circular Progress Dark Mode */
 body.body--dark :deep(.q-circular-progress) {
   color: #ffffff !important;
 }
@@ -360,24 +350,20 @@ body.body--dark :deep(.q-circular-progress__text) {
   color: #ffffff !important;
 }
 
-/* Badge Dark Mode */
 body.body--dark :deep(.q-badge) {
   background: rgba(66, 165, 245, 0.2) !important;
   color: #42a5f5 !important;
   border: 1px solid rgba(66, 165, 245, 0.3) !important;
 }
 
-/* Icon Colors Dark Mode */
 body.body--dark :deep(.q-icon) {
   color: inherit !important;
 }
 
-/* Primary Card Dark Mode */
 body.body--dark :deep(.bg-primary) {
   background: linear-gradient(135deg, #1976d2, #1565c0) !important;
 }
 
-/* Responsive Design */
 @media (max-width: 480px) {
   .details-card {
     width: 95vw !important;
@@ -399,7 +385,6 @@ body.body--dark :deep(.bg-primary) {
   }
 }
 
-/* Smooth transitions */
 .details-card,
 .bg-edit-card,
 .bg-detail-card,

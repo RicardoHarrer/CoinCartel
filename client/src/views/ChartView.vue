@@ -46,8 +46,11 @@ export default defineComponent({
       from: null,
       to: null,
     });
+    const tipsDialog = ref(false);
+    const tipsLoading = ref(false);
+    const tipsError = ref("");
+    const tipsItems = ref([]);
 
-    // Computed property für die Anzeige im Input-Feld
     const dateRangeString = computed(() => {
       if (dateRange.value.from && dateRange.value.to) {
         return `${dateRange.value.from} - ${dateRange.value.to}`;
@@ -85,6 +88,22 @@ export default defineComponent({
 
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
+    };
+
+    const openTipsDialog = async () => {
+      tipsDialog.value = true;
+      tipsLoading.value = true;
+      tipsError.value = "";
+      try {
+        const response = await axios.get(`http://localhost:3000/api/tips/${userid}`);
+        tipsItems.value = Array.isArray(response.data?.tips) ? response.data.tips : [];
+      } catch (err) {
+        console.error("Error fetching tips:", err);
+        tipsError.value = "Tips konnten nicht geladen werden.";
+        tipsItems.value = [];
+      } finally {
+        tipsLoading.value = false;
+      }
     };
 
     const exportPDF = () => {
@@ -626,6 +645,11 @@ export default defineComponent({
       exportPDF,
       exportCategoryPDF,
       toggleDarkMode,
+      openTipsDialog,
+      tipsDialog,
+      tipsLoading,
+      tipsError,
+      tipsItems,
     };
   },
 });
@@ -654,8 +678,43 @@ export default defineComponent({
         <q-btn icon="refresh" round flat @click="fetchAllTransactions" />
         <q-btn icon="download" round flat @click="exportPDF" />
         <q-btn icon="pie_chart" round flat @click="exportCategoryPDF" />
+        <q-btn icon="tips_and_updates" round flat @click="openTipsDialog">
+          <q-tooltip>Tips</q-tooltip>
+        </q-btn>
       </div>
     </div>
+
+    <q-dialog v-model="tipsDialog">
+      <q-card class="tips-dialog-card">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Financial Tips</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+        <q-card-section>
+          <div v-if="tipsLoading" class="text-center q-py-md">
+            <q-spinner color="primary" size="2em" />
+          </div>
+          <div v-else-if="tipsError" class="text-negative">{{ tipsError }}</div>
+          <q-list v-else separator>
+            <q-item v-for="(tip, idx) in tipsItems" :key="`tip-${idx}`">
+              <q-item-section avatar>
+                <q-icon :name="tip.icon || 'tips_and_updates'" color="primary" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-medium">
+                  {{ tip.title || "Tip" }}
+                </q-item-label>
+                <q-item-label caption>
+                  {{ tip.message || tip.text || "" }}
+                </q-item-label>
+              </q-item-section>
+            </q-item>
+            <div v-if="!tipsItems.length" class="text-grey-6">Keine Tipps verfugbar.</div>
+          </q-list>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
 
     <div class="quick-stats">
       <div class="stat-card income">
@@ -771,10 +830,10 @@ export default defineComponent({
               outline
             />
             <q-btn
-              label="Bank Import"
+              label="Settings"
               color="deep-purple"
-              icon="account_balance"
-              to="/bank-import"
+              icon="settings"
+              to="/settings"
               outline
             />
           </q-btn-group>
@@ -837,7 +896,6 @@ export default defineComponent({
   position: relative;
 }
 
-/* Dark Mode Toggle */
 .dark-mode-toggle {
   position: fixed;
   bottom: 24px;
@@ -915,10 +973,11 @@ export default defineComponent({
 
         &:hover {
           background: rgba(255, 255, 255, 0.9);
-          border-color: rgba(129, 140, 248, 1); /* optional: andere Farbe beim Hover */
+          border-color: rgba(129, 140, 248, 1);
           transform: translateY(-2px);
         }
       }
+
     }
   }
 
@@ -1171,6 +1230,20 @@ body.body--dark .modern-dashboard .dashboard-header .header-actions .q-btn {
 
 body.body--dark .modern-dashboard .dashboard-header .header-actions .q-btn:hover {
   background: rgba(30, 30, 30, 0.9) !important;
+}
+
+.tips-dialog-card {
+  min-width: min(560px, 94vw);
+  border-radius: 14px;
+}
+
+body.body--dark .tips-dialog-card {
+  background: #111111 !important;
+  color: #ffffff !important;
+}
+
+body.body--dark .tips-dialog-card :deep(.q-item__label--caption) {
+  color: #cbd5e1 !important;
 }
 
 body.body--dark .modern-dashboard .quick-stats .stat-card {

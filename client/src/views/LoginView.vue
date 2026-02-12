@@ -241,7 +241,7 @@ export default {
     const forgotPasswordEmail = ref('');
     const loading = ref(false);
     const router = useRouter();
-    const route = useRouter();
+    const route = useRoute();
     const $q = useQuasar();
 
 
@@ -257,9 +257,9 @@ export default {
       event.target.closest('.q-field').classList.remove('focused');
     };
     
-    const redirectAfterLogin = () => {
+const redirectAfterLogin = () => {
   if (route.query?.bank === 'connected') {
-    router.push('/bank-import');
+    router.push('/settings');
   } else {
     router.push('/chart');
   }

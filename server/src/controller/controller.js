@@ -1,11 +1,7 @@
-/* eslint-disable operator-linebreak */
-/* eslint-disable consistent-return */
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import * as model from '../model/model.js';
 import { fetchCryptoData } from '../model/model.js';
-
-// eslint-disable-next-line import/prefer-default-export
 
 const getUsers = async (req, res) => {
   const { rows } = await model.getUsers();
@@ -27,7 +23,15 @@ const getUserById = async (req, res) => {
 };
 
 const registerUser = async (req, res) => {
-  const { username, password } = req.body;
+  const username = req.body?.username?.trim();
+  const password = req.body?.password;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+  if (username.length > 16) {
+    return res.status(400).json({ error: 'Username must be 16 characters or fewer' });
+  }
 
   try {
     const existingUser = await model.findUserByUsername(username);
@@ -114,13 +118,29 @@ const getCategories = async (req, res) => {
 };
 
 const addCategory = async (req, res) => {
-  const { name, description } = req.body;
-  const { rows } = await model.addCategory(name, description);
-  if (!rows) {
-    res.status(400).send(`Couldn't add category ${name}`);
+  const name = req.body?.name?.trim();
+  const description = req.body?.description || '';
+
+  if (!name) {
+    return res.status(400).json({ error: 'Category name is required' });
   }
 
-  res.status(200).send(`Category ${name} succesfully added`);
+  try {
+    const existing = await model.getCategoryByName(name);
+    if (existing.rows?.length) {
+      return res.status(200).json(existing.rows[0]);
+    }
+
+    const { rows } = await model.addCategory(name, description);
+    if (!rows || !rows.length) {
+      return res.status(400).json({ error: `Couldn't add category ${name}` });
+    }
+
+    return res.status(201).json(rows[0]);
+  } catch (error) {
+    console.error('Error adding category:', error);
+    return res.status(500).json({ error: 'Failed to add category' });
+  }
 };
 
 const getTransactionByID = async (req, res) => {
@@ -135,7 +155,6 @@ const getTransactionByID = async (req, res) => {
 const addTransaction = async (req, res) => {
   const { userId, categoryId, amount, transactionType, currency, date, description } = req.body;
 
-  // Validierung
   if (!userId || !categoryId || !amount || !transactionType || !currency) {
     return res.status(400).send('Missing required fields');
   }
@@ -272,14 +291,13 @@ export const getCryptoData = async (req, res) => {
   const { coin } = req.params;
   try {
     const data = await fetchCryptoData(coin);
-    res.status(200).json(data);
+    return res.status(200).json(data);
   } catch (err) {
     console.error('Server Error:', err.message);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
 
-// Goals Controller Funktionen
 const getGoalsByUser = async (req, res) => {
   const { id } = req.params;
   try {
@@ -287,10 +305,10 @@ const getGoalsByUser = async (req, res) => {
     if (!rows) {
       return res.status(404).send(`No goals found for user with ID ${id}`);
     }
-    res.status(200).json(rows);
+    return res.status(200).json(rows);
   } catch (error) {
     console.error('Error fetching goals:', error);
-    res.status(500).send('Failed to fetch goals');
+    return res.status(500).send('Failed to fetch goals');
   }
 };
 
@@ -301,18 +319,24 @@ const getGoalProgress = async (req, res) => {
     if (!goals) {
       return res.status(404).send(`No goals found for user with ID ${id}`);
     }
-    res.status(200).json(goals);
+    return res.status(200).json(goals);
   } catch (error) {
     console.error('Error fetching goal progress:', error);
-    res.status(500).send('Failed to fetch goal progress');
+    return res.status(500).send('Failed to fetch goal progress');
   }
 };
 
 const createGoal = async (req, res) => {
-  const { userId, title, targetAmount, currentAmount, targetDate, categoryId, description } =
-    req.body;
+  const {
+    userId,
+    title,
+    targetAmount,
+    currentAmount,
+    targetDate,
+    categoryId,
+    description,
+  } = req.body;
 
-  // Validierung
   if (!userId || !title || !targetAmount || !targetDate) {
     return res.status(400).send('Missing required fields: userId, title, targetAmount, targetDate');
   }
@@ -333,10 +357,10 @@ const createGoal = async (req, res) => {
       description,
     );
 
-    res.status(201).json(goal);
+    return res.status(201).json(goal);
   } catch (error) {
     console.error('Error creating goal:', error);
-    res.status(500).send(`Failed to create goal: ${error.message}`);
+    return res.status(500).send(`Failed to create goal: ${error.message}`);
   }
 };
 
@@ -359,10 +383,10 @@ const updateGoal = async (req, res) => {
       return res.status(404).send(`Goal with ID ${id} not found`);
     }
 
-    res.status(200).json(goal);
+    return res.status(200).json(goal);
   } catch (error) {
     console.error('Error updating goal:', error);
-    res.status(500).send(`Failed to update goal: ${error.message}`);
+    return res.status(500).send(`Failed to update goal: ${error.message}`);
   }
 };
 
@@ -379,10 +403,10 @@ const updateGoalAmount = async (req, res) => {
     if (!goal) {
       return res.status(404).send(`Goal with ID ${id} not found`);
     }
-    res.status(200).json(goal);
+    return res.status(200).json(goal);
   } catch (error) {
     console.error('Error updating goal amount:', error);
-    res.status(500).send(`Failed to update goal amount: ${error.message}`);
+    return res.status(500).send(`Failed to update goal amount: ${error.message}`);
   }
 };
 
@@ -394,10 +418,10 @@ const deleteGoal = async (req, res) => {
     if (!rows || rows.length === 0) {
       return res.status(404).send(`Goal with ID ${id} not found`);
     }
-    res.status(200).json({ message: 'Goal deleted successfully', goal: rows[0] });
+    return res.status(200).json({ message: 'Goal deleted successfully', goal: rows[0] });
   } catch (error) {
     console.error('Error deleting goal:', error);
-    res.status(500).send(`Failed to delete goal: ${error.message}`);
+    return res.status(500).send(`Failed to delete goal: ${error.message}`);
   }
 };
 

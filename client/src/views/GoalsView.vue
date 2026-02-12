@@ -1,7 +1,6 @@
 <template>
   <q-page class="q-pa-lg bg-page responsive-page-padding">
     <div class="goals-view">
-      <!-- Dark Mode Toggle Button - Links -->
       <div class="dark-mode-toggle">
         <q-btn 
           round 
@@ -13,7 +12,6 @@
         />
       </div>
 
-      <!-- Header Section -->
       <div class="header-section q-mb-xl">
         <div class="row items-center justify-between q-mb-lg">
           <div class="col">
@@ -37,7 +35,6 @@
           </div>
         </div>
 
-        <!-- Statistics Cards -->
         <div class="row q-col-gutter-md q-mb-lg">
           <div class="col-12 col-sm-4">
             <q-card class="stat-card active-stat">
@@ -74,7 +71,6 @@
           </div>
         </div>
 
-        <!-- Filter Tabs -->
         <q-card class="filter-card">
           <q-tabs
             v-model="activeTab"
@@ -127,7 +123,6 @@
           </div>
         </div>
 
-        <!-- Empty State -->
         <q-card v-else class="empty-state text-center">
           <q-card-section class="q-pa-xl">
             <div class="empty-icon">
@@ -151,7 +146,6 @@
         </q-card>
       </div>
 
-      <!-- FAB for mobile -->
       <q-page-sticky position="bottom-right" :offset="[18, 18]">
         <q-btn
           fab
@@ -162,7 +156,6 @@
         />
       </q-page-sticky>
 
-      <!-- Dialogs -->
       <q-dialog v-model="showCreateDialog" persistent>
         <GoalCreator
           :userId="userId"
@@ -453,14 +446,12 @@ export default defineComponent({
   position: relative;
 }
 
-/* Light Mode Background */
 .bg-page {
   background: #f8f9fa;
   min-height: 100vh;
   transition: all 0.3s ease;
 }
 
-/* Dark Mode Toggle - Links mit Border */
 .dark-mode-toggle {
   position: fixed;
   bottom: 24px;
@@ -486,7 +477,6 @@ export default defineComponent({
   transform: scale(0.95);
 }
 
-/* Header Section mit Border */
 .header-section {
   border-bottom: 2px solid #e9ecef;
   padding-bottom: 24px;
@@ -494,7 +484,6 @@ export default defineComponent({
   transition: all 0.3s ease;
 }
 
-/* Statistics Cards mit deutlichen Borders */
 .stat-card {
   border-radius: 12px;
   transition: all 0.3s ease;
@@ -535,7 +524,6 @@ export default defineComponent({
   border-left: 4px solid #c62828 !important;
 }
 
-/* Filter Card mit Border */
 .filter-card {
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -566,7 +554,6 @@ export default defineComponent({
   border-bottom-color: #1976d2;
 }
 
-/* BUTTONS MIT BORDERS IM LIGHT MODE */
 .create-button {
   border-radius: 8px;
   font-weight: 600;
@@ -636,7 +623,6 @@ export default defineComponent({
   color: white;
 }
 
-/* Empty State mit Border */
 .empty-state {
   border-radius: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
@@ -658,7 +644,6 @@ export default defineComponent({
   border: 3px solid #dee2e6;
 }
 
-/* Delete Dialog mit Border */
 .delete-dialog {
   border-radius: 16px;
   width: 420px;
@@ -682,7 +667,6 @@ export default defineComponent({
   border: 3px solid #ff9800;
 }
 
-/* Loading Section mit Border */
 .loading-section {
   min-height: 400px;
   display: flex;
@@ -701,7 +685,6 @@ export default defineComponent({
   border-radius: 50%;
 }
 
-/* Goals Grid */
 .goals-grid {
   animation: fadeIn 0.5s ease-in;
 }
@@ -717,7 +700,6 @@ export default defineComponent({
   }
 }
 
-/* DARK MODE STYLES - OHNE BORDERS AUF BUTTONS */
 body.body--dark .bg-page {
   background: #121212 !important;
 }
@@ -761,7 +743,6 @@ body.body--dark .filter-tabs :deep(.q-tab--active) {
   color: #42a5f5 !important;
 }
 
-/* BUTTONS IM DARK MODE OHNE BORDERS */
 body.body--dark .create-button,
 body.body--dark .empty-state-button,
 body.body--dark .cancel-button,
@@ -842,7 +823,6 @@ body.body--dark .warning-icon {
   border-color: #7c2d12 !important;
 }
 
-/* Quasar Component Fixes for Dark Mode */
 body.body--dark :deep(.q-btn) {
   color: inherit !important;
 }
@@ -852,7 +832,6 @@ body.body--dark :deep(.q-card) {
   color: #ffffff !important;
 }
 
-/* Responsive Design */
 @media (max-width: 599px) {
   .responsive-page-padding {
     padding: 12px !important;
@@ -888,7 +867,6 @@ body.body--dark :deep(.q-card) {
   }
 }
 
-/* Smooth transitions */
 .q-btn, .stat-card, .filter-card, .empty-state, .delete-dialog {
   transition: all 0.3s ease;
 }

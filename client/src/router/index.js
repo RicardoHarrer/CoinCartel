@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { LoadingBar } from 'quasar';
 import { auth } from '@/utils/auth';
 
 const router = createRouter({
@@ -54,18 +55,15 @@ const router = createRouter({
       name: 'goals',
       component: () => import('../views/GoalsView.vue'),
     },
-    // ADD THIS NEW ROUTE:
     {
       path: '/bank-import',
-      name: 'BankImport',
-      component: () => import('@/views/BankImportView.vue'),
-      meta: { requiresAuth: true },
+      redirect: '/settings',
     },
   ],
 });
 
-// Rest of your router configuration remains the same...
 router.beforeEach((to, from, next) => {
+  LoadingBar.start();
   const isAuth = auth.isAuthenticated();
 
   if (to.meta.requiresAuth && !isAuth) {
@@ -77,6 +75,10 @@ router.beforeEach((to, from, next) => {
   }
 
   next();
+});
+
+router.afterEach(() => {
+  LoadingBar.stop();
 });
 
 export default router;

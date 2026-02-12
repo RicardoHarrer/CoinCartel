@@ -40,22 +40,12 @@ router.get('/users/:userId', authenticateToken, async (req, res, next) => {
   }
 });
 
-/**
- * TrueLayer OAuth
- */
 router.get('/link', createAuthLink);
 
-// ⚠️ CALLBACK MUSS GET SEIN (kein Auth, kommt von TrueLayer)
 router.get('/callback', bankCallback);
 
-/**
- * Sync single account (optional / advanced)
- */
 router.post('/sync/:accountId', authenticateToken, syncTransactions);
 
-/**
- * Data
- */
 router.get('/accounts', authenticateToken, getAccounts);
 router.get('/status', authenticateToken, getConnectionStatus);
 router.get('/balance/:accountId', authenticateToken, getBankBalance);

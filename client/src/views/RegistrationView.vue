@@ -103,6 +103,7 @@
                 v-model="username"
                 label="Username"
                 type="text"
+                maxlength="16"
                 placeholder="Enter your username"
                 :dark="$q.dark.isActive"
                 class="custom-input"
@@ -202,10 +203,19 @@ export default {
     };
 
     const registerUser = async () => {
-      if (!username.value || !password.value) {
+      const trimmedUsername = username.value.trim();
+      if (!trimmedUsername || !password.value) {
         $q.notify({
           type: 'warning',
           message: 'Please fill in all fields.',
+          position: 'top'
+        });
+        return;
+      }
+      if (trimmedUsername.length > 16) {
+        $q.notify({
+          type: 'warning',
+          message: 'Username darf maximal 16 Zeichen haben.',
           position: 'top'
         });
         return;
@@ -215,7 +225,7 @@ export default {
       
       try {
         const response = await axios.post('http://localhost:3000/register', {
-          username: username.value,
+          username: trimmedUsername,
           password: password.value,
         });
 
@@ -231,9 +241,12 @@ export default {
         await router.push('/chart');
       } catch (error) {
         console.error(error);
+        const serverMessage =
+          error.response?.data?.error ||
+          (typeof error.response?.data === 'string' ? error.response.data : null);
         $q.notify({
           type: 'negative',
-          message: 'Registration failed. Please try again.',
+          message: serverMessage || 'Registration failed. Please try again.',
           position: 'top'
         });
       } finally {
