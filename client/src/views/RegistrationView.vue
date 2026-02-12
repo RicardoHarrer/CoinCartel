@@ -134,6 +134,49 @@
               </q-input>
             </div>
 
+            <div class="consent-container q-mb-lg">
+              <q-checkbox
+                v-model="acceptPrivacyPolicy"
+                :dark="$q.dark.isActive"
+                class="consent-checkbox"
+                color="primary"
+              >
+                <span>
+                  Ich stimme der
+                  <a
+                    href="/datenschutz"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="consent-link"
+                    @click.stop
+                  >
+                    Datenschutzerklaerung
+                  </a>
+                  zu.
+                </span>
+              </q-checkbox>
+
+              <q-checkbox
+                v-model="acceptTerms"
+                :dark="$q.dark.isActive"
+                class="consent-checkbox"
+                color="primary"
+              >
+                <span>
+                  Ich akzeptiere die
+                  <a
+                    href="/agb"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="consent-link"
+                    @click.stop
+                  >
+                    Nutzungsbedingungen (AGB)
+                  </a>.
+                </span>
+              </q-checkbox>
+            </div>
+
             <q-btn
               label="Create Account"
               :color="$q.dark.isActive ? 'primary' : 'primary'"
@@ -186,6 +229,8 @@ export default {
   setup() {
     const username = ref('');
     const password = ref('');
+    const acceptPrivacyPolicy = ref(false);
+    const acceptTerms = ref(false);
     const loading = ref(false);
     const router = useRouter();
     const $q = useQuasar();
@@ -216,6 +261,14 @@ export default {
         $q.notify({
           type: 'warning',
           message: 'Username darf maximal 16 Zeichen haben.',
+          position: 'top'
+        });
+        return;
+      }
+      if (!acceptPrivacyPolicy.value || !acceptTerms.value) {
+        $q.notify({
+          type: 'warning',
+          message: 'Bitte stimme Datenschutz und AGB zu, um dich zu registrieren.',
           position: 'top'
         });
         return;
@@ -261,6 +314,8 @@ export default {
     return {
       username,
       password,
+      acceptPrivacyPolicy,
+      acceptTerms,
       loading,
       toggleDarkMode,
       registerUser,
@@ -466,6 +521,23 @@ export default {
 
 .input-container {
   position: relative;
+}
+
+.consent-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+:deep(.consent-checkbox .q-checkbox__label) {
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+:deep(.consent-link) {
+  color: var(--q-primary);
+  font-weight: 700;
+  text-decoration: underline;
 }
 
 :deep(.custom-input) {
