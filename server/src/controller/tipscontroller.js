@@ -39,6 +39,7 @@ const getTipsForUser = async (req, res) => {
     const addTip = (tips, tip) => {
       tips.push({
         title: tip.title,
+        message: tip.message || tip.reason || '',
         reason: tip.reason,
         priority: tip.priority || 'info',
         impact: tip.impact || '—',
@@ -78,6 +79,7 @@ const getTipsForUser = async (req, res) => {
         tips: [
           {
             title: 'Noch keine Daten',
+            message: 'Im ausgewählten Zeitraum wurden keine Transaktionen gefunden.',
             reason: 'Im ausgewählten Zeitraum wurden keine Transaktionen gefunden.',
             priority: 'info',
             impact: '—',
