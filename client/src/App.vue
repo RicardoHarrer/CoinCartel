@@ -20,7 +20,7 @@ export default {
 </script>
 
 <template>
-  <q-layout>
+  <q-layout view="hHh lpR fFf">
     <Navbar v-if="showNavbar()" />
     <q-page-container>
       <RouterView />
@@ -29,15 +29,6 @@ export default {
 </template>
 
 <style>
-@font-face {
-  font-family: "Montserrat";
-  src: url("/fonts/Montserrat/Montserrat-Regular.ttf") format("truetype");
-}
-
-* {
-  font-family: "Montserrat";
-}
-
 .dark-mode-toggle {
   position: fixed !important;
   left: 20px !important;

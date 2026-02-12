@@ -1,5 +1,5 @@
 <script>
-import { ref, onMounted, watchEffect } from "vue";
+import { ref, onMounted, onBeforeUnmount, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 import { auth } from "@/utils/auth";
 
@@ -9,6 +9,7 @@ export default {
     const router = useRouter();
     const tab = ref("home");
     const mobileMenuOpen = ref(false);
+    let storageHandler = null;
 
     const isLoggedIn = ref(auth.isAuthenticated());
 
@@ -17,14 +18,16 @@ export default {
     });
 
     onMounted(() => {
-      const handleStorageChange = () => {
+      storageHandler = () => {
         isLoggedIn.value = auth.isAuthenticated();
       };
-      window.addEventListener("storage", handleStorageChange);
+      window.addEventListener("storage", storageHandler);
+    });
 
-      return () => {
-        window.removeEventListener("storage", handleStorageChange);
-      };
+    onBeforeUnmount(() => {
+      if (storageHandler) {
+        window.removeEventListener("storage", storageHandler);
+      }
     });
 
     const toggleMobileMenu = () => {
@@ -73,7 +76,7 @@ export default {
         v-model="tab" 
         shrink 
         stretch 
-        class="gt-md navbar__tabs"
+        class="gt-sm navbar__tabs"
         indicator-color="primary"
         active-color="primary"
       >
@@ -156,146 +159,144 @@ export default {
         aria-label="Open navigation menu"
       />
     </q-toolbar>
-    
-
-    <!-- Mobile Drawer -->
-    <q-drawer 
-      v-model="mobileMenuOpen" 
-      side="right" 
-      overlay 
-      bordered
-      class="navbar__drawer"
-    >
-      <div class="navbar__drawer-header">
-        <div class="navbar__drawer-brand">
-          <q-img src="/logovaultly.jpg" alt="Vaultly Logo" class="navbar__drawer-logo" />
-          <div class="navbar__drawer-title">Vaultly</div>
-        </div>
-        <q-btn
-          flat
-          round
-          dense
-          icon="close"
-          class="navbar__drawer-close"
-          @click="mobileMenuOpen = false"
-        />
+  </q-header>
+  <!-- Mobile Drawer must be a sibling of q-header in q-layout -->
+  <q-drawer 
+    v-model="mobileMenuOpen" 
+    side="right" 
+    overlay 
+    bordered
+    class="navbar__drawer"
+  >
+    <div class="navbar__drawer-header">
+      <div class="navbar__drawer-brand">
+        <q-img src="/logovaultly.jpg" alt="Vaultly Logo" class="navbar__drawer-logo" />
+        <div class="navbar__drawer-title">Vaultly</div>
       </div>
-      <q-separator class="navbar__drawer-separator" />
+      <q-btn
+        flat
+        round
+        dense
+        icon="close"
+        class="navbar__drawer-close"
+        @click="mobileMenuOpen = false"
+      />
+    </div>
+    <q-separator class="navbar__drawer-separator" />
 
-      <q-list class="navbar__mobile-list">
+    <q-list class="navbar__mobile-list">
+      <q-item 
+        clickable 
+        v-ripple 
+        to="/" 
+        exact
+        class="navbar__mobile-item"
+        @click="mobileMenuOpen = false"
+      >
+        <q-item-section avatar>
+          <q-icon name="home" />
+        </q-item-section>
+        <q-item-section>Home</q-item-section>
+      </q-item>
+      
+      <template v-if="isLoggedIn">
         <q-item 
           clickable 
           v-ripple 
-          to="/" 
+          to="/chart" 
           exact
           class="navbar__mobile-item"
           @click="mobileMenuOpen = false"
         >
           <q-item-section avatar>
-            <q-icon name="home" />
+            <q-icon name="analytics" />
           </q-item-section>
-          <q-item-section>Home</q-item-section>
+          <q-item-section>Analytics</q-item-section>
         </q-item>
-        
-        <template v-if="isLoggedIn">
-          <q-item 
-            clickable 
-            v-ripple 
-            to="/chart" 
-            exact
-            class="navbar__mobile-item"
-            @click="mobileMenuOpen = false"
-          >
-            <q-item-section avatar>
-              <q-icon name="analytics" />
-            </q-item-section>
-            <q-item-section>Analytics</q-item-section>
-          </q-item>
-          <q-item 
-            clickable 
-            v-ripple 
-            to="/goals" 
-            exact
-            class="navbar__mobile-item"
-            @click="mobileMenuOpen = false"
-          >
-            <q-item-section avatar>
-              <q-icon name="savings" />
-            </q-item-section>
-            <q-item-section>Goals</q-item-section>
-          </q-item>
-          <q-item 
-            clickable 
-            v-ripple 
-            to="/bank-import" 
-            exact
-            class="navbar__mobile-item"
-            @click="mobileMenuOpen = false"
-          >
-            <q-item-section avatar>
-              <q-icon name="account_balance" />
-            </q-item-section>
-            <q-item-section>Bank Import</q-item-section>
-          </q-item>
-          <q-item 
-            clickable 
-            v-ripple 
-            to="/settings" 
-            exact
-            class="navbar__mobile-item"
-            @click="mobileMenuOpen = false"
-          >
-            <q-item-section avatar>
-              <q-icon name="settings" />
-            </q-item-section>
-            <q-item-section>Settings</q-item-section>
-          </q-item>
-        </template>
-
-        <template v-else>
-          <q-item 
-            clickable 
-            v-ripple 
-            to="/login" 
-            exact
-            class="navbar__mobile-item"
-            @click="mobileMenuOpen = false"
-          >
-            <q-item-section avatar>
-              <q-icon name="login" />
-            </q-item-section>
-            <q-item-section>Login</q-item-section>
-          </q-item>
-          <q-item 
-            clickable 
-            v-ripple 
-            to="/register" 
-            exact
-            class="navbar__mobile-item navbar__mobile-item--highlight"
-            @click="mobileMenuOpen = false"
-          >
-            <q-item-section avatar>
-              <q-icon name="person_add" />
-            </q-item-section>
-            <q-item-section>Get Started</q-item-section>
-          </q-item>
-        </template>
-
         <q-item 
-          v-if="isLoggedIn" 
           clickable 
           v-ripple 
-          @click="logout"
-          class="navbar__mobile-item navbar__mobile-item--logout"
+          to="/goals" 
+          exact
+          class="navbar__mobile-item"
+          @click="mobileMenuOpen = false"
         >
           <q-item-section avatar>
-            <q-icon name="logout" />
+            <q-icon name="savings" />
           </q-item-section>
-          <q-item-section>Logout</q-item-section>
+          <q-item-section>Goals</q-item-section>
         </q-item>
-      </q-list>
-    </q-drawer>
-  </q-header>
+        <q-item 
+          clickable 
+          v-ripple 
+          to="/bank-import" 
+          exact
+          class="navbar__mobile-item"
+          @click="mobileMenuOpen = false"
+        >
+          <q-item-section avatar>
+            <q-icon name="account_balance" />
+          </q-item-section>
+          <q-item-section>Bank Import</q-item-section>
+        </q-item>
+        <q-item 
+          clickable 
+          v-ripple 
+          to="/settings" 
+          exact
+          class="navbar__mobile-item"
+          @click="mobileMenuOpen = false"
+        >
+          <q-item-section avatar>
+            <q-icon name="settings" />
+          </q-item-section>
+          <q-item-section>Settings</q-item-section>
+        </q-item>
+      </template>
+
+      <template v-else>
+        <q-item 
+          clickable 
+          v-ripple 
+          to="/login" 
+          exact
+          class="navbar__mobile-item"
+          @click="mobileMenuOpen = false"
+        >
+          <q-item-section avatar>
+            <q-icon name="login" />
+          </q-item-section>
+          <q-item-section>Login</q-item-section>
+        </q-item>
+        <q-item 
+          clickable 
+          v-ripple 
+          to="/register" 
+          exact
+          class="navbar__mobile-item navbar__mobile-item--highlight"
+          @click="mobileMenuOpen = false"
+        >
+          <q-item-section avatar>
+            <q-icon name="person_add" />
+          </q-item-section>
+          <q-item-section>Get Started</q-item-section>
+        </q-item>
+      </template>
+
+      <q-item 
+        v-if="isLoggedIn" 
+        clickable 
+        v-ripple 
+        @click="logout"
+        class="navbar__mobile-item navbar__mobile-item--logout"
+      >
+        <q-item-section avatar>
+          <q-icon name="logout" />
+        </q-item-section>
+        <q-item-section>Logout</q-item-section>
+      </q-item>
+    </q-list>
+  </q-drawer>
 </template>
 
 <style lang="scss" scoped>

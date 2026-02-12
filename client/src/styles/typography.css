@@ -1,0 +1,37 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --app-font-family: "Manrope", "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+html,
+body,
+#q-app {
+  font-family: var(--app-font-family);
+}
+
+body,
+.q-layout,
+.q-page,
+.q-card,
+.q-btn,
+.q-field,
+.q-item,
+.q-tab,
+.q-toolbar,
+.q-dialog,
+.q-menu,
+.q-banner {
+  font-family: var(--app-font-family);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--app-font-family);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}

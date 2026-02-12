@@ -217,6 +217,8 @@
 <script>
 import { defineComponent, ref, computed, onMounted } from "vue";
 import { useQuasar } from "quasar";
+import { jwtDecode } from "jwt-decode";
+import { auth } from "@/utils/auth";
 import GoalCard from "../components/GoalCard.vue";
 import GoalCreator from "../components/GoalCreator.vue";
 import GoalDetails from "../components/GoalDetails.vue";
@@ -237,7 +239,29 @@ export default defineComponent({
     const editingGoal = ref(null);
     const deletingGoal = ref(null);
 
-    const userId = ref(1);
+    const userId = ref(null);
+
+    const resolveUserIdFromToken = () => {
+      const token = auth.getToken();
+      if (!token) return null;
+
+      try {
+        const decoded = jwtDecode(token);
+        return decoded?.id ?? null;
+      } catch (error) {
+        console.error("Invalid token while resolving user id:", error);
+        return null;
+      }
+    };
+
+    const normalizeGoal = (goal) => ({
+      ...goal,
+      target_amount: Number(goal.target_amount) || 0,
+      current_amount: Number(goal.current_amount) || 0,
+      progress_percentage: Number(goal.progress_percentage) || 0,
+      target_date: goal.target_date ? String(goal.target_date).split("T")[0] : null,
+      status: goal.status || "in_progress",
+    });
 
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
@@ -290,21 +314,22 @@ export default defineComponent({
     });
 
     const fetchGoals = async () => {
+      if (!userId.value) {
+        goals.value = [];
+        loading.value = false;
+        return;
+      }
+
       try {
         loading.value = true;
-        const response = await fetch(`http://localhost:3000/api/goals/progress/1`);
-        const text = await response.text();
+        const response = await fetch(`http://localhost:3000/api/goals/progress/${userId.value}`);
 
-        if (response.headers.get("content-type")?.includes("application/json")) {
-          goals.value = JSON.parse(text);
-        } else {
-          console.error("Server returned HTML instead of JSON:", text);
-          $q.notify({
-            type: "negative",
-            message: "Server-Fehler: Falsches Format",
-            position: "top",
-          });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch goals: ${response.status}`);
         }
+
+        const payload = await response.json();
+        goals.value = Array.isArray(payload) ? payload.map(normalizeGoal) : [];
       } catch (error) {
         console.error("Error fetching goals:", error);
         $q.notify({
@@ -374,7 +399,21 @@ export default defineComponent({
       editingGoal.value = null;
     };
 
-    onMounted(fetchGoals);
+    onMounted(() => {
+      userId.value = resolveUserIdFromToken();
+
+      if (!userId.value) {
+        $q.notify({
+          type: "negative",
+          message: "Session ungültig. Bitte erneut einloggen.",
+          position: "top",
+        });
+        loading.value = false;
+        return;
+      }
+
+      fetchGoals();
+    });
 
     return {
       goals,

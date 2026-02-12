@@ -8,6 +8,7 @@ import '@quasar/extras/fontawesome-v6/fontawesome-v6.css';
 
 // Import Quasar css
 import 'quasar/src/css/index.sass';
+import './styles/typography.css';
 
 import App from './App.vue';
 import router from './router';
