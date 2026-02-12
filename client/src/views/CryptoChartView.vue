@@ -61,6 +61,10 @@ export default defineComponent({
 
     const timeframeMinutes = 15;
 
+    const toggleDarkMode = () => {
+      $q.dark.set(!$q.dark.isActive);
+    };
+
     // Hilfsfunktion für Indikator-Farben
     const getIndicatorColor = (indicator) => {
       switch (indicator) {
@@ -322,12 +326,20 @@ export default defineComponent({
           label: `${coin.name} (${coin.symbol.toUpperCase()})`,
           value: coin.id,
         }));
-        selectedCoin.value = topCoins.value[0].value;
+        selectedCoin.value = topCoins.value[0]?.value || null;
       } catch (error) {
         console.error("Fehler beim Laden der Top-Coins:", error);
+        topCoins.value = [
+          { label: "Bitcoin (BTC)", value: "bitcoin" },
+          { label: "Ethereum (ETH)", value: "ethereum" },
+          { label: "Solana (SOL)", value: "solana" },
+          { label: "Ripple (XRP)", value: "ripple" },
+          { label: "Cardano (ADA)", value: "cardano" },
+        ];
+        selectedCoin.value = topCoins.value[0].value;
         $q.notify({
-          type: "negative",
-          message: "Failed to load top cryptocurrencies",
+          type: "warning",
+          message: "Top coin list unavailable, using fallback list",
         });
       }
     }
@@ -344,6 +356,16 @@ export default defineComponent({
       }
     }
 
+    function filterCoins(val, update) {
+      const query = (val || "").trim().toLowerCase();
+      update(() => {
+        if (!query) return topCoins.value;
+        return availableCoins.value.filter((coin) =>
+          coin.label.toLowerCase().includes(query)
+        );
+      });
+    }
+
     async function fetchData() {
       if (!selectedCoin.value) return;
       loading.value = true;
@@ -358,15 +380,19 @@ export default defineComponent({
         rawPriceData.value = {};
 
         const coin = selectedCoin.value;
-        rawPriceData.value[coin] = response.data.prices;
+        const prices = response?.data?.prices;
+        if (!Array.isArray(prices) || prices.length === 0) {
+          throw new Error("No price data returned");
+        }
+        rawPriceData.value[coin] = prices;
 
         const volumes = response.data.total_volumes || [];
 
         if (selectedChartType.value === "candlestick") {
-          cryptoData.value[coin] = createOHLC(response.data.prices, timeframeMinutes);
+          cryptoData.value[coin] = createOHLC(prices, timeframeMinutes);
           volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes);
         } else {
-          cryptoData.value[coin] = createLineData(response.data.prices);
+          cryptoData.value[coin] = createLineData(prices);
           volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes);
         }
 
@@ -771,8 +797,10 @@ export default defineComponent({
       removeAlert,
       removeNotification,
       getIndicatorColor,
+      filterCoins,
       fetchData,
       timeframeMinutes,
+      toggleDarkMode,
     };
   },
 });
@@ -780,6 +808,17 @@ export default defineComponent({
 
 <template>
   <div class="modern-dashboard">
+    <div class="dark-mode-toggle">
+      <q-btn
+        round
+        :color="$q.dark.isActive ? 'grey-9' : 'yellow'"
+        :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'"
+        class="toggle-btn"
+        @click="toggleDarkMode"
+        size="lg"
+      />
+    </div>
+
     <!-- Header mit Glas-Effekt -->
     <div class="dashboard-header">
       <div class="header-content">
@@ -859,19 +898,7 @@ export default defineComponent({
             :options="topCoins"
             use-input
             input-debounce="300"
-            :filter="
-              (val, update) => {
-                if (!val) {
-                  update(() => topCoins);
-                  return;
-                }
-                update(() =>
-                  availableCoins.filter((coin) =>
-                    coin.label.toLowerCase().includes(val.toLowerCase())
-                  )
-                );
-              }
-            "
+            :filter="filterCoins"
             label="Select Cryptocurrency"
             emit-value
             map-options
@@ -1049,6 +1076,35 @@ export default defineComponent({
   padding: 20px;
   background: #f8fafc;
   min-height: 100vh;
+
+  .dark-mode-toggle {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+
+    .toggle-btn {
+      width: 60px;
+      height: 60px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: scale(1.1);
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.25);
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
+
+      :deep(.q-icon) {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+    }
+  }
 
   .dashboard-header {
     background: rgba(255, 255, 255, 0.8);
@@ -1333,6 +1389,16 @@ body.body--dark {
 
     .chart-wrapper {
       height: 400px;
+    }
+
+    .dark-mode-toggle {
+      bottom: 16px;
+      right: 16px;
+
+      .toggle-btn {
+        width: 50px;
+        height: 50px;
+      }
     }
   }
 }

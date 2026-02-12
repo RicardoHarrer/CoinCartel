@@ -147,20 +147,88 @@ const getTransactionsWithCategoriesByUser = async (userId, startDate, endDate) =
   return result;
 };
 
+const COIN_ID_TO_SYMBOL = {
+  bitcoin: 'BTC',
+  ethereum: 'ETH',
+  solana: 'SOL',
+  ripple: 'XRP',
+  cardano: 'ADA',
+  dogecoin: 'DOGE',
+  polkadot: 'DOT',
+  litecoin: 'LTC',
+  chainlink: 'LINK',
+  stellar: 'XLM',
+  avalanche: 'AVAX',
+  tron: 'TRX',
+  aptos: 'APT',
+  sui: 'SUI',
+};
+
+const fetchCryptoDataFromYahoo = async (coin) => {
+  const symbol = COIN_ID_TO_SYMBOL[String(coin || '').toLowerCase()];
+  if (!symbol) {
+    throw new Error(`No Yahoo symbol mapping found for coin: ${coin}`);
+  }
+
+  const yahooTicker = `${symbol}-EUR`;
+  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}`;
+  const response = await axios.get(yahooUrl, {
+    params: { range: '1d', interval: '5m', includePrePost: false },
+    timeout: 10000,
+  });
+
+  const result = response?.data?.chart?.result?.[0];
+  const timestamps = result?.timestamp || [];
+  const quote = result?.indicators?.quote?.[0] || {};
+  const closes = quote.close || [];
+  const volumes = quote.volume || [];
+
+  const prices = [];
+  const totalVolumes = [];
+  for (let i = 0; i < timestamps.length; i += 1) {
+    const ts = Number(timestamps[i]) * 1000;
+    const close = Number(closes[i]);
+    if (Number.isFinite(ts) && Number.isFinite(close)) {
+      prices.push([ts, close]);
+      const vol = Number(volumes[i]);
+      totalVolumes.push([ts, Number.isFinite(vol) ? vol : 0]);
+    }
+  }
+
+  if (!prices.length) {
+    throw new Error(`Yahoo fallback returned no data for ${coin}`);
+  }
+
+  return { prices, total_volumes: totalVolumes };
+};
+
 export const fetchCryptoData = async (coin) => {
+  const url = `https://api.coingecko.com/api/v3/coins/${coin}/market_chart`;
   try {
-    const url = `https://api.coingecko.com/api/v3/coins/${coin}/market_chart`;
     console.log('Fetching CoinGecko URL:', url);
     const response = await axios.get(url, {
       params: { vs_currency: 'eur', days: 1 },
+      timeout: 10000,
     });
     return response.data;
   } catch (err) {
-    console.error(
-      `Fehler beim Abrufen von ${coin}:`,
-      err.response?.status,
-      err.response?.data || err.message,
+    const status = err.response?.status;
+    const details = err.response?.data || err.message;
+    const detailsText = String(details || '').toLowerCase();
+    const isOpenDnsBlock = status === 403 && detailsText.includes('block.opendns.com');
+    const isTlsIssue = (
+      err.code === 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY'
+      || err.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE'
+      || err.code === 'SELF_SIGNED_CERT_IN_CHAIN'
     );
+
+    console.error(`Fehler beim Abrufen von ${coin}:`, status ?? err.code, details);
+
+    if (isOpenDnsBlock || isTlsIssue || status === 429 || status >= 500) {
+      console.warn(`Using Yahoo fallback for ${coin}.`);
+      return fetchCryptoDataFromYahoo(coin);
+    }
+
     throw new Error(`Fehler beim Abrufen von ${coin}: ${err.message}`);
   }
 };
