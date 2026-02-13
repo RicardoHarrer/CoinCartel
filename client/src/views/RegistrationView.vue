@@ -63,16 +63,18 @@
     <q-page-container>
       <q-page class="flex flex-center">
         <q-card 
-          class="register-card q-pa-xl animated-card"
+          class="register-card q-pa-lg animated-card"
           :class="{ 'dark-card': $q.dark.isActive }"
         >
           <q-card-section class="text-center q-pb-none">
             <div class="logo-container q-mb-md">
-              <q-icon 
-                name="account_balance_wallet" 
-                size="xl"
-                :color="$q.dark.isActive ? 'primary' : 'primary'"
-                class="logo-icon"
+              <q-img
+                src="/Vaultly.png"
+                alt="Vaultly Logo"
+                width="180px"
+                height="180px"
+                fit="contain"
+                class="logo-image"
               />
             </div>
             <div
@@ -88,7 +90,7 @@
             <div
               :class="[
                 'text-subtitle1',
-                'q-mb-lg',
+                'q-mb-md',
                 $q.dark.isActive ? 'text-grey-4' : 'text-grey-7',
               ]"
             >
@@ -502,8 +504,9 @@ export default {
 }
 
 .logo-container {
-  .logo-icon {
+  .logo-image {
     animation: gentlePulse 3s ease-in-out infinite;
+    border-radius: 14px;
   }
 }
 
