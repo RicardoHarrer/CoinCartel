@@ -1,5 +1,8 @@
 <template>
-  <q-layout :class="['login-layout', $q.dark.isActive ? 'bg-dark' : 'bg-light']">
+  <q-layout
+    :class="['login-layout', $q.dark.isActive ? 'bg-dark' : 'bg-light', 'notranslate']"
+    translate="no"
+  >
     <div class="svg-background">
       <svg width="100%" height="100%" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
         <defs>

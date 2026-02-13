@@ -58,10 +58,10 @@ export default {
       <div class="navbar__brand">
         <q-btn flat to="/" class="navbar__logo-btn" padding="none">
           <q-img
-            src="/logovaultly.jpg"
+            src="/Vaultly.png"
             alt="Vaultly Logo"
-            width="45px"
-            height="45px"
+            width="72px"
+            height="72px"
             class="navbar__logo"
           />
         </q-btn>
@@ -158,7 +158,7 @@ export default {
   >
     <div class="navbar__drawer-header">
       <div class="navbar__drawer-brand">
-        <q-img src="/logovaultly.jpg" alt="Vaultly Logo" class="navbar__drawer-logo" />
+        <q-img src="/Vaultly.png" alt="Vaultly Logo" class="navbar__drawer-logo" />
         <div class="navbar__drawer-title notranslate" translate="no">
           <span class="notranslate" translate="no">Vaultly</span>
         </div>
@@ -284,7 +284,7 @@ export default {
   box-shadow: none;
 
   &__toolbar {
-    padding: 10px 18px;
+    padding: 6px 18px;
     min-height: 72px;
   }
 
@@ -297,8 +297,8 @@ export default {
 
   &__logo-btn {
     border-radius: 10px;
-    width: 42px;
-    height: 42px;
+    width: 60px;
+    height: 60px;
     transition: transform 0.2s ease;
 
     &:hover {
@@ -309,6 +309,8 @@ export default {
   &__logo {
     border-radius: 8px;
     object-fit: contain;
+    width: 60px;
+    height: 60px;
   }
 
   &__title {
@@ -408,8 +410,8 @@ export default {
   }
 
   &__drawer-logo {
-    width: 32px;
-    height: 32px;
+    width: 60px;
+    height: 60px;
     border-radius: 8px;
   }
 
@@ -539,8 +541,18 @@ export default {
 @media (max-width: $breakpoint-md-max) {
   .navbar {
     &__toolbar {
-      padding: 8px 12px;
+      padding: 6px 12px;
       min-height: 64px;
+    }
+
+    &__logo-btn {
+      width: 50px;
+      height: 50px;
+    }
+
+    &__logo {
+      width: 50px;
+      height: 50px;
     }
 
     &__title {

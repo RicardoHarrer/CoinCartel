@@ -2,7 +2,7 @@
 import { RouterView } from "vue-router";
 import Navbar from "./components/NavBar.vue";
 import { useRoute } from "vue-router";
-import { onMounted } from "vue";
+import { onMounted, watch } from "vue";
 
 export default {
   components: { Navbar, RouterView },
@@ -12,6 +12,9 @@ export default {
     const showNavbar = () => {
       return !route.meta.hideNavbar;
     };
+
+    const isAuthRoute = () => route.path === "/login" || route.path === "/register";
+    const showTranslateWidget = () => !isAuthRoute();
 
     const setGoogleTranslateCookie = (langCode) => {
       const target = (langCode || "en").toLowerCase();
@@ -29,6 +32,17 @@ export default {
       if (!savedLang) return;
       setGoogleTranslateCookie(savedLang);
       document.documentElement.setAttribute("lang", savedLang);
+    };
+
+    const enforceRouteTranslationPolicy = () => {
+      if (isAuthRoute()) {
+        setGoogleTranslateCookie("en");
+        document.documentElement.setAttribute("lang", "en");
+        document.body.classList.remove("translated-ltr", "translated-rtl");
+        document.body.style.top = "0px";
+        return;
+      }
+      applySavedLanguage();
     };
 
     const initGoogleTranslate = () => {
@@ -54,12 +68,20 @@ export default {
     };
 
     onMounted(() => {
-      applySavedLanguage();
+      enforceRouteTranslationPolicy();
       initGoogleTranslate();
     });
 
+    watch(
+      () => route.path,
+      () => {
+        enforceRouteTranslationPolicy();
+      }
+    );
+
     return {
-      showNavbar
+      showNavbar,
+      showTranslateWidget,
     };
   },
 };
@@ -67,7 +89,11 @@ export default {
 
 <template>
   <q-layout view="hHh lpR fFf">
-    <div id="google_translate_element" class="google-translate-widget"></div>
+    <div
+      v-if="showTranslateWidget()"
+      id="google_translate_element"
+      class="google-translate-widget"
+    ></div>
     <Navbar v-if="showNavbar()" />
     <q-page-container>
       <RouterView />
