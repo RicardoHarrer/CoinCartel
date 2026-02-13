@@ -331,7 +331,13 @@ export default defineComponent({
       loading.value = true;
       try {
         const response = await axios.get(
-          `http://localhost:3000/transactions-with-categories/users/${userid}`
+          `http://localhost:3000/transactions-with-categories/users/${userid}`,
+          {
+            params: {
+              startDate: dateRange.value?.from || undefined,
+              endDate: dateRange.value?.to || undefined,
+            },
+          }
         );
         allTransactions.value = response.data;
         applyDateFilter();
@@ -348,14 +354,9 @@ export default defineComponent({
     };
 
     const applyDateFilter = () => {
-      if (!dateRange.value.from || !dateRange.value.to) return;
-
-      filteredTransactions.value = allTransactions.value.filter((t) => {
-        const transactionDate = new Date(t.date).toISOString().split("T")[0];
-        return (
-          transactionDate >= dateRange.value.from && transactionDate <= dateRange.value.to
-        );
-      });
+      filteredTransactions.value = Array.isArray(allTransactions.value)
+        ? allTransactions.value
+        : [];
 
       const categoryMap = new Map();
       filteredTransactions.value.forEach((t) => {
@@ -591,9 +592,9 @@ export default defineComponent({
 
     watch(
       dateRange,
-      (newRange) => {
+      async (newRange) => {
         if (newRange.from && newRange.to) {
-          applyDateFilter();
+          await fetchAllTransactions();
         }
       },
       { deep: true }

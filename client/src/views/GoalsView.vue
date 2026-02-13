@@ -16,9 +16,7 @@
         <div class="row items-center justify-between q-mb-lg">
           <div class="col">
             <div class="header-content">
-              <h1 class="text-h3 text-weight-bold text-dark q-mb-xs">
-                🎯 Sparziele
-              </h1>
+              <h1 class="text-h3 text-weight-bold text-dark q-mb-xs">Sparziele</h1>
               <p class="text-subtitle1 text-grey-7">
                 Verwalte und verfolge deine finanziellen Ziele
               </p>
@@ -830,6 +828,71 @@ body.body--dark :deep(.q-btn) {
 body.body--dark :deep(.q-card) {
   background: #1e1e1e !important;
   color: #ffffff !important;
+}
+
+/* Unified design language with ChartView */
+.goals-view .header-section {
+  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.goals-view .header-section .header-content h1 {
+  background: linear-gradient(45deg, #667eea, #764ba2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.goals-view .header-section .header-content p {
+  color: #4b5563 !important;
+}
+
+.goals-view .stat-card,
+.goals-view .filter-card,
+.goals-view .empty-state,
+.goals-view .delete-dialog,
+.goals-view .loading-section {
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08) !important;
+}
+
+.goals-view .filter-card {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+body.body--dark .goals-view .header-section {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 30, 0.9) 0%,
+    rgba(18, 18, 18, 0.8) 100%
+  ) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.body--dark .goals-view .header-section .header-content h1 {
+  background: linear-gradient(45deg, #8baafe, #a67fce) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+}
+
+body.body--dark .goals-view .header-section .header-content p {
+  color: #ffffff !important;
+}
+
+body.body--dark .goals-view .stat-card,
+body.body--dark .goals-view .filter-card,
+body.body--dark .goals-view .empty-state,
+body.body--dark .goals-view .delete-dialog,
+body.body--dark .goals-view .loading-section {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
 }
 
 @media (max-width: 599px) {

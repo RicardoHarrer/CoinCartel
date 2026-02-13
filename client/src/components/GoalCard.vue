@@ -176,17 +176,41 @@ export default defineComponent({
 .goal-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
 .goal-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
 }
 
 .goal-card-overdue {
   border-left: 4px solid #f44336;
+}
+
+:deep(.goal-card .text-h6) {
+  color: #111827 !important;
+}
+
+:deep(.goal-card .text-grey-6) {
+  color: #6b7280 !important;
+}
+
+body.body--dark .goal-card {
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.body--dark :deep(.goal-card .text-h6) {
+  color: #ffffff !important;
+}
+
+body.body--dark :deep(.goal-card .text-grey-6) {
+  color: #b0b0b0 !important;
 }
 
 :deep(.q-linear-progress__track) {

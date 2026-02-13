@@ -1,4 +1,5 @@
 import * as model from '../model/model.js';
+import axios from 'axios';
 
 const getTipsForUser = async (req, res) => {
   const { id } = req.params;
@@ -85,6 +86,25 @@ const getTipsForUser = async (req, res) => {
     const budget = toNum(pref.saldo);
     const currency = pref.preferred_currency || 'EUR';
 
+    let exchangeRates = { EUR: 1, [currency]: 1 };
+    try {
+      const fxRes = await axios.get(
+        'https://v6.exchangerate-api.com/v6/1bfd15eb1d48a0a8759f2adf/latest/EUR',
+        { timeout: 8000 },
+      );
+      exchangeRates = fxRes?.data?.conversion_rates || exchangeRates;
+      if (!exchangeRates[currency]) exchangeRates[currency] = 1;
+    } catch {
+      exchangeRates = { EUR: 1, [currency]: 1 };
+    }
+
+    const convertToPreferred = (amount, fromCurrency) => {
+      const from = fromCurrency || currency;
+      const toRate = toNum(exchangeRates[currency]) || 1;
+      const fromRate = toNum(exchangeRates[from]) || 1;
+      return toNum(amount) * (toRate / fromRate);
+    };
+
     const categoriesRes = await model.getCategories();
     const categories = categoriesRes?.rows || [];
 
@@ -119,7 +139,7 @@ const getTipsForUser = async (req, res) => {
       .filter((t) => t.transaction_type === 'Ausgabe')
       .map((t) => ({
         ...t,
-        amount: toNum(t.amount),
+        amount: convertToPreferred(t.amount, t.currency),
         dateObj: new Date(t.date),
         descN: norm(t.description),
       }))
@@ -129,7 +149,7 @@ const getTipsForUser = async (req, res) => {
       .filter((t) => t.transaction_type === 'Einnahme')
       .map((t) => ({
         ...t,
-        amount: toNum(t.amount),
+        amount: convertToPreferred(t.amount, t.currency),
         dateObj: new Date(t.date),
         descN: norm(t.description),
       }))
@@ -545,7 +565,10 @@ const getTipsForUser = async (req, res) => {
       const sumVariableRows = (rows) => {
         const ex = rows
           .filter((t) => t.transaction_type === 'Ausgabe')
-          .map((t) => ({ amount: toNum(t.amount), category_id: t.category_id }))
+          .map((t) => ({
+            amount: convertToPreferred(t.amount, t.currency),
+            category_id: t.category_id,
+          }))
           .filter((t) => t.amount > 0);
         const vars = ex.filter(
           (t) =>

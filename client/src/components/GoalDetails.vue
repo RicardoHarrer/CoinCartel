@@ -250,6 +250,9 @@ export default defineComponent({
   width: 480px;
   max-width: 90vw;
   border-radius: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
   transition: all 0.3s ease;
 }
 
@@ -287,7 +290,9 @@ export default defineComponent({
 }
 
 body.body--dark .details-card {
-  background: #1e1e1e !important;
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
 }
 
 body.body--dark .details-card .text-dark {
@@ -304,8 +309,8 @@ body.body--dark .bg-edit-card {
 }
 
 body.body--dark .bg-detail-card {
-  background: #2d2d2d !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 body.body--dark .bg-motivation {
