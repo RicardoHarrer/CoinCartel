@@ -56,6 +56,16 @@ const router = createRouter({
       component: () => import('../views/GoalsView.vue'),
     },
     {
+      path: '/datenschutz',
+      name: 'privacyPolicy',
+      component: () => import('@/views/PrivacyPolicyView.vue'),
+    },
+    {
+      path: '/agb',
+      name: 'termsAndConditions',
+      component: () => import('@/views/TermsView.vue'),
+    },
+    {
       path: '/bank-import',
       redirect: '/settings',
     },

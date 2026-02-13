@@ -63,16 +63,18 @@
     <q-page-container>
       <q-page class="flex flex-center">
         <q-card 
-          class="register-card q-pa-xl animated-card"
+          class="register-card q-pa-lg animated-card"
           :class="{ 'dark-card': $q.dark.isActive }"
         >
           <q-card-section class="text-center q-pb-none">
             <div class="logo-container q-mb-md">
-              <q-icon 
-                name="account_balance_wallet" 
-                size="xl"
-                :color="$q.dark.isActive ? 'primary' : 'primary'"
-                class="logo-icon"
+              <q-img
+                src="/Vaultly.png"
+                alt="Vaultly Logo"
+                width="180px"
+                height="180px"
+                fit="contain"
+                class="logo-image"
               />
             </div>
             <div
@@ -88,7 +90,7 @@
             <div
               :class="[
                 'text-subtitle1',
-                'q-mb-lg',
+                'q-mb-md',
                 $q.dark.isActive ? 'text-grey-4' : 'text-grey-7',
               ]"
             >
@@ -132,6 +134,49 @@
                   <q-icon name="lock" />
                 </template>
               </q-input>
+            </div>
+
+            <div class="consent-container q-mb-lg">
+              <q-checkbox
+                v-model="acceptPrivacyPolicy"
+                :dark="$q.dark.isActive"
+                class="consent-checkbox"
+                color="primary"
+              >
+                <span>
+                  Ich stimme der
+                  <a
+                    href="/datenschutz"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="consent-link"
+                    @click.stop
+                  >
+                    Datenschutzerklaerung
+                  </a>
+                  zu.
+                </span>
+              </q-checkbox>
+
+              <q-checkbox
+                v-model="acceptTerms"
+                :dark="$q.dark.isActive"
+                class="consent-checkbox"
+                color="primary"
+              >
+                <span>
+                  Ich akzeptiere die
+                  <a
+                    href="/agb"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="consent-link"
+                    @click.stop
+                  >
+                    Nutzungsbedingungen (AGB)
+                  </a>.
+                </span>
+              </q-checkbox>
             </div>
 
             <q-btn
@@ -186,6 +231,8 @@ export default {
   setup() {
     const username = ref('');
     const password = ref('');
+    const acceptPrivacyPolicy = ref(false);
+    const acceptTerms = ref(false);
     const loading = ref(false);
     const router = useRouter();
     const $q = useQuasar();
@@ -216,6 +263,14 @@ export default {
         $q.notify({
           type: 'warning',
           message: 'Username darf maximal 16 Zeichen haben.',
+          position: 'top'
+        });
+        return;
+      }
+      if (!acceptPrivacyPolicy.value || !acceptTerms.value) {
+        $q.notify({
+          type: 'warning',
+          message: 'Bitte stimme Datenschutz und AGB zu, um dich zu registrieren.',
           position: 'top'
         });
         return;
@@ -261,6 +316,8 @@ export default {
     return {
       username,
       password,
+      acceptPrivacyPolicy,
+      acceptTerms,
       loading,
       toggleDarkMode,
       registerUser,
@@ -447,8 +504,9 @@ export default {
 }
 
 .logo-container {
-  .logo-icon {
+  .logo-image {
     animation: gentlePulse 3s ease-in-out infinite;
+    border-radius: 14px;
   }
 }
 
@@ -466,6 +524,23 @@ export default {
 
 .input-container {
   position: relative;
+}
+
+.consent-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+:deep(.consent-checkbox .q-checkbox__label) {
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+:deep(.consent-link) {
+  color: var(--q-primary);
+  font-weight: 700;
+  text-decoration: underline;
 }
 
 :deep(.custom-input) {
