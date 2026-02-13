@@ -242,6 +242,7 @@ const updateUserPreferences = async (req, res) => {
   try {
     const { id } = req.params;
     const { preferred_currency: preferredCurrency, saldo } = req.body;
+    const normalizedSaldo = Number(saldo);
 
     console.log('Updating preferences:', { id, preferredCurrency, saldo });
 
@@ -252,7 +253,15 @@ const updateUserPreferences = async (req, res) => {
       });
     }
 
-    const updatedPreferences = await model.updateUserPreferences(id, preferredCurrency, saldo);
+    if (!Number.isFinite(normalizedSaldo)) {
+      return res.status(400).json({ error: 'saldo must be a valid number' });
+    }
+
+    const updatedPreferences = await model.updateUserPreferences(
+      id,
+      preferredCurrency,
+      normalizedSaldo,
+    );
 
     if (!updatedPreferences) {
       return res.status(404).json({ error: 'User preferences not found' });

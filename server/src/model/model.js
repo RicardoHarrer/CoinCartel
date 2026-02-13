@@ -124,15 +124,26 @@ const getTransactionsByUser = (userId, startDate, endDate) => {
 };
 
 const updateUserPreferences = async (id, preferredCurrency, saldo) => {
-  const { rows } = await query(
-    `INSERT INTO user_preferences (user_id, preferred_currency, saldo)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (user_id)
-     DO UPDATE SET preferred_currency = $2, saldo = $3
+  const updated = await query(
+    `UPDATE user_preferences
+     SET preferred_currency = $2, saldo = $3
+     WHERE user_id = $1
      RETURNING *`,
     [id, preferredCurrency, saldo],
   );
-  return rows[0];
+
+  if (updated.rows && updated.rows.length > 0) {
+    return updated.rows[0];
+  }
+
+  const inserted = await query(
+    `INSERT INTO user_preferences (user_id, preferred_currency, saldo)
+     VALUES ($1, $2, $3)
+     RETURNING *`,
+    [id, preferredCurrency, saldo],
+  );
+
+  return inserted.rows[0];
 };
 
 const getTransactionsWithCategoriesByUser = async (userId, startDate, endDate) => {
