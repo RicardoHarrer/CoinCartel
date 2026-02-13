@@ -39,12 +39,18 @@ export default defineComponent({
     const cryptoData = ref({});
     const volumeData = ref({});
     const rawPriceData = ref({});
+    const rawVolumeData = ref({});
 
     const chartTypes = ref([
       { label: "Candlestick", value: "candlestick" },
       { label: "Line", value: "line" },
     ]);
     const selectedChartType = ref("candlestick");
+    const timeframeOptions = ref([
+      { label: "10 min", value: 10 },
+      { label: "15 min", value: 15 },
+      { label: "30 min", value: 30 },
+    ]);
 
     const showVolume = ref(false);
     const indicators = ref([
@@ -59,7 +65,7 @@ export default defineComponent({
     const notifications = ref([]);
     const showAlertDialog = ref(false);
 
-    const timeframeMinutes = 15;
+    const timeframeMinutes = ref(15);
 
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
@@ -236,6 +242,33 @@ export default defineComponent({
       return prices.map((price) => [price[0], price[1]]);
     }
 
+    function sanitizePriceData(prices) {
+      if (!Array.isArray(prices)) return [];
+      return prices
+        .filter(
+          (point) =>
+            Array.isArray(point) &&
+            point.length >= 2 &&
+            Number.isFinite(point[0]) &&
+            Number.isFinite(point[1]) &&
+            point[1] > 0
+        )
+        .sort((a, b) => a[0] - b[0]);
+    }
+
+    function refreshAggregatedSeries(coin) {
+      const prices = rawPriceData.value[coin] || [];
+      const volumes = rawVolumeData.value[coin] || [];
+
+      if (selectedChartType.value === "candlestick") {
+        cryptoData.value[coin] = createOHLC(prices, timeframeMinutes.value);
+      } else {
+        cryptoData.value[coin] = createLineData(prices);
+      }
+
+      volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes.value);
+    }
+
     function addPriceAlert() {
       if (!newAlertPrice.value || !selectedCoin.value) return;
 
@@ -377,23 +410,18 @@ export default defineComponent({
         cryptoData.value = {};
         volumeData.value = {};
         rawPriceData.value = {};
+        rawVolumeData.value = {};
 
         const coin = selectedCoin.value;
-        const prices = response?.data?.prices;
+        const prices = sanitizePriceData(response?.data?.prices);
         if (!Array.isArray(prices) || prices.length === 0) {
           throw new Error("No price data returned");
         }
         rawPriceData.value[coin] = prices;
-
-        const volumes = response.data.total_volumes || [];
-
-        if (selectedChartType.value === "candlestick") {
-          cryptoData.value[coin] = createOHLC(prices, timeframeMinutes);
-          volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes);
-        } else {
-          cryptoData.value[coin] = createLineData(prices);
-          volumeData.value[coin] = createVolumeData(volumes, timeframeMinutes);
-        }
+        rawVolumeData.value[coin] = Array.isArray(response.data.total_volumes)
+          ? response.data.total_volumes
+          : [];
+        refreshAggregatedSeries(coin);
 
         checkAlerts();
         updateChart();
@@ -427,6 +455,7 @@ export default defineComponent({
       const coin = selectedCoin.value;
       const series = [];
       const color = "#667eea";
+      const timeframeMs = timeframeMinutes.value * 60000;
 
       const markLineData = [];
       priceAlerts.value
@@ -452,12 +481,14 @@ export default defineComponent({
           name: coin.toUpperCase(),
           type: "candlestick",
           data: cryptoData.value[coin],
+          barMinWidth: 6,
+          barMaxWidth: 18,
           itemStyle: {
             color: "#10b981",
             color0: "#ef4444",
             borderColor: "#10b981",
             borderColor0: "#ef4444",
-            borderWidth: 1,
+            borderWidth: 1.2,
           },
           markLine:
             markLineData.length > 0 ? { data: markLineData, symbol: "none" } : undefined,
@@ -526,14 +557,14 @@ export default defineComponent({
         ? [
             {
               left: "3%",
-              right: "3%",
+              right: "8%",
               bottom: "40%",
               top: "15%",
               containLabel: true,
             },
             {
               left: "3%",
-              right: "3%",
+              right: "8%",
               height: "20%",
               bottom: "5%",
               top: "75%",
@@ -543,20 +574,35 @@ export default defineComponent({
         : [
             {
               left: "3%",
-              right: "3%",
+              right: "8%",
               bottom: "15%",
               top: "15%",
               containLabel: true,
             },
           ];
 
+      const isDark = $q.dark.isActive;
+      const textColor = isDark ? "#ffffff" : "#374151";
+      const axisLabelColor = isDark ? "#d1d5db" : "#6b7280";
+      const gridColor = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.08)";
+      const backgroundColor = isDark ? "#121212" : "#ffffff";
+      const tooltipBackground = isDark ? "#1e1e1e" : "#ffffff";
+      const tooltipBorderColor = isDark ? "#333333" : "#e2e8f0";
+
       chartOptions.value = {
+        backgroundColor,
         animation: false,
+        animationDurationUpdate: 120,
         tooltip: {
           trigger: "axis",
+          backgroundColor: tooltipBackground,
+          borderColor: tooltipBorderColor,
+          textStyle: {
+            color: textColor,
+          },
           axisPointer: {
             type: "cross",
-            lineStyle: { color: "#7581BD", width: 1 },
+            lineStyle: { color: isDark ? "#9ca3af" : "#7581BD", width: 1 },
           },
           formatter: (params) => {
             const date = new Date(params[0].value[0]);
@@ -625,8 +671,11 @@ export default defineComponent({
           right: 10,
           type: "scroll",
           textStyle: {
-            color: "#1f2937",
+            color: textColor,
           },
+        },
+        axisPointer: {
+          link: [{ xAxisIndex: "all" }],
         },
         grid: gridConfig,
         xAxis: showVolume.value
@@ -634,9 +683,15 @@ export default defineComponent({
               {
                 type: "time",
                 gridIndex: 0,
-                axisLine: { onZero: false },
-                splitLine: { show: true },
-                minInterval: 900000,
+                axisLine: {
+                  onZero: false,
+                  lineStyle: { color: gridColor },
+                },
+                splitLine: {
+                  show: true,
+                  lineStyle: { color: gridColor, type: "dashed" },
+                },
+                minInterval: timeframeMs,
                 axisLabel: {
                   formatter: (value) => {
                     const date = new Date(value);
@@ -648,21 +703,35 @@ export default defineComponent({
                       .toString()
                       .padStart(2, "0")}`;
                   },
-                  color: "#6b7280",
+                  color: axisLabelColor,
                 },
               },
               {
                 type: "time",
                 gridIndex: 1,
-                minInterval: 900000,
-                axisLabel: { show: false },
+                minInterval: timeframeMs,
+                axisLine: {
+                  onZero: false,
+                  lineStyle: { color: gridColor },
+                },
+                splitLine: {
+                  show: true,
+                  lineStyle: { color: gridColor, type: "dashed" },
+                },
+                axisLabel: { show: false, color: axisLabelColor },
               },
             ]
           : {
               type: "time",
-              axisLine: { onZero: false },
-              splitLine: { show: true },
-              minInterval: 900000,
+              axisLine: {
+                onZero: false,
+                lineStyle: { color: gridColor },
+              },
+              splitLine: {
+                show: true,
+                lineStyle: { color: gridColor, type: "dashed" },
+              },
+              minInterval: timeframeMs,
               axisLabel: {
                 formatter: (value) => {
                   const date = new Date(value);
@@ -671,7 +740,7 @@ export default defineComponent({
                     .toString()
                     .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
                 },
-                color: "#6b7280",
+                color: axisLabelColor,
               },
             },
         yAxis: showVolume.value
@@ -681,25 +750,38 @@ export default defineComponent({
                 name: "EUR",
                 scale: true,
                 gridIndex: 0,
-                splitLine: { show: true },
+                axisLine: {
+                  lineStyle: { color: gridColor },
+                },
+                splitLine: {
+                  show: true,
+                  lineStyle: { color: gridColor, type: "dashed" },
+                },
                 axisLabel: {
                   formatter: (value) => `€${value.toLocaleString()}`,
-                  color: "#6b7280",
+                  color: axisLabelColor,
                 },
                 nameTextStyle: {
-                  color: "#6b7280",
+                  color: axisLabelColor,
                 },
               },
               {
                 type: "value",
                 name: "Volume (Mio. €)",
                 gridIndex: 1,
+                axisLine: {
+                  lineStyle: { color: gridColor },
+                },
+                splitLine: {
+                  show: true,
+                  lineStyle: { color: gridColor, type: "dashed" },
+                },
                 axisLabel: {
                   formatter: (value) => `${(value / 1000000).toFixed(1)}M`,
-                  color: "#6b7280",
+                  color: axisLabelColor,
                 },
                 nameTextStyle: {
-                  color: "#6b7280",
+                  color: axisLabelColor,
                 },
               },
             ]
@@ -707,24 +789,55 @@ export default defineComponent({
               type: "value",
               name: "EUR",
               scale: true,
-              splitLine: { show: true },
+              axisLine: {
+                lineStyle: { color: gridColor },
+              },
+              splitLine: {
+                show: true,
+                lineStyle: { color: gridColor, type: "dashed" },
+              },
               axisLabel: {
                 formatter: (value) => `€${value.toLocaleString()}`,
-                color: "#6b7280",
+                color: axisLabelColor,
               },
               nameTextStyle: {
-                color: "#6b7280",
+                color: axisLabelColor,
               },
             },
         dataZoom: [
           {
             type: "slider",
+            xAxisIndex: showVolume.value ? [0, 1] : [0],
+            filterMode: "none",
             start: 0,
             end: 100,
             bottom: showVolume.value ? "30%" : "20%",
             height: 20,
+            backgroundColor,
+            borderColor: gridColor,
+            dataBackground: {
+              lineStyle: { color: gridColor },
+              areaStyle: {
+                color: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+              },
+            },
+            textStyle: { color: axisLabelColor },
           },
-          { type: "inside" },
+          {
+            type: "inside",
+            xAxisIndex: showVolume.value ? [0, 1] : [0],
+            filterMode: "none",
+            zoomOnMouseWheel: true,
+            moveOnMouseMove: true,
+            moveOnMouseWheel: true,
+          },
+          {
+            type: "inside",
+            yAxisIndex: [0],
+            filterMode: "none",
+            zoomOnMouseWheel: "shift",
+            moveOnMouseMove: true,
+          },
         ],
         series,
       };
@@ -737,13 +850,25 @@ export default defineComponent({
     });
 
     watch(
-      [selectedChartType, showVolume, selectedIndicators],
+      [selectedChartType, showVolume, selectedIndicators, timeframeMinutes],
       () => {
         if (selectedCoin.value) {
+          if (rawPriceData.value[selectedCoin.value]) {
+            refreshAggregatedSeries(selectedCoin.value);
+          }
           updateChart();
         }
       },
       { deep: true }
+    );
+
+    watch(
+      () => $q.dark.isActive,
+      () => {
+        if (selectedCoin.value) {
+          updateChart();
+        }
+      }
     );
 
     watch(
@@ -794,6 +919,7 @@ export default defineComponent({
       getIndicatorColor,
       filterCoins,
       fetchData,
+      timeframeOptions,
       timeframeMinutes,
       toggleDarkMode,
     };
@@ -802,7 +928,7 @@ export default defineComponent({
 </script>
 
 <template>
-  <div class="modern-dashboard">
+  <div class="modern-dashboard" :class="{ 'modern-dashboard--dark': $q.dark.isActive }">
     <div class="dark-mode-toggle">
       <q-btn
         round
@@ -826,7 +952,9 @@ export default defineComponent({
           flat
           @click="fetchData"
           :disable="!selectedCoin || loading"
-        />
+        >
+          <q-tooltip>Refresh</q-tooltip>
+        </q-btn>
         <q-btn
           icon="notifications"
           round
@@ -834,7 +962,9 @@ export default defineComponent({
           color="red"
           @click="showAlertDialog = true"
           :disable="!selectedCoin"
-        />
+        >
+          <q-tooltip>Create Alert</q-tooltip>
+        </q-btn>
       </div>
     </div>
 
@@ -902,6 +1032,15 @@ export default defineComponent({
             v-model="selectedChartType"
             :options="chartTypes"
             label="Chart Type"
+            emit-value
+            map-options
+            filled
+          />
+
+          <q-select
+            v-model="timeframeMinutes"
+            :options="timeframeOptions"
+            label="Timeframe"
             emit-value
             map-options
             filled
@@ -1126,6 +1265,19 @@ export default defineComponent({
     .header-actions {
       display: flex;
       gap: 10px;
+
+      .q-btn {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(148, 163, 184, 0.9);
+        border-radius: 9999px;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.9);
+          border-color: rgba(129, 140, 248, 1);
+          transform: translateY(-2px);
+        }
+      }
     }
   }
 
@@ -1309,38 +1461,117 @@ export default defineComponent({
   }
 }
 
-body.body--dark {
-  .modern-dashboard {
-    background: #111827;
+.modern-dashboard.modern-dashboard--dark {
+  background: #121212 !important;
 
-    .dashboard-header {
-      background: rgba(31, 41, 55, 0.8);
-      border-color: rgba(255, 255, 255, 0.1);
+  .dashboard-header {
+    background: linear-gradient(
+      135deg,
+      rgba(30, 30, 30, 0.9) 0%,
+      rgba(18, 18, 18, 0.8) 100%
+    ) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
 
-      p {
-        color: #d1d5db;
-      }
+    .header-content h1 {
+      background: linear-gradient(45deg, #8baafe, #a67fce) !important;
+      -webkit-background-clip: text !important;
+      background-clip: text !important;
+      color: transparent !important;
     }
 
-    .quick-stats .stat-card,
-    .controls-card,
-    .alerts-card,
-    .chart-container {
-      background: #1f2937;
-      color: #f9fafb;
-
-      .stat-label {
-        color: #d1d5db;
-      }
-
-      .stat-value {
-        color: #f9fafb;
-      }
+    .header-content p {
+      color: #ffffff !important;
     }
 
-    .alert-coin-info {
-      background: #374151;
+    .header-actions .q-btn {
+      background: rgba(30, 30, 30, 0.7) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+      color: #ffffff !important;
     }
+
+    .header-actions .q-btn:hover {
+      background: rgba(30, 30, 30, 0.9) !important;
+    }
+  }
+
+  .quick-stats .stat-card {
+    background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+
+    .stat-content .stat-value {
+      color: #ffffff !important;
+    }
+
+    .stat-content .stat-label {
+      color: #b0b0b0 !important;
+    }
+
+    .stat-icon {
+      background: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .stat-icon .q-icon {
+      color: #ffffff !important;
+    }
+  }
+
+  .controls-card,
+  .alerts-card,
+  .chart-container,
+  .alert-dialog-card {
+    background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+    color: #ffffff !important;
+  }
+
+  .alert-coin-info {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .chart-container .chart-header h3,
+  .chart-container .chart-header .legend-item,
+  .controls-card .q-toggle,
+  .controls-card .q-toggle__label,
+  .controls-card .text-caption,
+  .alerts-card .text-subtitle2,
+  .alerts-card .text-body2,
+  .alert-dialog-card .text-h6,
+  .alert-dialog-card .text-subtitle2,
+  .alert-dialog-card .text-caption {
+    color: #ffffff !important;
+  }
+
+  .controls-card :deep(.q-field__label),
+  .controls-card :deep(.q-field__native),
+  .controls-card :deep(.q-field__marginal),
+  .controls-card :deep(.q-select__dropdown-icon),
+  .alert-dialog-card :deep(.q-field__label),
+  .alert-dialog-card :deep(.q-field__native),
+  .alert-dialog-card :deep(.q-field__marginal),
+  .alert-dialog-card :deep(.q-select__dropdown-icon),
+  :deep(.q-field--filled) .q-field__label,
+  :deep(.q-field--filled) .q-field__native,
+  :deep(.q-btn) {
+    color: #ffffff !important;
+  }
+
+  .controls-card :deep(.q-field__control),
+  .alert-dialog-card :deep(.q-field__control),
+  :deep(.q-field--filled) .q-field__control {
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
+  .controls-card :deep(.q-field__control:before),
+  .alert-dialog-card :deep(.q-field__control:before),
+  :deep(.q-field--filled) .q-field__control:before {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+
+  :deep(.q-btn--outline) {
+    border-color: rgba(255, 255, 255, 0.3) !important;
   }
 }
 

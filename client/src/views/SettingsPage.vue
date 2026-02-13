@@ -114,22 +114,16 @@
                 </p>
 
                 <div class="translation-example">
-                  <div class="example-item">
-                    <span class="lang-flag">🇺🇸</span>
-                    <span class="text-caption">English</span>
-                  </div>
-                  <div class="example-item">
-                    <span class="lang-flag">🇩🇪</span>
-                    <span class="text-caption">Deutsch</span>
-                  </div>
-                  <div class="example-item">
-                    <span class="lang-flag">🇫🇷</span>
-                    <span class="text-caption">Français</span>
-                  </div>
-                  <div class="example-item">
-                    <span class="lang-flag">🇪🇸</span>
-                    <span class="text-caption">Español</span>
-                  </div>
+                  <button
+                    v-for="lang in translationLanguages"
+                    :key="lang.code"
+                    type="button"
+                    class="example-item"
+                    @click="changeWebsiteLanguage(lang.code, lang.label)"
+                  >
+                    <span class="lang-flag">{{ lang.flag }}</span>
+                    <span class="text-caption">{{ lang.label }}</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -174,6 +168,12 @@ export default defineComponent({
     const loadingCurrencies = ref(false);
     const exchangeRates = ref({});
     const currencyOptions = ref([]);
+    const translationLanguages = ref([
+      { code: "en", label: "English", flag: "🇺🇸" },
+      { code: "de", label: "Deutsch", flag: "🇩🇪" },
+      { code: "fr", label: "Français", flag: "🇫🇷" },
+      { code: "es", label: "Español", flag: "🇪🇸" },
+    ]);
 
     const form = ref({
       preferred_currency: "EUR",
@@ -272,6 +272,47 @@ export default defineComponent({
       $q.dark.set(!$q.dark.isActive);
     };
 
+    const changeWebsiteLanguage = (langCode, langLabel) => {
+      try {
+        const target = (langCode || "en").toLowerCase();
+        const cookieValue = `/en/${target}`;
+        document.cookie = `googtrans=${cookieValue};path=/`;
+        const host = window.location.hostname;
+        if (host && host !== "localhost" && !/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+          document.cookie = `googtrans=${cookieValue};path=/;domain=.${host}`;
+        }
+        document.documentElement.setAttribute("lang", langCode);
+        localStorage.setItem("vaultly_selected_language", target);
+        let tries = 0;
+        const maxTries = 10;
+        const timer = window.setInterval(() => {
+          const translateSelect = document.querySelector(".goog-te-combo");
+          if (translateSelect) {
+            translateSelect.value = langCode;
+            translateSelect.dispatchEvent(new Event("change"));
+            window.clearInterval(timer);
+            $q.notify({
+              type: "positive",
+              message: `Language switched to ${langLabel}`,
+            });
+            return;
+          }
+
+          tries += 1;
+          if (tries >= maxTries) {
+            window.clearInterval(timer);
+            window.location.reload();
+          }
+        }, 250);
+      } catch (error) {
+        console.error("Error switching website language:", error);
+        $q.notify({
+          type: "negative",
+          message: "Could not switch language.",
+        });
+      }
+    };
+
     onMounted(async () => {
       await fetchExchangeRates();
       await fetchUserPreferences();
@@ -280,10 +321,12 @@ export default defineComponent({
     return {
       form,
       currencyOptions,
+      translationLanguages,
       loading,
       loadingCurrencies,
       convertedBudget,
       savePreferences,
+      changeWebsiteLanguage,
       toggleDarkMode,
     };
   },
@@ -487,10 +530,15 @@ export default defineComponent({
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   padding: 12px;
   background: #f8f9fa;
   border-radius: 8px;
   border: 1px solid #e9ecef;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
   transition: all 0.3s ease;
 
   &:hover {

@@ -95,7 +95,12 @@ export default defineComponent({
       tipsLoading.value = true;
       tipsError.value = "";
       try {
-        const response = await axios.get(`http://localhost:3000/api/tips/${userid}`);
+        const response = await axios.get(`http://localhost:3000/api/tips/${userid}`, {
+          params: {
+            startDate: dateRange.value?.from || undefined,
+            endDate: dateRange.value?.to || undefined,
+          },
+        });
         tipsItems.value = Array.isArray(response.data?.tips) ? response.data.tips : [];
       } catch (err) {
         console.error("Error fetching tips:", err);
@@ -675,9 +680,15 @@ export default defineComponent({
         <p>Real-time insights into your financial health</p>
       </div>
       <div class="header-actions">
-        <q-btn icon="refresh" round flat @click="fetchAllTransactions" />
-        <q-btn icon="download" round flat @click="exportPDF" />
-        <q-btn icon="pie_chart" round flat @click="exportCategoryPDF" />
+        <q-btn icon="refresh" round flat @click="fetchAllTransactions">
+          <q-tooltip>Refresh</q-tooltip>
+        </q-btn>
+        <q-btn icon="download" round flat @click="exportPDF">
+          <q-tooltip>PDF</q-tooltip>
+        </q-btn>
+        <q-btn icon="pie_chart" round flat @click="exportCategoryPDF">
+          <q-tooltip>Categorie PDF</q-tooltip>
+        </q-btn>
         <q-btn icon="tips_and_updates" round flat @click="openTipsDialog">
           <q-tooltip>Tips</q-tooltip>
         </q-btn>
@@ -977,7 +988,6 @@ export default defineComponent({
           transform: translateY(-2px);
         }
       }
-
     }
   }
 

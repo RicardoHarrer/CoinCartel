@@ -65,8 +65,8 @@ export default {
             class="navbar__logo"
           />
         </q-btn>
-        <q-toolbar-title class="navbar__title text-h5">
-          Vaultly
+        <q-toolbar-title class="navbar__title text-h5 notranslate" translate="no">
+          <span class="notranslate" translate="no">Vaultly</span>
         </q-toolbar-title>
       </div>
 
@@ -159,7 +159,9 @@ export default {
     <div class="navbar__drawer-header">
       <div class="navbar__drawer-brand">
         <q-img src="/logovaultly.jpg" alt="Vaultly Logo" class="navbar__drawer-logo" />
-        <div class="navbar__drawer-title">Vaultly</div>
+        <div class="navbar__drawer-title notranslate" translate="no">
+          <span class="notranslate" translate="no">Vaultly</span>
+        </div>
       </div>
       <q-btn
         flat

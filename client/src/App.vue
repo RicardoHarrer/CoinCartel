@@ -2,6 +2,7 @@
 import { RouterView } from "vue-router";
 import Navbar from "./components/NavBar.vue";
 import { useRoute } from "vue-router";
+import { onMounted } from "vue";
 
 export default {
   components: { Navbar, RouterView },
@@ -12,6 +13,51 @@ export default {
       return !route.meta.hideNavbar;
     };
 
+    const setGoogleTranslateCookie = (langCode) => {
+      const target = (langCode || "en").toLowerCase();
+      const cookieValue = `/en/${target}`;
+      document.cookie = `googtrans=${cookieValue};path=/`;
+
+      const host = window.location.hostname;
+      if (host && host !== "localhost" && !/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+        document.cookie = `googtrans=${cookieValue};path=/;domain=.${host}`;
+      }
+    };
+
+    const applySavedLanguage = () => {
+      const savedLang = localStorage.getItem("vaultly_selected_language");
+      if (!savedLang) return;
+      setGoogleTranslateCookie(savedLang);
+      document.documentElement.setAttribute("lang", savedLang);
+    };
+
+    const initGoogleTranslate = () => {
+      if (document.getElementById("google_translate_script")) return;
+
+      window.googleTranslateElementInit = () => {
+        if (!window.google || !window.google.translate) return;
+        new window.google.translate.TranslateElement(
+          {
+            pageLanguage: "en",
+            autoDisplay: false,
+          },
+          "google_translate_element"
+        );
+      };
+
+      const script = document.createElement("script");
+      script.id = "google_translate_script";
+      script.src =
+        "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+      script.async = true;
+      document.body.appendChild(script);
+    };
+
+    onMounted(() => {
+      applySavedLanguage();
+      initGoogleTranslate();
+    });
+
     return {
       showNavbar
     };
@@ -21,6 +67,7 @@ export default {
 
 <template>
   <q-layout view="hHh lpR fFf">
+    <div id="google_translate_element" class="google-translate-widget"></div>
     <Navbar v-if="showNavbar()" />
     <q-page-container>
       <RouterView />
@@ -67,5 +114,30 @@ export default {
     width: 50px !important;
     height: 50px !important;
   }
+}
+
+.google-translate-widget {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 2000;
+}
+
+/* Hide the legacy Google top banner and keep layout fixed */
+body {
+  top: 0 !important;
+  position: static !important;
+}
+
+iframe.goog-te-banner-frame,
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+}
+
+body > .skiptranslate {
+  display: none !important;
 }
 </style>

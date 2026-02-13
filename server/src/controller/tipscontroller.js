@@ -36,11 +36,36 @@ const getTipsForUser = async (req, res) => {
       return day === 0 || day === 6;
     };
 
+    const defaultActionForTip = (tip) => {
+      const t = norm(tip?.title);
+
+      if (t.includes('budget')) return 'Setze ein fixes Tageslimit und pausiere Spontankäufe bis Monatsende.';
+      if (t.includes('cashflow')) return 'Senke diese Woche 1-2 variable Kategorien, bis der Cashflow wieder positiv ist.';
+      if (t.includes('sparen') || t.includes('notgroschen'))
+        return 'Richte einen automatischen Spar-Transfer direkt nach Einnahmen ein.';
+      if (t.includes('wochenende')) return 'Lege ein Wochenend-Budget fest und tracke es separat.';
+      if (t.includes('mikro')) return 'Setze ein Kleinbetrags-Limit pro Woche (z. B. 15-25 EUR).';
+      if (t.includes('handler') || t.includes('hebel') || t.includes('trend'))
+        return 'Definiere ein konkretes Monatslimit und prüfe den Fortschritt jede Woche.';
+      if (t.includes('ziel')) return 'Lege einen Fixbetrag pro Monat fest und automatisiere die Buchung.';
+      return 'Wähle einen Betrag als Limit und prüfe in 7 Tagen, ob du darunter bleibst.';
+    };
+
+    const buildSmartMessage = (tip) => {
+      const base = (tip?.reason || '').toString().replace(/\s+/g, ' ').trim();
+      const action = (tip?.action || '').toString().trim() || defaultActionForTip(tip);
+      if (!base) return action;
+      if (/(aktion:|fix:|tipp:|n(ä|ae)chster schritt:)/i.test(base)) return base;
+      return `${base} Nächster Schritt: ${action}`;
+    };
+
     const addTip = (tips, tip) => {
+      const message = tip.message || buildSmartMessage(tip);
       tips.push({
         title: tip.title,
-        message: tip.message || tip.reason || '',
-        reason: tip.reason,
+        message,
+        reason: tip.reason || message,
+        action: tip.action || defaultActionForTip(tip),
         priority: tip.priority || 'info',
         impact: tip.impact || '—',
         icon: tip.icon || 'tips_and_updates',
