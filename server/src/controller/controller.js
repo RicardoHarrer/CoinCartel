@@ -336,9 +336,14 @@ const createGoal = async (req, res) => {
     categoryId,
     description,
   } = req.body;
+  const normalizedCategoryId = Number(categoryId);
 
   if (!userId || !title || !targetAmount || !targetDate) {
     return res.status(400).send('Missing required fields: userId, title, targetAmount, targetDate');
+  }
+
+  if (!Number.isInteger(normalizedCategoryId) || normalizedCategoryId <= 0) {
+    return res.status(400).send('Valid categoryId is required');
   }
 
   if (Number.isNaN(Number(targetAmount)) || Number(targetAmount) <= 0) {
@@ -353,7 +358,7 @@ const createGoal = async (req, res) => {
       parseFloat(targetAmount),
       parseFloat(currentAmount) || 0,
       targetDate,
-      categoryId,
+      normalizedCategoryId,
       description,
     );
 
@@ -367,6 +372,11 @@ const createGoal = async (req, res) => {
 const updateGoal = async (req, res) => {
   const { id } = req.params;
   const { title, targetAmount, currentAmount, targetDate, categoryId, description } = req.body;
+  const normalizedCategoryId = Number(categoryId);
+
+  if (!Number.isInteger(normalizedCategoryId) || normalizedCategoryId <= 0) {
+    return res.status(400).send('Valid categoryId is required');
+  }
 
   try {
     const goal = await model.updateGoal(
@@ -375,7 +385,7 @@ const updateGoal = async (req, res) => {
       parseFloat(targetAmount),
       parseFloat(currentAmount),
       targetDate,
-      categoryId,
+      normalizedCategoryId,
       description,
     );
 

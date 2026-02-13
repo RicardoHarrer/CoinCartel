@@ -1,5 +1,5 @@
-import * as model from '../model/model.js';
 import axios from 'axios';
+import * as model from '../model/model.js';
 
 const getTipsForUser = async (req, res) => {
   const { id } = req.params;

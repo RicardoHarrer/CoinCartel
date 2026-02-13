@@ -14,7 +14,7 @@
           </div>
           <div class="row q-col-gutter-sm">
             <div
-              v-for="(suggestion, index) in goalSuggestions"
+              v-for="(suggestion, index) in availableGoalSuggestions"
               :key="index"
               class="col-6"
             >
@@ -92,6 +92,9 @@
           v-model="formData.category_id"
           :options="categoryOptions"
           label="Kategorie"
+          :loading="categoriesLoading"
+          :disable="categoriesLoading"
+          :rules="[(val) => !!val || 'Kategorie ist erforderlich']"
           emit-value
           map-options
           filled
@@ -165,7 +168,7 @@
 </template>
 
 <script>
-import { defineComponent, ref, computed, watch } from "vue";
+import { defineComponent, ref, computed, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
 
 export default defineComponent({
@@ -185,6 +188,7 @@ export default defineComponent({
     const $q = useQuasar();
 
     const loading = ref(false);
+    const categoriesLoading = ref(false);
 
     const formData = ref({
       title: "",
@@ -222,16 +226,42 @@ export default defineComponent({
       },
     ];
 
-    const categoryOptions = computed(() => {
-      return [
-        { label: "Sparen", value: 11 },
-        { label: "Investition", value: 12 },
-        { label: "Urlaub", value: 13 },
-        { label: "Auto", value: 14 },
-        { label: "Technik", value: 15 },
-        { label: "Sonstiges", value: 16 },
-      ];
+    const categoryOptions = ref([]);
+    const availableGoalSuggestions = computed(() => {
+      const availableCategories = new Set(
+        categoryOptions.value.map((opt) => String(opt.label).trim().toLowerCase())
+      );
+
+      return goalSuggestions.filter((suggestion) =>
+        availableCategories.has(String(suggestion.category).trim().toLowerCase())
+      );
     });
+
+    const fetchCategories = async () => {
+      categoriesLoading.value = true;
+      try {
+        const response = await fetch("http://localhost:3000/categories");
+        if (!response.ok) {
+          throw new Error("Failed to fetch categories");
+        }
+
+        const payload = await response.json();
+        categoryOptions.value = Array.isArray(payload)
+          ? payload.map((category) => ({
+              label: category.name,
+              value: category.id,
+            }))
+          : [];
+      } catch (error) {
+        categoryOptions.value = [];
+        $q.notify({
+          type: "negative",
+          message: "Kategorien konnten nicht geladen werden",
+        });
+      } finally {
+        categoriesLoading.value = false;
+      }
+    };
 
     const monthlySaving = computed(() => {
       if (!formData.value.target_amount || !formData.value.target_date) return 0;
@@ -258,7 +288,7 @@ export default defineComponent({
 
     const applySuggestion = (suggestion) => {
       const categoryOption = categoryOptions.value.find(
-        (opt) => opt.label === suggestion.category
+        (opt) => String(opt.label).trim().toLowerCase() === String(suggestion.category).trim().toLowerCase()
       );
 
       formData.value = {
@@ -282,6 +312,15 @@ export default defineComponent({
     };
 
     const submitGoal = async () => {
+      const normalizedCategoryId = Number(formData.value.category_id);
+      if (!Number.isInteger(normalizedCategoryId) || normalizedCategoryId <= 0) {
+        $q.notify({
+          type: "warning",
+          message: "Bitte eine Kategorie auswählen",
+        });
+        return;
+      }
+
       loading.value = true;
 
       try {
@@ -300,7 +339,7 @@ export default defineComponent({
             targetAmount: parseFloat(formData.value.target_amount),
             currentAmount: parseFloat(formData.value.current_amount) || 0,
             targetDate: formData.value.target_date,
-            categoryId: formData.value.category_id,
+            categoryId: normalizedCategoryId,
             description: formData.value.description,
           }),
         });
@@ -346,10 +385,14 @@ export default defineComponent({
       { immediate: true }
     );
 
+    onMounted(fetchCategories);
+
     return {
       loading,
+      categoriesLoading,
       formData,
       goalSuggestions,
+      availableGoalSuggestions,
       categoryOptions,
       monthlySaving,
       currentProgress,
