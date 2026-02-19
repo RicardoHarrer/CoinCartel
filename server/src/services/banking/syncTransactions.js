@@ -13,7 +13,7 @@ const mapTransactionForInsert = (tx, userId, accountId) => {
 
   return {
     userId,
-    categoryId: autoCategorize(description),
+    categoryId: autoCategorize(tx),
     amount: Math.abs(amount),
     transactionType: amount > 0 ? 'Einnahme' : 'Ausgabe',
     currency: tx.currency || 'EUR',
@@ -50,3 +50,4 @@ const syncBankTransactions = async (userId, accountId) => {
 };
 
 export default syncBankTransactions;
+
