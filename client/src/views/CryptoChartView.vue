@@ -1327,7 +1327,6 @@ export default defineComponent({
               },
               {
                 type: "value",
-                name: `Volume (${selectedVolumeUnit.value})`,
                 gridIndex: 1,
                 axisLine: {
                   lineStyle: { color: gridColor },
@@ -1337,8 +1336,7 @@ export default defineComponent({
                   lineStyle: { color: gridColor, type: "dashed" },
                 },
                 axisLabel: {
-                  formatter: (value) => formatCompactNumber(value),
-                  color: axisLabelColor,
+                  show: false,
                 },
                 nameTextStyle: {
                   color: axisLabelColor,
