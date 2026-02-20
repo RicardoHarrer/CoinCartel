@@ -40,6 +40,8 @@ export default defineComponent({
     const loading = ref(false);
     const chartRef = ref(null);
     const hoveredCategory = ref(null);
+    const categoryDialogOpen = ref(false);
+    const selectedCategoryName = ref("");
 
     const formatAmount = (value, decimals = 2) => {
       const numeric = Number(value);
@@ -309,6 +311,76 @@ export default defineComponent({
       chart.dispatchAction({ type: "hideTip" });
     };
 
+    const convertTransactionAmount = (transaction) => {
+      const sourceCurrency = transaction?.currency || props.currency;
+      const sourceRate = Number(props.exchangeRates[sourceCurrency] || 1);
+      const targetRate = Number(props.exchangeRates[props.currency] || 1);
+      const numericAmount = Number(transaction?.amount);
+
+      if (!Number.isFinite(numericAmount)) return 0;
+      if (!Number.isFinite(sourceRate) || sourceRate <= 0) return numericAmount;
+      if (!Number.isFinite(targetRate) || targetRate <= 0) return numericAmount;
+
+      return numericAmount * (targetRate / sourceRate);
+    };
+
+    const selectedCategoryTransactions = computed(() => {
+      if (!selectedCategoryName.value) return [];
+
+      return props.transactions
+        .filter(
+          (transaction) => getCategoryName(transaction?.category_id) === selectedCategoryName.value
+        )
+        .slice()
+        .sort(
+          (a, b) =>
+            (new Date(b?.date).getTime() || 0) - (new Date(a?.date).getTime() || 0)
+        );
+    });
+
+    const getSignedTransactionAmount = (transaction, convertedAmount) => {
+      const normalizedAmount = Math.abs(Number(convertedAmount) || 0);
+      if (transaction?.transaction_type === "Ausgabe") return -normalizedAmount;
+      if (transaction?.transaction_type === "Einnahme") return normalizedAmount;
+      return Number(convertedAmount) || 0;
+    };
+
+    const selectedCategoryTotal = computed(() =>
+      selectedCategoryTransactions.value.reduce(
+        (sum, transaction) =>
+          sum + getSignedTransactionAmount(transaction, convertTransactionAmount(transaction)),
+        0
+      )
+    );
+
+    const formatTransactionAmount = (transaction) => {
+      const convertedAmount = convertTransactionAmount(transaction);
+      const signedConvertedAmount = getSignedTransactionAmount(transaction, convertedAmount);
+      const sourceCurrency = transaction?.currency || props.currency;
+      const sourceAmount = Number(transaction?.amount);
+      const transactionSign = signedConvertedAmount < 0 ? "-" : "+";
+      const convertedDisplay = `${transactionSign}${formatAmount(Math.abs(signedConvertedAmount))} ${props.currency}`;
+
+      if (sourceCurrency !== props.currency && Number.isFinite(sourceAmount)) {
+        return `${convertedDisplay} (${transactionSign}${formatAmount(
+          Math.abs(sourceAmount)
+        )} ${sourceCurrency})`;
+      }
+
+      return convertedDisplay;
+    };
+
+    const openCategoryTransactions = (categoryName) => {
+      if (!categoryName) return;
+      selectedCategoryName.value = categoryName;
+      categoryDialogOpen.value = true;
+    };
+
+    const onCategoryDialogHide = () => {
+      selectedCategoryName.value = "";
+      onCategoryLeave();
+    };
+
     return {
       loading,
       hasData,
@@ -316,11 +388,19 @@ export default defineComponent({
       pieChartOptions,
       formattedDateRange,
       formatAmount,
+      formatDateDMY,
       getCategoryColor,
       chartRef,
       hoveredCategory,
       onCategoryHover,
       onCategoryLeave,
+      categoryDialogOpen,
+      selectedCategoryName,
+      selectedCategoryTransactions,
+      selectedCategoryTotal,
+      formatTransactionAmount,
+      openCategoryTransactions,
+      onCategoryDialogHide,
     };
   },
 });
@@ -375,10 +455,17 @@ export default defineComponent({
               v-for="item in categoryBreakdown"
               :key="item.name"
               class="category-item"
-              :class="{ 'category-item--active': hoveredCategory === item.name }"
+              :class="{
+                'category-item--active':
+                  hoveredCategory === item.name || selectedCategoryName === item.name,
+              }"
               :style="{ '--category-color': getCategoryColor(item.name) }"
               @mouseenter="onCategoryHover(item.name)"
               @mouseleave="onCategoryLeave"
+              @click="openCategoryTransactions(item.name)"
+              @keyup.enter="openCategoryTransactions(item.name)"
+              tabindex="0"
+              role="button"
             >
               <div class="category-info">
                 <div class="category-color-indicator"></div>
@@ -403,6 +490,60 @@ export default defineComponent({
         </div>
       </div>
     </q-card-section>
+
+    <q-dialog v-model="categoryDialogOpen" @hide="onCategoryDialogHide">
+      <q-card class="transactions-dialog-card">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">{{ selectedCategoryName }} Transactions</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pt-sm">
+          <div class="dialog-meta">
+            <span>{{ selectedCategoryTransactions.length }} transactions</span>
+            <span>
+              Net total:
+              <strong>{{ formatAmount(selectedCategoryTotal) }} {{ currency }}</strong>
+            </span>
+          </div>
+          <div v-if="formattedDateRange" class="dialog-range">
+            {{ formattedDateRange }}
+          </div>
+
+          <q-list
+            v-if="selectedCategoryTransactions.length > 0"
+            bordered
+            separator
+            class="transactions-list"
+          >
+            <q-item
+              v-for="(transaction, index) in selectedCategoryTransactions"
+              :key="`${transaction.id || transaction.date || 'tx'}-${index}`"
+            >
+              <q-item-section>
+                <q-item-label class="transaction-description">
+                  {{ transaction.description || "No description" }}
+                </q-item-label>
+                <q-item-label caption>
+                  {{ formatDateDMY(transaction.date) }} | {{
+                    transaction.transaction_type || "Transaction"
+                  }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side top>
+                <q-item-label class="transaction-amount">
+                  {{ formatTransactionAmount(transaction) }}
+                </q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+          <div v-else class="empty-transactions">
+            No transactions found for this category.
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-card>
 </template>
 
@@ -607,6 +748,48 @@ export default defineComponent({
   }
 }
 
+.transactions-dialog-card {
+  width: min(760px, 96vw);
+  max-height: 84vh;
+  border-radius: 14px;
+
+  .dialog-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+    color: #4b5563;
+    font-size: 0.9rem;
+  }
+
+  .dialog-range {
+    margin-bottom: 12px;
+    color: #6b7280;
+    font-size: 0.85rem;
+  }
+
+  .transactions-list {
+    max-height: 52vh;
+    overflow-y: auto;
+    border-radius: 10px;
+  }
+
+  .transaction-description {
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  .transaction-amount {
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .empty-transactions {
+    padding: 16px 0;
+    color: #6b7280;
+  }
+}
+
 body.body--dark {
   .category-pie-chart {
     background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
@@ -671,6 +854,27 @@ body.body--dark {
           color: #9ca3af;
         }
       }
+    }
+  }
+
+  .transactions-dialog-card {
+    background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+
+    .dialog-meta,
+    .dialog-range,
+    .empty-transactions {
+      color: #cbd5e1;
+    }
+
+    .transaction-description,
+    .transaction-amount {
+      color: #ffffff;
+    }
+
+    .transactions-list {
+      border-color: rgba(255, 255, 255, 0.2);
     }
   }
 }
