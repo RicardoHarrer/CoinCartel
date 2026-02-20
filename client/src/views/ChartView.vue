@@ -76,6 +76,21 @@ export default defineComponent({
       ).padStart(2, "0")}.${date.getFullYear()}`;
     }
 
+    function formatAmount(value, decimals = 2) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        return Number(0).toLocaleString("de-DE", {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        });
+      }
+
+      return numeric.toLocaleString("de-DE", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      });
+    }
+
     const dateRangeString = computed(() => {
       if (dateRange.value.from && dateRange.value.to) {
         return `${formatDateDMY(dateRange.value.from)} - ${formatDateDMY(
@@ -177,17 +192,17 @@ export default defineComponent({
         doc.text("Summary", 20, finalY);
         doc.setFontSize(10);
         doc.text(
-          `Total Income: ${totalIncome.value.toFixed(2)} ${currentCurrency.value}`,
+          `Total Income: ${formatAmount(totalIncome.value)} ${currentCurrency.value}`,
           20,
           finalY + 8
         );
         doc.text(
-          `Total Expenses: ${totalExpense.value.toFixed(2)} ${currentCurrency.value}`,
+          `Total Expenses: ${formatAmount(totalExpense.value)} ${currentCurrency.value}`,
           20,
           finalY + 16
         );
         doc.text(
-          `Net Balance: ${totalBalance.value.toFixed(2)} ${currentCurrency.value}`,
+          `Net Balance: ${formatAmount(totalBalance.value)} ${currentCurrency.value}`,
           20,
           finalY + 24
         );
@@ -230,9 +245,9 @@ export default defineComponent({
         const categoryData = computeCategorySummary();
         const tableData = categoryData.map((cat) => [
           cat.name,
-          cat.income.toFixed(2),
-          cat.expenses.toFixed(2),
-          (cat.income - cat.expenses).toFixed(2),
+          formatAmount(cat.income),
+          formatAmount(cat.expenses),
+          formatAmount(cat.income - cat.expenses),
           cat.transactionCount,
         ]);
 
@@ -248,24 +263,25 @@ export default defineComponent({
         doc.setFontSize(12);
         doc.text("Category Overview", 20, finalY);
         doc.setFontSize(10);
+        const totalCategoryIncome = categoryData.reduce((sum, cat) => sum + cat.income, 0);
+        const totalCategoryExpenses = categoryData.reduce((sum, cat) => sum + cat.expenses, 0);
+        const totalCategoryBalance = categoryData.reduce(
+          (sum, cat) => sum + (cat.income - cat.expenses),
+          0
+        );
+
         doc.text(
-          `Total Income: ${categoryData
-            .reduce((sum, cat) => sum + cat.income, 0)
-            .toFixed(2)} ${currentCurrency.value}`,
+          `Total Income: ${formatAmount(totalCategoryIncome)} ${currentCurrency.value}`,
           20,
           finalY + 8
         );
         doc.text(
-          `Total Expenses: ${categoryData
-            .reduce((sum, cat) => sum + cat.expenses, 0)
-            .toFixed(2)} ${currentCurrency.value}`,
+          `Total Expenses: ${formatAmount(totalCategoryExpenses)} ${currentCurrency.value}`,
           20,
           finalY + 16
         );
         doc.text(
-          `Net Balance: ${categoryData
-            .reduce((sum, cat) => sum + (cat.income - cat.expenses), 0)
-            .toFixed(2)} ${currentCurrency.value}`,
+          `Net Balance: ${formatAmount(totalCategoryBalance)} ${currentCurrency.value}`,
           20,
           finalY + 24
         );
@@ -503,8 +519,8 @@ export default defineComponent({
             const date = new Date(params[0].value[0]);
             let result = `<div style="color: ${textColor}">${formatDateDMY(date)}<br/>`;
             params.forEach((item) => {
-              result += `${item.marker} ${item.seriesName}: ${item.value[1].toFixed(
-                2
+              result += `${item.marker} ${item.seriesName}: ${formatAmount(
+                item.value[1]
               )} ${currency}<br/>`;
             });
             result += "</div>";
@@ -539,6 +555,7 @@ export default defineComponent({
           },
           axisLabel: {
             color: textColor,
+            formatter: (value) => `${formatAmount(value)} ${currency}`,
           },
           axisLine: {
             lineStyle: {
@@ -680,6 +697,7 @@ export default defineComponent({
       chartLoading,
       categories,
       transactions: filteredTransactions,
+      formatAmount,
       exportPDF,
       exportCategoryPDF,
       toggleDarkMode,
@@ -766,7 +784,7 @@ export default defineComponent({
           <q-icon name="trending_up" />
         </div>
         <div class="stat-content">
-          <div class="stat-value">{{ totalIncome.toFixed(2) }} {{ currentCurrency }}</div>
+          <div class="stat-value">{{ formatAmount(totalIncome) }} {{ currentCurrency }}</div>
           <div class="stat-label">Total Income</div>
         </div>
       </div>
@@ -777,7 +795,7 @@ export default defineComponent({
         </div>
         <div class="stat-content">
           <div class="stat-value">
-            {{ totalExpense.toFixed(2) }} {{ currentCurrency }}
+            {{ formatAmount(totalExpense) }} {{ currentCurrency }}
           </div>
           <div class="stat-label">Total Expenses</div>
         </div>
@@ -789,7 +807,7 @@ export default defineComponent({
         </div>
         <div class="stat-content">
           <div class="stat-value" :class="totalBalance >= 0 ? 'positive' : 'negative'">
-            {{ totalBalance.toFixed(2) }} {{ currentCurrency }}
+            {{ formatAmount(totalBalance) }} {{ currentCurrency }}
           </div>
           <div class="stat-label">Net Balance</div>
         </div>

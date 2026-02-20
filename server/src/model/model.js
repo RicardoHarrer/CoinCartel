@@ -233,28 +233,48 @@ const FALLBACK_WATCHLIST = [
 const parseYahooChartResult = (result, fallbackSymbol) => {
   const timestamps = Array.isArray(result?.timestamp) ? result.timestamp : [];
   const quote = result?.indicators?.quote?.[0] || {};
+  const highs = Array.isArray(quote?.high) ? quote.high : [];
+  const lows = Array.isArray(quote?.low) ? quote.low : [];
   const closes = Array.isArray(quote?.close) ? quote.close : [];
   const opens = Array.isArray(quote?.open) ? quote.open : [];
   const volumes = Array.isArray(quote?.volume) ? quote.volume : [];
   const meta = result?.meta || {};
 
   const prices = [];
+  const candles = [];
   const totalVolumes = [];
+  const seenTimestamps = new Set();
   for (let i = 0; i < timestamps.length; i += 1) {
     const ts = Number(timestamps[i]) * 1000;
+    if (!Number.isFinite(ts) || seenTimestamps.has(ts)) continue;
+
     const close = Number(closes[i]);
     const open = Number(opens[i]);
+    const high = Number(highs[i]);
+    const low = Number(lows[i]);
     const value = Number.isFinite(close) ? close : open;
-    if (!Number.isFinite(ts) || !Number.isFinite(value) || value <= 0) continue;
+    if (!Number.isFinite(value) || value <= 0) continue;
+
+    const candleOpen = Number.isFinite(open) && open > 0 ? open : value;
+    const candleClose = Number.isFinite(close) && close > 0 ? close : value;
+    const candleHigh = Math.max(
+      ...[high, candleOpen, candleClose].filter((point) => Number.isFinite(point) && point > 0),
+    );
+    const candleLow = Math.min(
+      ...[low, candleOpen, candleClose].filter((point) => Number.isFinite(point) && point > 0),
+    );
 
     prices.push([ts, value]);
+    candles.push([ts, candleOpen, candleClose, candleLow, candleHigh]);
     const vol = Number(volumes[i]);
-    totalVolumes.push([ts, Number.isFinite(vol) ? vol : 0]);
+    totalVolumes.push([ts, Number.isFinite(vol) && vol > 0 ? vol : 0]);
+    seenTimestamps.add(ts);
   }
 
   const symbol = meta.symbol || fallbackSymbol;
   return {
     prices,
+    candles,
     total_volumes: totalVolumes,
     asset: {
       symbol,
@@ -263,7 +283,55 @@ const parseYahooChartResult = (result, fallbackSymbol) => {
       currency: meta.currency || 'USD',
       exchange: meta.exchangeName || meta.fullExchangeName || '',
     },
+    providerMeta: {
+      interval: meta.dataGranularity || '',
+      timezone: meta.exchangeTimezoneName || meta.timezone || '',
+      marketState: meta.marketState || '',
+    },
   };
+};
+
+const MIN_POINTS_BY_INTERVAL = {
+  '1m': 80,
+  '2m': 60,
+  '5m': 48,
+  '15m': 28,
+  '30m': 20,
+  '60m': 14,
+  '90m': 12,
+  '1h': 14,
+  '1d': 5,
+};
+
+const getMinimumPointTarget = (interval = '') =>
+  MIN_POINTS_BY_INTERVAL[String(interval || '').toLowerCase()] || 12;
+
+const buildYahooRequestPlan = (range = '1d', interval = '5m') => {
+  const requested = {
+    range: String(range || '1d').trim() || '1d',
+    interval: String(interval || '5m').trim() || '5m',
+  };
+
+  const fallbackPlan = [
+    { range: '5d', interval: '5m' },
+    { range: '1mo', interval: '15m' },
+    { range: '3mo', interval: '60m' },
+    { range: '6mo', interval: '1d' },
+  ];
+
+  const plan = [requested];
+  fallbackPlan.forEach((candidate) => {
+    if (
+      !plan.some(
+        (existing) =>
+          existing.range === candidate.range && existing.interval === candidate.interval,
+      )
+    ) {
+      plan.push(candidate);
+    }
+  });
+
+  return plan;
 };
 
 const fetchYahooChart = async (symbol, { range = '1d', interval = '5m' } = {}) => {
@@ -275,25 +343,69 @@ const fetchYahooChart = async (symbol, { range = '1d', interval = '5m' } = {}) =
   const allowedIntervals = new Set(['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d']);
   const safeInterval = allowedIntervals.has(interval) ? interval : '5m';
   const safeRange = String(range || '1d').trim() || '1d';
+  const requestPlan = buildYahooRequestPlan(safeRange, safeInterval);
 
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalizedSymbol)}`;
-  const response = await axios.get(url, {
-    params: { range: safeRange, interval: safeInterval, includePrePost: false },
-    timeout: 10000,
-  });
+  let lastError = null;
+  let bestParsed = null;
+  let bestAttempt = null;
 
-  const result = response?.data?.chart?.result?.[0];
-  if (!result) {
-    const details = response?.data?.chart?.error?.description || 'No chart result';
-    throw new Error(`Yahoo chart error for ${normalizedSymbol}: ${details}`);
+  for (let i = 0; i < requestPlan.length; i += 1) {
+    const attempt = requestPlan[i];
+    try {
+      const response = await axios.get(url, {
+        params: {
+          range: attempt.range,
+          interval: attempt.interval,
+          includePrePost: false,
+        },
+        timeout: 10000,
+      });
+
+      const result = response?.data?.chart?.result?.[0];
+      if (!result) {
+        const details = response?.data?.chart?.error?.description || 'No chart result';
+        throw new Error(`Yahoo chart error for ${normalizedSymbol}: ${details}`);
+      }
+
+      const parsed = parseYahooChartResult(result, normalizedSymbol);
+      if (!parsed.prices.length) {
+        throw new Error(`No market data points available for ${normalizedSymbol}`);
+      }
+
+      const minPoints = getMinimumPointTarget(attempt.interval);
+      const isSparse = parsed.prices.length < minPoints;
+      bestParsed = parsed;
+      bestAttempt = attempt;
+      if (!isSparse) {
+        return {
+          ...parsed,
+          requested: { range: safeRange, interval: safeInterval },
+          resolved: {
+            range: attempt.range,
+            interval: parsed.providerMeta?.interval || attempt.interval,
+          },
+        };
+      }
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  const parsed = parseYahooChartResult(result, normalizedSymbol);
-  if (!parsed.prices.length) {
-    throw new Error(`No market data points available for ${normalizedSymbol}`);
+  if (bestParsed && bestAttempt) {
+    return {
+      ...bestParsed,
+      requested: { range: safeRange, interval: safeInterval },
+      resolved: {
+        range: bestAttempt.range,
+        interval: bestParsed.providerMeta?.interval || bestAttempt.interval,
+      },
+    };
   }
 
-  return parsed;
+  throw new Error(
+    `Yahoo chart error for ${normalizedSymbol}: ${lastError?.message || 'No chart result'}`,
+  );
 };
 
 const fetchCryptoDataFromYahoo = async (coin) => {

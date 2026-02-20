@@ -49,7 +49,9 @@ export default defineComponent({
     const cryptoData = ref({});
     const volumeData = ref({});
     const rawPriceData = ref({});
+    const rawCandleData = ref({});
     const rawVolumeData = ref({});
+    const latestFetchToken = ref(0);
 
     const chartTypes = ref([
       { label: "Candlestick", value: "candlestick" },
@@ -115,17 +117,11 @@ export default defineComponent({
     };
 
     function calculateIntervalStart(timestamp, minutes) {
-      const date = new Date(timestamp);
-      const totalMinutes = date.getHours() * 60 + date.getMinutes();
-      const intervals = Math.floor(totalMinutes / minutes);
-      const startMinutes = intervals * minutes;
-
-      date.setHours(Math.floor(startMinutes / 60));
-      date.setMinutes(startMinutes % 60);
-      date.setSeconds(0);
-      date.setMilliseconds(0);
-
-      return date.getTime();
+      const safeMinutes = Math.max(1, Number(minutes) || 1);
+      const intervalMs = safeMinutes * 60000;
+      const safeTimestamp = Number(timestamp);
+      if (!Number.isFinite(safeTimestamp)) return 0;
+      return Math.floor(safeTimestamp / intervalMs) * intervalMs;
     }
 
     function addNotification(coin, price, currentPrice) {
@@ -196,7 +192,7 @@ export default defineComponent({
         const timestamp = price[0];
         const value = price[1];
 
-        if (!chunkStartTime) {
+        if (chunkStartTime === null) {
           chunkStartTime = calculateIntervalStart(timestamp, timeframeMinutes);
         }
 
@@ -229,6 +225,77 @@ export default defineComponent({
       return ohlc;
     }
 
+    function createOHLCFromCandles(candles, timeframeMinutes = 15) {
+      if (!candles || candles.length === 0) return [];
+
+      const aggregated = [];
+      let currentChunk = [];
+      let chunkStartTime = null;
+
+      const sortedCandles = [...candles].sort((a, b) => a[0] - b[0]);
+
+      const pushCurrentChunk = () => {
+        if (!currentChunk.length || chunkStartTime === null) return;
+        const open = currentChunk[0][1];
+        const close = currentChunk[currentChunk.length - 1][2];
+        const high = Math.max(...currentChunk.map((candle) => candle[4]));
+        const low = Math.min(...currentChunk.map((candle) => candle[3]));
+        aggregated.push([chunkStartTime, open, close, low, high]);
+      };
+
+      sortedCandles.forEach((candle) => {
+        if (!Array.isArray(candle) || candle.length < 5) return;
+        const timestamp = Number(candle[0]);
+        const open = Number(candle[1]);
+        const close = Number(candle[2]);
+        const low = Number(candle[3]);
+        const high = Number(candle[4]);
+
+        if (!Number.isFinite(timestamp)) return;
+
+        const normalizedOpen = Number.isFinite(open) ? open : close;
+        const normalizedClose = Number.isFinite(close) ? close : open;
+        const normalizedLow = Math.min(
+          ...[low, normalizedOpen, normalizedClose].filter((value) => Number.isFinite(value))
+        );
+        const normalizedHigh = Math.max(
+          ...[high, normalizedOpen, normalizedClose].filter((value) => Number.isFinite(value))
+        );
+
+        if (
+          !Number.isFinite(normalizedOpen) ||
+          !Number.isFinite(normalizedClose) ||
+          !Number.isFinite(normalizedLow) ||
+          !Number.isFinite(normalizedHigh)
+        ) {
+          return;
+        }
+
+        const normalizedCandle = [
+          timestamp,
+          normalizedOpen,
+          normalizedClose,
+          normalizedLow,
+          normalizedHigh,
+        ];
+
+        if (chunkStartTime === null) {
+          chunkStartTime = calculateIntervalStart(timestamp, timeframeMinutes);
+        }
+
+        if (timestamp < chunkStartTime + timeframeMinutes * 60000) {
+          currentChunk.push(normalizedCandle);
+        } else {
+          pushCurrentChunk();
+          currentChunk = [normalizedCandle];
+          chunkStartTime = calculateIntervalStart(timestamp, timeframeMinutes);
+        }
+      });
+
+      pushCurrentChunk();
+      return aggregated;
+    }
+
     function createVolumeData(volumes, timeframeMinutes = 15) {
       if (!volumes || volumes.length === 0) return [];
 
@@ -242,7 +309,7 @@ export default defineComponent({
         const timestamp = volume[0];
         const volumeValue = volume[1];
 
-        if (!chunkStartTime) {
+        if (chunkStartTime === null) {
           chunkStartTime = calculateIntervalStart(timestamp, timeframeMinutes);
         }
 
@@ -327,24 +394,83 @@ export default defineComponent({
 
     function sanitizePriceData(prices) {
       if (!Array.isArray(prices)) return [];
-      return prices
-        .filter(
-          (point) =>
-            Array.isArray(point) &&
-            point.length >= 2 &&
-            Number.isFinite(point[0]) &&
-            Number.isFinite(point[1]) &&
-            point[1] > 0
-        )
-        .sort((a, b) => a[0] - b[0]);
+      const byTimestamp = new Map();
+      prices.forEach((point) => {
+        if (!Array.isArray(point) || point.length < 2) return;
+        const timestamp = Number(point[0]);
+        const value = Number(point[1]);
+        if (!Number.isFinite(timestamp) || !Number.isFinite(value) || value <= 0) return;
+        byTimestamp.set(timestamp, [timestamp, value]);
+      });
+      return [...byTimestamp.values()].sort((a, b) => a[0] - b[0]);
+    }
+
+    function sanitizeCandleData(candles) {
+      if (!Array.isArray(candles)) return [];
+      const byTimestamp = new Map();
+      candles.forEach((point) => {
+        if (!Array.isArray(point) || point.length < 5) return;
+        const timestamp = Number(point[0]);
+        const open = Number(point[1]);
+        const close = Number(point[2]);
+        const low = Number(point[3]);
+        const high = Number(point[4]);
+
+        if (!Number.isFinite(timestamp)) return;
+
+        const normalizedOpen = Number.isFinite(open) ? open : close;
+        const normalizedClose = Number.isFinite(close) ? close : open;
+        const normalizedLow = Math.min(
+          ...[low, normalizedOpen, normalizedClose].filter((value) => Number.isFinite(value))
+        );
+        const normalizedHigh = Math.max(
+          ...[high, normalizedOpen, normalizedClose].filter((value) => Number.isFinite(value))
+        );
+
+        if (
+          !Number.isFinite(normalizedOpen) ||
+          !Number.isFinite(normalizedClose) ||
+          !Number.isFinite(normalizedLow) ||
+          !Number.isFinite(normalizedHigh) ||
+          normalizedLow <= 0 ||
+          normalizedHigh <= 0
+        ) {
+          return;
+        }
+
+        byTimestamp.set(timestamp, [
+          timestamp,
+          normalizedOpen,
+          normalizedClose,
+          normalizedLow,
+          normalizedHigh,
+        ]);
+      });
+      return [...byTimestamp.values()].sort((a, b) => a[0] - b[0]);
+    }
+
+    function sanitizeVolumeData(volumes) {
+      if (!Array.isArray(volumes)) return [];
+      const byTimestamp = new Map();
+      volumes.forEach((point) => {
+        if (!Array.isArray(point) || point.length < 2) return;
+        const timestamp = Number(point[0]);
+        const volume = Number(point[1]);
+        if (!Number.isFinite(timestamp)) return;
+        byTimestamp.set(timestamp, [timestamp, Number.isFinite(volume) && volume > 0 ? volume : 0]);
+      });
+      return [...byTimestamp.values()].sort((a, b) => a[0] - b[0]);
     }
 
     function refreshAggregatedSeries(coin) {
       const prices = rawPriceData.value[coin] || [];
+      const candles = rawCandleData.value[coin] || [];
       const volumes = rawVolumeData.value[coin] || [];
 
       if (selectedChartType.value === "candlestick") {
-        cryptoData.value[coin] = createOHLC(prices, timeframeMinutes.value);
+        cryptoData.value[coin] = candles.length
+          ? createOHLCFromCandles(candles, timeframeMinutes.value)
+          : createOHLC(prices, timeframeMinutes.value);
       } else {
         cryptoData.value[coin] = createLineData(prices);
       }
@@ -567,12 +693,16 @@ export default defineComponent({
     }
 
     async function fetchData() {
-      if (!selectedCoin.value) return;
+      const coin = selectedCoin.value;
+      if (!coin) return;
+
+      const fetchToken = Date.now();
+      latestFetchToken.value = fetchToken;
       loading.value = true;
 
       try {
         const selectedOption = [...availableCoins.value, ...topCoins.value].find(
-          (item) => item.value === selectedCoin.value
+          (item) => item.value === coin
         );
         const selectedAssetType = String(
           selectedOption?.assetType || selectedAssetMeta.value?.assetType || "asset"
@@ -583,7 +713,7 @@ export default defineComponent({
         );
 
         let response = await axios.get(
-          `http://localhost:3000/api/market/${encodeURIComponent(selectedCoin.value)}`,
+          `http://localhost:3000/api/market/${encodeURIComponent(coin)}`,
           {
             params: {
               range: requestedRange,
@@ -592,43 +722,47 @@ export default defineComponent({
           }
         );
 
-        cryptoData.value = {};
-        volumeData.value = {};
-        rawPriceData.value = {};
-        rawVolumeData.value = {};
+        if (latestFetchToken.value !== fetchToken) return;
 
-        const coin = selectedCoin.value;
         let prices = sanitizePriceData(response?.data?.prices);
-        let providerVolumes = Array.isArray(response?.data?.total_volumes)
-          ? response.data.total_volumes
-          : [];
+        let providerCandles = sanitizeCandleData(response?.data?.candles);
+        let providerVolumes = sanitizeVolumeData(response?.data?.total_volumes);
+        const resolvedRange = String(response?.data?.resolved?.range || "").trim();
+        if (resolvedRange) {
+          requestedRange = resolvedRange;
+        }
 
-        // For assets with sparse 1d intraday data (e.g. outside trading hours),
-        // automatically fall back to 5d so 10/15m views still render enough candles.
-        if (requestedRange === "1d" && prices.length < 12) {
-          const fallbackRange = "5d";
+        // Additional safety net if provider returns no usable intraday points.
+        if (prices.length === 0) {
+          const fallbackRange = "1mo";
           const fallbackResponse = await axios.get(
-            `http://localhost:3000/api/market/${encodeURIComponent(selectedCoin.value)}`,
+            `http://localhost:3000/api/market/${encodeURIComponent(coin)}`,
             {
               params: {
                 range: fallbackRange,
-                interval: "5m",
+                interval: "15m",
               },
             }
           );
 
+          if (latestFetchToken.value !== fetchToken) return;
+
           const fallbackPrices = sanitizePriceData(fallbackResponse?.data?.prices);
           if (fallbackPrices.length > prices.length) {
             response = fallbackResponse;
-            requestedRange = fallbackRange;
+            requestedRange = String(fallbackResponse?.data?.resolved?.range || fallbackRange).trim();
             prices = fallbackPrices;
-            providerVolumes = Array.isArray(fallbackResponse?.data?.total_volumes)
-              ? fallbackResponse.data.total_volumes
-              : [];
+            providerCandles = sanitizeCandleData(fallbackResponse?.data?.candles);
+            providerVolumes = sanitizeVolumeData(fallbackResponse?.data?.total_volumes);
           }
         }
 
         currentDataRange.value = requestedRange;
+        cryptoData.value = {};
+        volumeData.value = {};
+        rawPriceData.value = {};
+        rawCandleData.value = {};
+        rawVolumeData.value = {};
 
         const asset = response?.data?.asset || {};
         selectedAssetMeta.value = {
@@ -643,19 +777,23 @@ export default defineComponent({
           throw new Error("No price data returned");
         }
         rawPriceData.value[coin] = prices;
+        rawCandleData.value[coin] = providerCandles;
         rawVolumeData.value[coin] = providerVolumes;
         refreshAggregatedSeries(coin);
 
         checkAlerts();
         updateChart();
       } catch (error) {
+        if (latestFetchToken.value !== fetchToken) return;
         console.error("Error loading market data:", error);
         $q.notify({
           type: "negative",
           message: "Failed to load market data",
         });
       } finally {
-        loading.value = false;
+        if (latestFetchToken.value === fetchToken) {
+          loading.value = false;
+        }
       }
     }
 
@@ -683,14 +821,25 @@ export default defineComponent({
       const candleWidths = getCandleWidths(timeframeMinutes.value, baseSeriesData.length);
       const rawVolumeSeries = Array.isArray(volumeData.value[coin]) ? volumeData.value[coin] : [];
       const hasVolumeFromProvider = rawVolumeSeries.some((point) => Number(point?.[1]) > 0);
+
       const baseTimestamps = baseSeriesData
         .map((point) => Number(point?.[0]))
         .filter((timestamp) => Number.isFinite(timestamp))
         .sort((a, b) => a - b);
-      const xAxisMin = baseTimestamps.length ? baseTimestamps[0] - timeframeMs * 0.5 : undefined;
-      const xAxisMax = baseTimestamps.length
-        ? baseTimestamps[baseTimestamps.length - 1] + timeframeMs * 0.5
-        : undefined;
+
+      const selectedAssetType = String(selectedAssetMeta.value?.assetType || "asset").toLowerCase();
+      const compressTimeGapsForCandles =
+        selectedChartType.value === "candlestick" && selectedAssetType !== "crypto";
+      const categoryTimestamps = compressTimeGapsForCandles ? [...baseTimestamps] : [];
+
+      const xAxisMin =
+        !compressTimeGapsForCandles && baseTimestamps.length
+          ? baseTimestamps[0] - timeframeMs * 0.5
+          : undefined;
+      const xAxisMax =
+        !compressTimeGapsForCandles && baseTimestamps.length
+          ? baseTimestamps[baseTimestamps.length - 1] + timeframeMs * 0.5
+          : undefined;
 
       const markLineData = [];
       priceAlerts.value
@@ -719,11 +868,15 @@ export default defineComponent({
         });
       }
 
+      const candleSeriesData = compressTimeGapsForCandles
+        ? baseSeriesData.map((point) => [point[1], point[2], point[3], point[4]])
+        : baseSeriesData;
+
       if (selectedChartType.value === "candlestick") {
         series.push({
           name: coin.toUpperCase(),
           type: "candlestick",
-          data: baseSeriesData,
+          data: candleSeriesData,
           barMinWidth: candleWidths.min,
           barMaxWidth: candleWidths.max,
           itemStyle: {
@@ -769,11 +922,30 @@ export default defineComponent({
           }
 
           if (indicatorData.length > 0) {
+            let normalizedIndicatorData = indicatorData;
+            if (compressTimeGapsForCandles) {
+              const indicatorByTimestamp = new Map(
+                indicatorData
+                  .filter((point) => Array.isArray(point) && point.length >= 2)
+                  .map((point) => [Number(point[0]), Number(point[1])])
+                  .filter(
+                    ([timestamp, value]) =>
+                      Number.isFinite(timestamp) && Number.isFinite(value)
+                  )
+              );
+
+              normalizedIndicatorData = categoryTimestamps.map((timestamp) => {
+                const value = Number(indicatorByTimestamp.get(timestamp));
+                return Number.isFinite(value) ? value : null;
+              });
+            }
+
             series.push({
               name: `${coin.toUpperCase()} ${indicator.toUpperCase()}`,
               type: "line",
-              data: indicatorData,
+              data: normalizedIndicatorData,
               symbol: "none",
+              connectNulls: false,
               lineStyle: {
                 color: indicatorColor,
                 width: 2,
@@ -789,34 +961,37 @@ export default defineComponent({
         const volumeMap = new Map(
           rawVolumeSeries.map((point) => [Number(point?.[0]), Number(point?.[1]) || 0])
         );
+
         const alignedTimestamps =
           selectedChartType.value === "candlestick"
-            ? baseSeriesData.map((point) => Number(point?.[0]))
+            ? compressTimeGapsForCandles
+              ? categoryTimestamps
+              : baseSeriesData.map((point) => Number(point?.[0]))
             : rawVolumeSeries.map((point) => Number(point?.[0]));
+
         const uniqueTimestamps = [...new Set(alignedTimestamps)]
           .filter((timestamp) => Number.isFinite(timestamp))
           .sort((a, b) => a - b);
 
-        const volumeSeriesData = uniqueTimestamps
-          .map((timestamp) => {
-            const volume = Number(volumeMap.get(timestamp));
-            const normalizedVolume = Number.isFinite(volume) && volume > 0 ? volume : 0;
-            const isUpCandle = candleDirectionByTimestamp.get(timestamp);
-            const barColor =
-              isUpCandle === true
-                ? "rgba(16, 185, 129, 0.55)"
-                : isUpCandle === false
-                  ? "rgba(239, 68, 68, 0.55)"
-                  : "rgba(99, 102, 241, 0.45)";
+        const volumeSeriesData = uniqueTimestamps.map((timestamp) => {
+          const volume = Number(volumeMap.get(timestamp));
+          const normalizedVolume = Number.isFinite(volume) && volume > 0 ? volume : 0;
+          const isUpCandle = candleDirectionByTimestamp.get(timestamp);
+          const barColor =
+            isUpCandle === true
+              ? "rgba(16, 185, 129, 0.55)"
+              : isUpCandle === false
+                ? "rgba(239, 68, 68, 0.55)"
+                : "rgba(99, 102, 241, 0.45)";
 
-            return {
-              value: [timestamp, normalizedVolume],
-              itemStyle: {
-                color: hasVolumeFromProvider ? barColor : "rgba(107, 114, 128, 0.25)",
-                borderRadius: [2, 2, 0, 0],
-              },
-            };
-          });
+          return {
+            value: compressTimeGapsForCandles ? normalizedVolume : [timestamp, normalizedVolume],
+            itemStyle: {
+              color: hasVolumeFromProvider ? barColor : "rgba(107, 114, 128, 0.25)",
+              borderRadius: [2, 2, 0, 0],
+            },
+          };
+        });
 
         series.push({
           name: `${coin.toUpperCase()} Volume`,
@@ -869,6 +1044,141 @@ export default defineComponent({
       const tooltipBackground = isDark ? "#1e1e1e" : "#ffffff";
       const tooltipBorderColor = isDark ? "#333333" : "#e2e8f0";
 
+      const formatAxisDate = (value) => {
+        const timestamp = Number(value);
+        if (!Number.isFinite(timestamp)) return "";
+
+        const date = new Date(timestamp);
+        if (currentDataRange.value !== "1d") {
+          return `${date.getDate().toString().padStart(2, "0")}.${(date.getMonth() + 1)
+            .toString()
+            .padStart(2, "0")} ${date
+            .getHours()
+            .toString()
+            .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+        }
+
+        return `${date.getHours().toString().padStart(2, "0")}:${date
+          .getMinutes()
+          .toString()
+          .padStart(2, "0")}`;
+      };
+
+      const xAxisConfig = showVolume.value
+        ? compressTimeGapsForCandles
+          ? [
+              {
+                type: "category",
+                gridIndex: 0,
+                data: categoryTimestamps,
+                boundaryGap: true,
+                axisLine: {
+                  onZero: false,
+                  lineStyle: { color: gridColor },
+                },
+                splitLine: {
+                  show: true,
+                  lineStyle: { color: gridColor, type: "dashed" },
+                },
+                axisLabel: {
+                  formatter: (value) => formatAxisDate(value),
+                  color: axisLabelColor,
+                  hideOverlap: true,
+                },
+              },
+              {
+                type: "category",
+                gridIndex: 1,
+                data: categoryTimestamps,
+                boundaryGap: true,
+                axisLine: {
+                  onZero: false,
+                  lineStyle: { color: gridColor },
+                },
+                splitLine: {
+                  show: true,
+                  lineStyle: { color: gridColor, type: "dashed" },
+                },
+                axisLabel: { show: false, color: axisLabelColor },
+              },
+            ]
+          : [
+              {
+                type: "time",
+                gridIndex: 0,
+                min: xAxisMin,
+                max: xAxisMax,
+                axisLine: {
+                  onZero: false,
+                  lineStyle: { color: gridColor },
+                },
+                splitLine: {
+                  show: true,
+                  lineStyle: { color: gridColor, type: "dashed" },
+                },
+                minInterval: timeframeMs,
+                axisLabel: {
+                  formatter: (value) => formatAxisDate(value),
+                  color: axisLabelColor,
+                  hideOverlap: true,
+                },
+              },
+              {
+                type: "time",
+                gridIndex: 1,
+                min: xAxisMin,
+                max: xAxisMax,
+                minInterval: timeframeMs,
+                axisLine: {
+                  onZero: false,
+                  lineStyle: { color: gridColor },
+                },
+                splitLine: {
+                  show: true,
+                  lineStyle: { color: gridColor, type: "dashed" },
+                },
+                axisLabel: { show: false, color: axisLabelColor },
+              },
+            ]
+        : compressTimeGapsForCandles
+          ? {
+              type: "category",
+              data: categoryTimestamps,
+              boundaryGap: true,
+              axisLine: {
+                onZero: false,
+                lineStyle: { color: gridColor },
+              },
+              splitLine: {
+                show: true,
+                lineStyle: { color: gridColor, type: "dashed" },
+              },
+              axisLabel: {
+                formatter: (value) => formatAxisDate(value),
+                color: axisLabelColor,
+                hideOverlap: true,
+              },
+            }
+          : {
+              type: "time",
+              min: xAxisMin,
+              max: xAxisMax,
+              axisLine: {
+                onZero: false,
+                lineStyle: { color: gridColor },
+              },
+              splitLine: {
+                show: true,
+                lineStyle: { color: gridColor, type: "dashed" },
+              },
+              minInterval: timeframeMs,
+              axisLabel: {
+                formatter: (value) => formatAxisDate(value),
+                color: axisLabelColor,
+                hideOverlap: true,
+              },
+            };
+
       chartOptions.value = {
         backgroundColor,
         animation: false,
@@ -885,23 +1195,37 @@ export default defineComponent({
             lineStyle: { color: isDark ? "#9ca3af" : "#7581BD", width: 1 },
           },
           formatter: (params) => {
-            const date = new Date(params[0].value[0]);
-            const dateStr = `${date.getDate().toString().padStart(2, "0")}.${(
-              date.getMonth() + 1
-            )
-              .toString()
-              .padStart(
-                2,
-                "0"
-              )}.${date.getFullYear()} ${date
-              .getHours()
-              .toString()
-              .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+            if (!Array.isArray(params) || !params.length) return "";
+
+            const axisValueTimestamp = Number(params[0]?.axisValue);
+            let tooltipTimestamp = Number.isFinite(axisValueTimestamp) ? axisValueTimestamp : null;
+            if (!Number.isFinite(tooltipTimestamp)) {
+              const firstValue = params[0]?.value;
+              if (Array.isArray(firstValue) && Number.isFinite(Number(firstValue[0]))) {
+                tooltipTimestamp = Number(firstValue[0]);
+              } else {
+                const parsed = Date.parse(String(params[0]?.axisValue || ""));
+                tooltipTimestamp = Number.isFinite(parsed) ? parsed : null;
+              }
+            }
+
+            const date = Number.isFinite(tooltipTimestamp) ? new Date(tooltipTimestamp) : null;
+            const dateStr = date
+              ? `${date.getDate().toString().padStart(2, "0")}.${(date.getMonth() + 1)
+                  .toString()
+                  .padStart(2, "0")}.${date.getFullYear()} ${date
+                  .getHours()
+                  .toString()
+                  .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`
+              : "Time n/a";
 
             let result = `<div style="font-weight: bold; margin-bottom: 5px;">${dateStr}</div>`;
             params.forEach((item) => {
               if (item.seriesName.includes("Volume")) {
-                const rawVolume = Number(item.value?.[1]);
+                const rawVolume = Array.isArray(item.value)
+                  ? Number(item.value[1] ?? item.value[0])
+                  : Number(item.value);
+
                 result += `<div style="margin: 2px 0;">
                   <strong>${item.seriesName}</strong><br>
                   ${
@@ -914,40 +1238,44 @@ export default defineComponent({
                 </div>`;
               } else if (
                 selectedChartType.value === "candlestick" &&
-                item.value &&
-                item.value.length >= 5 &&
+                Array.isArray(item.value) &&
+                item.value.length >= 4 &&
                 !item.seriesName.includes("EMA") &&
                 !item.seriesName.includes("SMA")
               ) {
-                const isUp = item.value[2] >= item.value[1];
-                const arrow = isUp ? "▲" : "▼";
-                const color = isUp ? "#10b981" : "#ef4444";
+                const open = Number(item.value[item.value.length >= 5 ? 1 : 0]);
+                const close = Number(item.value[item.value.length >= 5 ? 2 : 1]);
+                const low = Number(item.value[item.value.length >= 5 ? 3 : 2]);
+                const high = Number(item.value[item.value.length >= 5 ? 4 : 3]);
 
-                result += `<div style="color: ${color}; margin: 2px 0;">
+                if (
+                  !Number.isFinite(open) ||
+                  !Number.isFinite(close) ||
+                  !Number.isFinite(low) ||
+                  !Number.isFinite(high)
+                ) {
+                  return;
+                }
+
+                const isUp = close >= open;
+                const arrow = isUp ? "UP" : "DOWN";
+                const candleColor = isUp ? "#10b981" : "#ef4444";
+
+                result += `<div style="color: ${candleColor}; margin: 2px 0;">
                   <strong>${item.seriesName}</strong> ${arrow}<br>
-                  O: <strong>${selectedAssetCurrency.value} ${
-                    item.value[1]?.toFixed(2) || "0.00"
-                  }</strong> |
-                  H: <strong>${selectedAssetCurrency.value} ${
-                    item.value[4]?.toFixed(2) || "0.00"
-                  }</strong><br>
-                  C: <strong>${selectedAssetCurrency.value} ${
-                    item.value[2]?.toFixed(2) || "0.00"
-                  }</strong> |
-                  L: <strong>${selectedAssetCurrency.value} ${
-                    item.value[3]?.toFixed(2) || "0.00"
-                  }</strong>
+                  O: <strong>${selectedAssetCurrency.value} ${open.toFixed(2)}</strong> |
+                  H: <strong>${selectedAssetCurrency.value} ${high.toFixed(2)}</strong><br>
+                  C: <strong>${selectedAssetCurrency.value} ${close.toFixed(2)}</strong> |
+                  L: <strong>${selectedAssetCurrency.value} ${low.toFixed(2)}</strong>
                 </div>`;
-              } else if (
-                item.value &&
-                item.value.length >= 2 &&
-                !item.seriesName.includes("Volume")
-              ) {
-                const value =
-                  item.seriesName.includes("EMA") || item.seriesName.includes("SMA")
-                    ? `${selectedAssetCurrency.value} ${item.value[1]?.toFixed(2) || "0.00"}`
-                    : `${selectedAssetCurrency.value} ${item.value[1]?.toFixed(2) || "0.00"}`;
+              } else if (item.value !== undefined && !item.seriesName.includes("Volume")) {
+                const numericValue = Array.isArray(item.value)
+                  ? Number(item.value[1] ?? item.value[0])
+                  : Number(item.value);
 
+                if (!Number.isFinite(numericValue)) return;
+
+                const value = `${selectedAssetCurrency.value} ${numericValue.toFixed(2)}`;
                 result += `<div style="margin: 2px 0;">
                   <strong>${item.seriesName}</strong><br>
                   ${
@@ -973,105 +1301,7 @@ export default defineComponent({
           link: [{ xAxisIndex: "all" }],
         },
         grid: gridConfig,
-        xAxis: showVolume.value
-          ? [
-              {
-                type: "time",
-                gridIndex: 0,
-                min: xAxisMin,
-                max: xAxisMax,
-                axisLine: {
-                  onZero: false,
-                  lineStyle: { color: gridColor },
-                },
-                splitLine: {
-                  show: true,
-                  lineStyle: { color: gridColor, type: "dashed" },
-                },
-                minInterval: timeframeMs,
-                axisLabel: {
-                  formatter: (value) => {
-                    const date = new Date(value);
-                    if (currentDataRange.value !== "1d") {
-                      return `${date.getDate().toString().padStart(2, "0")}.${(
-                        date.getMonth() + 1
-                      )
-                        .toString()
-                        .padStart(2, "0")} ${date
-                        .getHours()
-                        .toString()
-                        .padStart(2, "0")}:${date
-                        .getMinutes()
-                        .toString()
-                        .padStart(2, "0")}`;
-                    }
-                    return `${date
-                      .getHours()
-                      .toString()
-                      .padStart(2, "0")}:${date
-                      .getMinutes()
-                      .toString()
-                      .padStart(2, "0")}`;
-                  },
-                  color: axisLabelColor,
-                  hideOverlap: true,
-                },
-              },
-              {
-                type: "time",
-                gridIndex: 1,
-                min: xAxisMin,
-                max: xAxisMax,
-                minInterval: timeframeMs,
-                axisLine: {
-                  onZero: false,
-                  lineStyle: { color: gridColor },
-                },
-                splitLine: {
-                  show: true,
-                  lineStyle: { color: gridColor, type: "dashed" },
-                },
-                axisLabel: { show: false, color: axisLabelColor },
-              },
-            ]
-          : {
-              type: "time",
-              min: xAxisMin,
-              max: xAxisMax,
-              axisLine: {
-                onZero: false,
-                lineStyle: { color: gridColor },
-              },
-              splitLine: {
-                show: true,
-                lineStyle: { color: gridColor, type: "dashed" },
-              },
-              minInterval: timeframeMs,
-              axisLabel: {
-                formatter: (value) => {
-                  const date = new Date(value);
-                  if (currentDataRange.value !== "1d") {
-                    return `${date.getDate().toString().padStart(2, "0")}.${(
-                      date.getMonth() + 1
-                    )
-                      .toString()
-                      .padStart(2, "0")} ${date
-                      .getHours()
-                      .toString()
-                      .padStart(2, "0")}:${date
-                      .getMinutes()
-                      .toString()
-                      .padStart(2, "0")}`;
-                  }
-                  return `${date
-                    .getHours()
-                    .toString()
-                    .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
-                },
-                color: axisLabelColor,
-                hideOverlap: true,
-              },
-            },
+        xAxis: xAxisConfig,
         yAxis: showVolume.value
           ? [
               {
@@ -1173,7 +1403,6 @@ export default defineComponent({
         series,
       };
     }
-
     watch(selectedCoin, (newCoin, oldCoin) => {
       if (newCoin !== oldCoin) {
         coinSearchQuery.value = "";
@@ -2014,3 +2243,4 @@ export default defineComponent({
   }
 }
 </style>
+

@@ -41,6 +41,45 @@ export default defineComponent({
     const chartRef = ref(null);
     const hoveredCategory = ref(null);
 
+    const formatAmount = (value, decimals = 2) => {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) {
+        return Number(0).toLocaleString("de-DE", {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        });
+      }
+
+      return numeric.toLocaleString("de-DE", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      });
+    };
+
+    const formatDateDMY = (value) => {
+      if (!value) return "";
+
+      if (typeof value === "string") {
+        const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+          return `${match[3]}.${match[2]}.${match[1]}`;
+        }
+      }
+
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return `${String(date.getDate()).padStart(2, "0")}.${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}.${date.getFullYear()}`;
+    };
+
+    const formattedDateRange = computed(() => {
+      const from = formatDateDMY(props.dateRange?.from);
+      const to = formatDateDMY(props.dateRange?.to);
+      if (!from || !to) return "";
+      return `${from} - ${to}`;
+    });
+
     const getCategoryName = (categoryId) => {
       const category = props.categories.find((c) => c.id === categoryId);
       return category ? category.name : "Uncategorized";
@@ -109,7 +148,7 @@ export default defineComponent({
             return `
           <div class="custom-tooltip" style="color: ${tooltipTextColor}">
             <strong>${data.name}</strong><br/>
-            ${data.value} ${props.currency}<br/>
+            ${formatAmount(data.value)} ${props.currency}<br/>
             <small>${data.percentage}% of total</small>
           </div>
         `;
@@ -156,7 +195,8 @@ export default defineComponent({
             label: {
               show: false,
               position: "center",
-              formatter: "{b}\n{c} " + props.currency + "\n({d}%)",
+              formatter: ({ name, value, percent }) =>
+                `${name}\n${formatAmount(value)} ${props.currency}\n(${percent}%)`,
               fontSize: 14,
               fontWeight: "bold",
               color: labelColor,
@@ -168,7 +208,7 @@ export default defineComponent({
                 show: true,
                 fontSize: 16,
                 fontWeight: "bold",
-                formatter: "{b}\n{c} " + props.currency,
+                formatter: ({ name, value }) => `${name}\n${formatAmount(value)} ${props.currency}`,
                 color: labelColor,
               },
               itemStyle: {
@@ -274,6 +314,8 @@ export default defineComponent({
       hasData,
       categoryBreakdown,
       pieChartOptions,
+      formattedDateRange,
+      formatAmount,
       getCategoryColor,
       chartRef,
       hoveredCategory,
@@ -291,15 +333,15 @@ export default defineComponent({
         <q-icon name="pie_chart" size="24px" class="header-icon" />
         <div>
           <h3>Expense Distribution</h3>
-          <p v-if="dateRange" class="date-range">
-            {{ dateRange.from }} to {{ dateRange.to }}
+          <p v-if="formattedDateRange" class="date-range">
+            {{ formattedDateRange }}
           </p>
         </div>
       </div>
       <div class="total-expenses">
         <div class="total-label">Total Expenses</div>
         <div class="total-amount">
-          {{ categoryBreakdown.reduce((sum, cat) => sum + cat.value, 0).toFixed(2) }}
+          {{ formatAmount(categoryBreakdown.reduce((sum, cat) => sum + cat.value, 0)) }}
           {{ currency }}
         </div>
       </div>
@@ -345,7 +387,7 @@ export default defineComponent({
                   <div class="category-percentage">{{ item.percentage }}%</div>
                 </div>
               </div>
-              <div class="category-amount">{{ item.value }} {{ currency }}</div>
+              <div class="category-amount">{{ formatAmount(item.value) }} {{ currency }}</div>
             </div>
           </div>
         </div>
