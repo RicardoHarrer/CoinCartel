@@ -875,8 +875,9 @@ export default defineComponent({
 
           <q-space />
 
-          <q-btn-group class="col-auto primary-action nav-action-group">
+          <div class="col-auto nav-action-group">
             <q-btn
+              class="pill-nav-btn"
               label="Market"
               color="secondary"
               icon="trending_up"
@@ -884,13 +885,14 @@ export default defineComponent({
               outline
             />
             <q-btn
+              class="pill-nav-btn"
               label="Settings"
               color="deep-purple"
               icon="settings"
               to="/settings"
               outline
             />
-          </q-btn-group>
+          </div>
         </div>
       </q-card-section>
     </q-card>
@@ -1151,6 +1153,19 @@ export default defineComponent({
     .currency-select {
       min-width: 120px;
     }
+
+    .nav-action-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill-nav-btn {
+      border-radius: 9999px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    }
   }
 
   .chart-container {
@@ -1377,13 +1392,7 @@ body.body--dark .modern-dashboard .progress-label {
   color: #b0b0b0 !important;
 }
 
-.modern-dashboard .controls-card .primary-action {
-  border-radius: 9999px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
-  overflow: hidden;
-}
-
-body.body--dark .modern-dashboard .controls-card .primary-action {
+.modern-dashboard .controls-card .pill-nav-btn {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
@@ -1457,7 +1466,6 @@ body.body--dark :deep(.q-btn--outline) {
 
       .date-input,
       .currency-select,
-      .primary-action,
       .nav-action-group {
         width: 100%;
         min-width: 0 !important;
