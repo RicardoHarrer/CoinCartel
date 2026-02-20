@@ -1,7 +1,12 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import * as model from '../model/model.js';
-import { fetchCryptoData } from '../model/model.js';
+import {
+  fetchCryptoData,
+  fetchMarketData,
+  getMarketWatchlist,
+  searchMarketAssets,
+} from '../model/model.js';
 
 const getUsers = async (req, res) => {
   const { rows } = await model.getUsers();
@@ -303,6 +308,41 @@ export const getCryptoData = async (req, res) => {
     return res.status(200).json(data);
   } catch (err) {
     console.error('Server Error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+export const getMarketData = async (req, res) => {
+  const { symbol } = req.params;
+  const { range, interval } = req.query;
+  try {
+    const data = await fetchMarketData(symbol, { range, interval });
+    return res.status(200).json(data);
+  } catch (err) {
+    console.error('Market data error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+export const searchMarketAssetsEndpoint = async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 40));
+  try {
+    const items = await searchMarketAssets(q, limit);
+    return res.status(200).json({ items });
+  } catch (err) {
+    console.error('Market search error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+export const getMarketWatchlistEndpoint = async (req, res) => {
+  const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
+  try {
+    const items = await getMarketWatchlist(limit);
+    return res.status(200).json({ items });
+  } catch (err) {
+    console.error('Market watchlist error:', err.message);
     return res.status(500).json({ error: err.message });
   }
 };

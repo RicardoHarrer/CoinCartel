@@ -45,9 +45,19 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/crypto',
-      name: 'Crypto',
+      path: '/market',
+      name: 'Market',
       component: () => import('@/views/CryptoChartView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/crypto',
+      redirect: '/market',
+    },
+    {
+      path: '/paper-trading',
+      name: 'PaperTrading',
+      component: () => import('@/views/PaperTradingView.vue'),
       meta: { requiresAuth: true },
     },
     {

@@ -1,5 +1,5 @@
 <script>
-import { defineComponent, ref, watch, onMounted } from "vue";
+import { computed, defineComponent, ref, watch, onMounted } from "vue";
 import axios from "axios";
 import { use } from "echarts/core";
 import { CandlestickChart, LineChart, BarChart } from "echarts/charts";
@@ -35,7 +35,17 @@ export default defineComponent({
 
     const topCoins = ref([]);
     const availableCoins = ref([]);
+    const filteredCoinOptions = ref([]);
+    const coinSearchQuery = ref("");
+    const coinSelectRef = ref(null);
     const selectedCoin = ref(null);
+    const selectedAssetMeta = ref({
+      symbol: "",
+      name: "",
+      assetType: "asset",
+      currency: "EUR",
+      exchange: "",
+    });
     const cryptoData = ref({});
     const volumeData = ref({});
     const rawPriceData = ref({});
@@ -66,10 +76,30 @@ export default defineComponent({
     const showAlertDialog = ref(false);
 
     const timeframeMinutes = ref(15);
+    const currentDataRange = ref("1d");
 
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
     };
+
+    const ASSET_TYPE_LABELS = {
+      crypto: "Crypto",
+      stock: "Stock",
+      etf: "ETF",
+      forex: "FX",
+      index: "Index",
+      fund: "Fund",
+      commodity: "Commodity",
+      asset: "Asset",
+    };
+
+    const selectedAssetCurrency = computed(
+      () => selectedAssetMeta.value?.currency || "EUR"
+    );
+    const selectedAssetTypeLabel = computed(() => {
+      const key = String(selectedAssetMeta.value?.assetType || "asset").toLowerCase();
+      return ASSET_TYPE_LABELS[key] || "Asset";
+    });
 
     const getIndicatorColor = (indicator) => {
       switch (indicator) {
@@ -242,6 +272,59 @@ export default defineComponent({
       return prices.map((price) => [price[0], price[1]]);
     }
 
+    function getRangeForTimeframe(minutes, assetType = "asset") {
+      const safeMinutes = Math.max(1, Number(minutes) || 15);
+      if (safeMinutes <= 30) return "5d";
+      return "1mo";
+    }
+
+    function getCandleWidths(timeframe, pointCount = 0) {
+      const minutes = Math.max(1, Number(timeframe) || 15);
+      const points = Math.max(0, Number(pointCount) || 0);
+
+      if (points >= 700) return { min: 1, max: 2 };
+      if (points >= 500) return { min: 1, max: 3 };
+      if (minutes <= 10) return { min: 1, max: 3 };
+      if (minutes <= 15) return { min: 1, max: 4 };
+      return { min: 2, max: 8 };
+    }
+
+    function getVolumeUnitForAsset(assetType) {
+      const normalized = String(assetType || "").toLowerCase();
+      if (normalized === "stock" || normalized === "etf" || normalized === "fund") {
+        return "shares";
+      }
+      if (normalized === "crypto") {
+        return "coins";
+      }
+      if (normalized === "forex") {
+        return "units";
+      }
+      return "contracts";
+    }
+
+    const selectedVolumeUnit = computed(() =>
+      getVolumeUnitForAsset(selectedAssetMeta.value?.assetType)
+    );
+
+    function formatCompactNumber(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return "0";
+
+      const abs = Math.abs(numeric);
+      if (abs >= 1_000_000_000) return `${(numeric / 1_000_000_000).toFixed(1)}B`;
+      if (abs >= 1_000_000) return `${(numeric / 1_000_000).toFixed(1)}M`;
+      if (abs >= 1_000) return `${(numeric / 1_000).toFixed(1)}K`;
+      return `${Math.round(numeric)}`;
+    }
+
+    function formatVolumeExact(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return "0";
+      if (Math.abs(numeric) >= 1) return Math.round(numeric).toLocaleString();
+      return numeric.toFixed(4);
+    }
+
     function sanitizePriceData(prices) {
       if (!Array.isArray(prices)) return [];
       return prices
@@ -288,7 +371,9 @@ export default defineComponent({
 
       $q.notify({
         type: "positive",
-        message: `Price alert set for ${alert.coin.toUpperCase()} at ${alert.price}€`,
+        message: `Price alert set for ${alert.coin.toUpperCase()} at ${alert.price} ${
+          selectedAssetCurrency.value
+        }`,
       });
     }
 
@@ -316,7 +401,12 @@ export default defineComponent({
           const latestData = cryptoData.value[coin];
           if (latestData.length === 0) return;
 
-          const latestPrice = latestData[latestData.length - 1][2];
+          const latestPoint = latestData[latestData.length - 1];
+          const latestPrice =
+            selectedChartType.value === "candlestick"
+              ? Number(latestPoint?.[2])
+              : Number(latestPoint?.[1]);
+          if (!Number.isFinite(latestPrice)) return;
           const priceDiff = Math.abs(latestPrice - alert.price);
           const tolerance = alert.price * 0.005;
 
@@ -328,7 +418,9 @@ export default defineComponent({
               type: "warning",
               message: `🚨 ${alert.coin.toUpperCase()} reached ${latestPrice.toFixed(
                 2
-              )}€ (Target: ${alert.price}€)`,
+              )} ${selectedAssetCurrency.value} (Target: ${alert.price} ${
+                selectedAssetCurrency.value
+              })`,
               timeout: 0,
               actions: [{ label: "Dismiss", color: "white" }],
             });
@@ -341,61 +433,137 @@ export default defineComponent({
       });
     }
 
+    const mapAssetOption = (asset = {}) => {
+      const symbol = String(asset.symbol || asset.value || "").trim();
+      const name = String(asset.name || symbol || "Asset").trim();
+      const assetType = String(asset.assetType || "asset").toLowerCase();
+      const exchange = String(asset.exchange || "").trim();
+      const currency = String(asset.currency || "EUR").trim().toUpperCase();
+
+      const typeLabel = ASSET_TYPE_LABELS[assetType] || "Asset";
+      const label = asset.label
+        || `${name} (${symbol}) - ${typeLabel.toUpperCase()}${exchange ? ` - ${exchange}` : ""}`;
+
+      return {
+        label,
+        value: symbol,
+        symbol,
+        name,
+        assetType,
+        exchange,
+        currency,
+      };
+    };
+
     async function fetchTopCoins() {
       try {
-        const { data } = await axios.get(
-          "https://api.coingecko.com/api/v3/coins/markets",
-          {
-            params: {
-              vs_currency: "eur",
-              order: "market_cap_desc",
-              per_page: 10,
-              page: 1,
-            },
-          }
-        );
-        topCoins.value = data.map((coin) => ({
-          label: `${coin.name} (${coin.symbol.toUpperCase()})`,
-          value: coin.id,
-        }));
-        selectedCoin.value = topCoins.value[0]?.value || null;
+        const response = await axios.get("http://localhost:3000/api/market/watchlist", {
+          params: { limit: 20 },
+        });
+        const items = Array.isArray(response?.data?.items) ? response.data.items : [];
+        const mapped = items.map((item) => mapAssetOption(item)).filter((item) => item.value);
+
+        if (!mapped.length) {
+          throw new Error("Empty market watchlist");
+        }
+
+        topCoins.value = mapped;
+        availableCoins.value = mapped;
+        selectedCoin.value = mapped[0].value;
       } catch (error) {
-        console.error("Fehler beim Laden der Top-Coins:", error);
+        console.error("Error loading market watchlist:", error);
         topCoins.value = [
-          { label: "Bitcoin (BTC)", value: "bitcoin" },
-          { label: "Ethereum (ETH)", value: "ethereum" },
-          { label: "Solana (SOL)", value: "solana" },
-          { label: "Ripple (XRP)", value: "ripple" },
-          { label: "Cardano (ADA)", value: "cardano" },
+          mapAssetOption({
+            symbol: "BTC-EUR",
+            name: "Bitcoin",
+            assetType: "crypto",
+            currency: "EUR",
+            exchange: "CCC",
+          }),
+          mapAssetOption({
+            symbol: "AAPL",
+            name: "Apple",
+            assetType: "stock",
+            currency: "USD",
+            exchange: "NASDAQ",
+          }),
+          mapAssetOption({
+            symbol: "SPY",
+            name: "SPDR S&P 500 ETF",
+            assetType: "etf",
+            currency: "USD",
+            exchange: "NYSE",
+          }),
+          mapAssetOption({
+            symbol: "EURUSD=X",
+            name: "EUR/USD",
+            assetType: "forex",
+            currency: "USD",
+            exchange: "FX",
+          }),
         ];
-        selectedCoin.value = topCoins.value[0].value;
+        availableCoins.value = topCoins.value;
+        selectedCoin.value = topCoins.value[0]?.value || null;
         $q.notify({
           type: "warning",
-          message: "Top coin list unavailable, using fallback list",
+          message: "Market watchlist unavailable, fallback assets loaded",
         });
       }
     }
 
     async function fetchAllCoins() {
+      availableCoins.value = topCoins.value;
+    }
+
+    const selectedCoinLabel = computed(() => {
+      if (!selectedCoin.value) return "";
+
+      const merged = [...availableCoins.value, ...topCoins.value];
+      const selected = merged.find((coin) => coin.value === selectedCoin.value);
+      if (selected?.label) return selected.label;
+
+      const fallbackSymbol = selectedAssetMeta.value?.symbol || selectedCoin.value;
+      const fallbackName = selectedAssetMeta.value?.name || "";
+      if (fallbackName) return `${fallbackName} (${fallbackSymbol})`;
+      return String(fallbackSymbol || "").toUpperCase();
+    });
+
+    async function filterCoins(val, update, abort) {
+      const query = (val || "").trim();
+      coinSearchQuery.value = query;
+
+      if (!query) {
+        update(() => {
+          filteredCoinOptions.value = [];
+        });
+        if (abort) abort();
+        return;
+      }
+
       try {
-        const { data } = await axios.get("https://api.coingecko.com/api/v3/coins/list");
-        availableCoins.value = data.map((coin) => ({
-          label: `${coin.name} (${coin.symbol.toUpperCase()})`,
-          value: coin.id,
-        }));
+        const response = await axios.get("http://localhost:3000/api/market/search", {
+          params: { q: query, limit: 80 },
+        });
+        const items = Array.isArray(response?.data?.items) ? response.data.items : [];
+        const mapped = items.map((item) => mapAssetOption(item)).filter((item) => item.value);
+
+        update(() => {
+          availableCoins.value = mapped;
+          filteredCoinOptions.value = mapped;
+        });
       } catch (error) {
-        console.error("Fehler beim Laden der Coin-Liste:", error);
+        console.error("Error searching market assets:", error);
+        update(() => {
+          filteredCoinOptions.value = [];
+        });
+        if (abort) abort();
       }
     }
 
-    function filterCoins(val, update) {
-      const query = (val || "").trim().toLowerCase();
-      update(() => {
-        if (!query) return topCoins.value;
-        return availableCoins.value.filter((coin) =>
-          coin.label.toLowerCase().includes(query)
-        );
-      });
+    function onCoinPopupShow() {
+      if (!coinSearchQuery.value && coinSelectRef.value) {
+        coinSelectRef.value.hidePopup();
+      }
     }
 
     async function fetchData() {
@@ -403,8 +571,25 @@ export default defineComponent({
       loading.value = true;
 
       try {
-        const response = await axios.get(
-          `http://localhost:3000/api/crypto/${selectedCoin.value}`
+        const selectedOption = [...availableCoins.value, ...topCoins.value].find(
+          (item) => item.value === selectedCoin.value
+        );
+        const selectedAssetType = String(
+          selectedOption?.assetType || selectedAssetMeta.value?.assetType || "asset"
+        ).toLowerCase();
+        let requestedRange = getRangeForTimeframe(
+          Math.max(1, Number(timeframeMinutes.value) || 15),
+          selectedAssetType
+        );
+
+        let response = await axios.get(
+          `http://localhost:3000/api/market/${encodeURIComponent(selectedCoin.value)}`,
+          {
+            params: {
+              range: requestedRange,
+              interval: "5m",
+            },
+          }
         );
 
         cryptoData.value = {};
@@ -413,23 +598,61 @@ export default defineComponent({
         rawVolumeData.value = {};
 
         const coin = selectedCoin.value;
-        const prices = sanitizePriceData(response?.data?.prices);
+        let prices = sanitizePriceData(response?.data?.prices);
+        let providerVolumes = Array.isArray(response?.data?.total_volumes)
+          ? response.data.total_volumes
+          : [];
+
+        // For assets with sparse 1d intraday data (e.g. outside trading hours),
+        // automatically fall back to 5d so 10/15m views still render enough candles.
+        if (requestedRange === "1d" && prices.length < 12) {
+          const fallbackRange = "5d";
+          const fallbackResponse = await axios.get(
+            `http://localhost:3000/api/market/${encodeURIComponent(selectedCoin.value)}`,
+            {
+              params: {
+                range: fallbackRange,
+                interval: "5m",
+              },
+            }
+          );
+
+          const fallbackPrices = sanitizePriceData(fallbackResponse?.data?.prices);
+          if (fallbackPrices.length > prices.length) {
+            response = fallbackResponse;
+            requestedRange = fallbackRange;
+            prices = fallbackPrices;
+            providerVolumes = Array.isArray(fallbackResponse?.data?.total_volumes)
+              ? fallbackResponse.data.total_volumes
+              : [];
+          }
+        }
+
+        currentDataRange.value = requestedRange;
+
+        const asset = response?.data?.asset || {};
+        selectedAssetMeta.value = {
+          symbol: asset.symbol || selectedOption?.symbol || coin,
+          name: asset.name || selectedOption?.name || coin.toUpperCase(),
+          assetType: String(asset.assetType || selectedOption?.assetType || "asset").toLowerCase(),
+          currency: asset.currency || selectedOption?.currency || "EUR",
+          exchange: asset.exchange || selectedOption?.exchange || "",
+        };
+
         if (!Array.isArray(prices) || prices.length === 0) {
           throw new Error("No price data returned");
         }
         rawPriceData.value[coin] = prices;
-        rawVolumeData.value[coin] = Array.isArray(response.data.total_volumes)
-          ? response.data.total_volumes
-          : [];
+        rawVolumeData.value[coin] = providerVolumes;
         refreshAggregatedSeries(coin);
 
         checkAlerts();
         updateChart();
       } catch (error) {
-        console.error("Fehler beim Laden der Kurse vom Server:", error);
+        console.error("Error loading market data:", error);
         $q.notify({
           type: "negative",
-          message: "Failed to load cryptocurrency data",
+          message: "Failed to load market data",
         });
       } finally {
         loading.value = false;
@@ -456,6 +679,18 @@ export default defineComponent({
       const series = [];
       const color = "#667eea";
       const timeframeMs = timeframeMinutes.value * 60000;
+      const baseSeriesData = Array.isArray(cryptoData.value[coin]) ? cryptoData.value[coin] : [];
+      const candleWidths = getCandleWidths(timeframeMinutes.value, baseSeriesData.length);
+      const rawVolumeSeries = Array.isArray(volumeData.value[coin]) ? volumeData.value[coin] : [];
+      const hasVolumeFromProvider = rawVolumeSeries.some((point) => Number(point?.[1]) > 0);
+      const baseTimestamps = baseSeriesData
+        .map((point) => Number(point?.[0]))
+        .filter((timestamp) => Number.isFinite(timestamp))
+        .sort((a, b) => a - b);
+      const xAxisMin = baseTimestamps.length ? baseTimestamps[0] - timeframeMs * 0.5 : undefined;
+      const xAxisMax = baseTimestamps.length
+        ? baseTimestamps[baseTimestamps.length - 1] + timeframeMs * 0.5
+        : undefined;
 
       const markLineData = [];
       priceAlerts.value
@@ -463,26 +698,34 @@ export default defineComponent({
         .forEach((alert) => {
           markLineData.push({
             yAxis: alert.price,
-            name: `Alert: ${alert.price}€`,
+            name: `Alert: ${alert.price} ${selectedAssetCurrency.value}`,
             lineStyle: {
               color: alert.triggered ? "#10b981" : "#ef4444",
               type: "dashed",
               width: 2,
             },
             label: {
-              formatter: `Alert: ${alert.price}€`,
+              formatter: `Alert: ${alert.price} ${selectedAssetCurrency.value}`,
               position: "end",
             },
           });
         });
 
+      const candleDirectionByTimestamp = new Map();
+      if (selectedChartType.value === "candlestick" && Array.isArray(cryptoData.value[coin])) {
+        cryptoData.value[coin].forEach((candle) => {
+          if (!Array.isArray(candle) || candle.length < 3) return;
+          candleDirectionByTimestamp.set(candle[0], Number(candle[2]) >= Number(candle[1]));
+        });
+      }
+
       if (selectedChartType.value === "candlestick") {
         series.push({
           name: coin.toUpperCase(),
           type: "candlestick",
-          data: cryptoData.value[coin],
-          barMinWidth: 6,
-          barMaxWidth: 18,
+          data: baseSeriesData,
+          barMinWidth: candleWidths.min,
+          barMaxWidth: candleWidths.max,
           itemStyle: {
             color: "#10b981",
             color0: "#ef4444",
@@ -497,7 +740,7 @@ export default defineComponent({
         series.push({
           name: coin.toUpperCase(),
           type: "line",
-          data: cryptoData.value[coin],
+          data: baseSeriesData,
           symbol: "none",
           lineStyle: { color: color, width: 3 },
           itemStyle: { color: color },
@@ -543,41 +786,78 @@ export default defineComponent({
       }
 
       if (showVolume.value && volumeData.value[coin]) {
+        const volumeMap = new Map(
+          rawVolumeSeries.map((point) => [Number(point?.[0]), Number(point?.[1]) || 0])
+        );
+        const alignedTimestamps =
+          selectedChartType.value === "candlestick"
+            ? baseSeriesData.map((point) => Number(point?.[0]))
+            : rawVolumeSeries.map((point) => Number(point?.[0]));
+        const uniqueTimestamps = [...new Set(alignedTimestamps)]
+          .filter((timestamp) => Number.isFinite(timestamp))
+          .sort((a, b) => a - b);
+
+        const volumeSeriesData = uniqueTimestamps
+          .map((timestamp) => {
+            const volume = Number(volumeMap.get(timestamp));
+            const normalizedVolume = Number.isFinite(volume) && volume > 0 ? volume : 0;
+            const isUpCandle = candleDirectionByTimestamp.get(timestamp);
+            const barColor =
+              isUpCandle === true
+                ? "rgba(16, 185, 129, 0.55)"
+                : isUpCandle === false
+                  ? "rgba(239, 68, 68, 0.55)"
+                  : "rgba(99, 102, 241, 0.45)";
+
+            return {
+              value: [timestamp, normalizedVolume],
+              itemStyle: {
+                color: hasVolumeFromProvider ? barColor : "rgba(107, 114, 128, 0.25)",
+                borderRadius: [2, 2, 0, 0],
+              },
+            };
+          });
+
         series.push({
           name: `${coin.toUpperCase()} Volume`,
           type: "bar",
-          data: volumeData.value[coin],
+          data: volumeSeriesData,
           xAxisIndex: 1,
           yAxisIndex: 1,
-          itemStyle: { color: "#667eea", opacity: 0.6 },
+          barMinWidth: candleWidths.min,
+          barMaxWidth: candleWidths.max,
+          emphasis: {
+            itemStyle: {
+              opacity: 0.9,
+            },
+          },
         });
       }
 
       const gridConfig = showVolume.value
         ? [
             {
-              left: "3%",
-              right: "8%",
-              bottom: "40%",
-              top: "15%",
-              containLabel: true,
+              left: "6%",
+              right: "4%",
+              top: "12%",
+              bottom: "30%",
+              containLabel: false,
             },
             {
-              left: "3%",
-              right: "8%",
-              height: "20%",
-              bottom: "5%",
-              top: "75%",
-              containLabel: true,
+              left: "6%",
+              right: "4%",
+              top: "70%",
+              bottom: "12%",
+              containLabel: false,
             },
           ]
         : [
             {
-              left: "3%",
-              right: "8%",
-              bottom: "15%",
-              top: "15%",
-              containLabel: true,
+              left: "6%",
+              right: "4%",
+              top: "12%",
+              bottom: "16%",
+              containLabel: false,
             },
           ];
 
@@ -621,9 +901,16 @@ export default defineComponent({
             let result = `<div style="font-weight: bold; margin-bottom: 5px;">${dateStr}</div>`;
             params.forEach((item) => {
               if (item.seriesName.includes("Volume")) {
+                const rawVolume = Number(item.value?.[1]);
                 result += `<div style="margin: 2px 0;">
                   <strong>${item.seriesName}</strong><br>
-                  Volume: <strong>${(item.value[1] / 1000000).toFixed(2)} Mio. €</strong>
+                  ${
+                    Number.isFinite(rawVolume) && rawVolume > 0
+                      ? `Volume: <strong>${formatVolumeExact(rawVolume)} ${
+                          selectedVolumeUnit.value
+                        }</strong> (${formatCompactNumber(rawVolume)})`
+                      : "Volume: <strong>No provider data</strong>"
+                  }
                 </div>`;
               } else if (
                 selectedChartType.value === "candlestick" &&
@@ -638,10 +925,18 @@ export default defineComponent({
 
                 result += `<div style="color: ${color}; margin: 2px 0;">
                   <strong>${item.seriesName}</strong> ${arrow}<br>
-                  O: <strong>€${item.value[1]?.toFixed(2) || "0.00"}</strong> |
-                  H: <strong>€${item.value[4]?.toFixed(2) || "0.00"}</strong><br>
-                  C: <strong>€${item.value[2]?.toFixed(2) || "0.00"}</strong> |
-                  L: <strong>€${item.value[3]?.toFixed(2) || "0.00"}</strong>
+                  O: <strong>${selectedAssetCurrency.value} ${
+                    item.value[1]?.toFixed(2) || "0.00"
+                  }</strong> |
+                  H: <strong>${selectedAssetCurrency.value} ${
+                    item.value[4]?.toFixed(2) || "0.00"
+                  }</strong><br>
+                  C: <strong>${selectedAssetCurrency.value} ${
+                    item.value[2]?.toFixed(2) || "0.00"
+                  }</strong> |
+                  L: <strong>${selectedAssetCurrency.value} ${
+                    item.value[3]?.toFixed(2) || "0.00"
+                  }</strong>
                 </div>`;
               } else if (
                 item.value &&
@@ -650,8 +945,8 @@ export default defineComponent({
               ) {
                 const value =
                   item.seriesName.includes("EMA") || item.seriesName.includes("SMA")
-                    ? `€${item.value[1]?.toFixed(2) || "0.00"}`
-                    : `€${item.value[1]?.toFixed(2) || "0.00"}`;
+                    ? `${selectedAssetCurrency.value} ${item.value[1]?.toFixed(2) || "0.00"}`
+                    : `${selectedAssetCurrency.value} ${item.value[1]?.toFixed(2) || "0.00"}`;
 
                 result += `<div style="margin: 2px 0;">
                   <strong>${item.seriesName}</strong><br>
@@ -683,6 +978,8 @@ export default defineComponent({
               {
                 type: "time",
                 gridIndex: 0,
+                min: xAxisMin,
+                max: xAxisMax,
                 axisLine: {
                   onZero: false,
                   lineStyle: { color: gridColor },
@@ -695,6 +992,19 @@ export default defineComponent({
                 axisLabel: {
                   formatter: (value) => {
                     const date = new Date(value);
+                    if (currentDataRange.value !== "1d") {
+                      return `${date.getDate().toString().padStart(2, "0")}.${(
+                        date.getMonth() + 1
+                      )
+                        .toString()
+                        .padStart(2, "0")} ${date
+                        .getHours()
+                        .toString()
+                        .padStart(2, "0")}:${date
+                        .getMinutes()
+                        .toString()
+                        .padStart(2, "0")}`;
+                    }
                     return `${date
                       .getHours()
                       .toString()
@@ -704,11 +1014,14 @@ export default defineComponent({
                       .padStart(2, "0")}`;
                   },
                   color: axisLabelColor,
+                  hideOverlap: true,
                 },
               },
               {
                 type: "time",
                 gridIndex: 1,
+                min: xAxisMin,
+                max: xAxisMax,
                 minInterval: timeframeMs,
                 axisLine: {
                   onZero: false,
@@ -723,6 +1036,8 @@ export default defineComponent({
             ]
           : {
               type: "time",
+              min: xAxisMin,
+              max: xAxisMax,
               axisLine: {
                 onZero: false,
                 lineStyle: { color: gridColor },
@@ -735,19 +1050,33 @@ export default defineComponent({
               axisLabel: {
                 formatter: (value) => {
                   const date = new Date(value);
+                  if (currentDataRange.value !== "1d") {
+                    return `${date.getDate().toString().padStart(2, "0")}.${(
+                      date.getMonth() + 1
+                    )
+                      .toString()
+                      .padStart(2, "0")} ${date
+                      .getHours()
+                      .toString()
+                      .padStart(2, "0")}:${date
+                      .getMinutes()
+                      .toString()
+                      .padStart(2, "0")}`;
+                  }
                   return `${date
                     .getHours()
                     .toString()
                     .padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
                 },
                 color: axisLabelColor,
+                hideOverlap: true,
               },
             },
         yAxis: showVolume.value
           ? [
               {
                 type: "value",
-                name: "EUR",
+                name: selectedAssetCurrency.value,
                 scale: true,
                 gridIndex: 0,
                 axisLine: {
@@ -758,7 +1087,8 @@ export default defineComponent({
                   lineStyle: { color: gridColor, type: "dashed" },
                 },
                 axisLabel: {
-                  formatter: (value) => `€${value.toLocaleString()}`,
+                  formatter: (value) =>
+                    `${selectedAssetCurrency.value} ${Number(value).toLocaleString()}`,
                   color: axisLabelColor,
                 },
                 nameTextStyle: {
@@ -767,7 +1097,7 @@ export default defineComponent({
               },
               {
                 type: "value",
-                name: "Volume (Mio. €)",
+                name: `Volume (${selectedVolumeUnit.value})`,
                 gridIndex: 1,
                 axisLine: {
                   lineStyle: { color: gridColor },
@@ -777,7 +1107,7 @@ export default defineComponent({
                   lineStyle: { color: gridColor, type: "dashed" },
                 },
                 axisLabel: {
-                  formatter: (value) => `${(value / 1000000).toFixed(1)}M`,
+                  formatter: (value) => formatCompactNumber(value),
                   color: axisLabelColor,
                 },
                 nameTextStyle: {
@@ -787,7 +1117,7 @@ export default defineComponent({
             ]
           : {
               type: "value",
-              name: "EUR",
+              name: selectedAssetCurrency.value,
               scale: true,
               axisLine: {
                 lineStyle: { color: gridColor },
@@ -797,7 +1127,8 @@ export default defineComponent({
                 lineStyle: { color: gridColor, type: "dashed" },
               },
               axisLabel: {
-                formatter: (value) => `€${value.toLocaleString()}`,
+                formatter: (value) =>
+                  `${selectedAssetCurrency.value} ${Number(value).toLocaleString()}`,
                 color: axisLabelColor,
               },
               nameTextStyle: {
@@ -811,8 +1142,8 @@ export default defineComponent({
             filterMode: "none",
             start: 0,
             end: 100,
-            bottom: showVolume.value ? "30%" : "20%",
-            height: 20,
+            bottom: showVolume.value ? "4%" : "8%",
+            height: 18,
             backgroundColor,
             borderColor: gridColor,
             dataBackground: {
@@ -845,12 +1176,14 @@ export default defineComponent({
 
     watch(selectedCoin, (newCoin, oldCoin) => {
       if (newCoin !== oldCoin) {
+        coinSearchQuery.value = "";
+        filteredCoinOptions.value = [];
         fetchData();
       }
     });
 
     watch(
-      [selectedChartType, showVolume, selectedIndicators, timeframeMinutes],
+      [selectedChartType, showVolume, selectedIndicators],
       () => {
         if (selectedCoin.value) {
           if (rawPriceData.value[selectedCoin.value]) {
@@ -861,6 +1194,12 @@ export default defineComponent({
       },
       { deep: true }
     );
+
+    watch(timeframeMinutes, () => {
+      if (selectedCoin.value) {
+        fetchData();
+      }
+    });
 
     watch(
       () => $q.dark.isActive,
@@ -901,8 +1240,14 @@ export default defineComponent({
       chartOptions,
       loading,
       availableCoins,
+      filteredCoinOptions,
+      coinSearchQuery,
+      coinSelectRef,
       topCoins,
       selectedCoin,
+      selectedCoinLabel,
+      selectedAssetTypeLabel,
+      selectedAssetCurrency,
       cryptoData,
       chartTypes,
       selectedChartType,
@@ -918,6 +1263,7 @@ export default defineComponent({
       removeNotification,
       getIndicatorColor,
       filterCoins,
+      onCoinPopupShow,
       fetchData,
       timeframeOptions,
       timeframeMinutes,
@@ -942,8 +1288,8 @@ export default defineComponent({
 
     <div class="dashboard-header">
       <div class="header-content">
-        <h1>Crypto Chart Analysis</h1>
-        <p>Real-time cryptocurrency data with technical indicators & alerts</p>
+        <h1>Market Analysis</h1>
+        <p>Real-time data for crypto, stocks, ETFs, indices and FX</p>
       </div>
       <div class="header-actions">
         <q-btn
@@ -971,14 +1317,16 @@ export default defineComponent({
     <div class="quick-stats">
       <div class="stat-card selected-coin">
         <div class="stat-icon">
-          <q-icon name="currency_bitcoin" />
+          <q-icon name="query_stats" />
         </div>
         <div class="stat-content">
           <div class="stat-value" v-if="selectedCoin">
-            {{ selectedCoin.toUpperCase() }}
+            {{ selectedCoin }}
           </div>
           <div class="stat-value" v-else>None</div>
-          <div class="stat-label">Selected Coin</div>
+          <div class="stat-label">
+            Selected {{ selectedAssetTypeLabel }} ({{ selectedAssetCurrency }})
+          </div>
         </div>
       </div>
 
@@ -1016,17 +1364,34 @@ export default defineComponent({
       <q-card-section>
         <div class="row q-gutter-md items-center controls-row">
           <q-select
+            ref="coinSelectRef"
             v-model="selectedCoin"
-            :options="topCoins"
+            :options="filteredCoinOptions"
+            :display-value="selectedCoinLabel"
             use-input
+            hide-selected
+            fill-input
             input-debounce="300"
-            :filter="filterCoins"
-            label="Select Cryptocurrency"
+            @filter="filterCoins"
+            @popup-show="onCoinPopupShow"
+            label="Select Market Asset"
             emit-value
             map-options
             filled
             class="coin-select"
-          />
+          >
+            <template v-slot:no-option>
+              <q-item>
+                <q-item-section class="text-grey">
+                  {{
+                    coinSearchQuery
+                      ? "Kein Asset gefunden."
+                      : "Tippe, um nach Crypto, Aktien, ETFs oder FX zu suchen."
+                  }}
+                </q-item-section>
+              </q-item>
+            </template>
+          </q-select>
 
           <q-select
             v-model="selectedChartType"
@@ -1060,8 +1425,9 @@ export default defineComponent({
 
           <q-space />
 
-          <q-btn-group class="col-auto nav-action-group">
+          <div class="col-auto nav-action-group">
             <q-btn
+              class="pill-nav-btn"
               label="Financial Dashboard"
               color="primary"
               icon="analytics"
@@ -1069,13 +1435,22 @@ export default defineComponent({
               outline
             />
             <q-btn
+              class="pill-nav-btn"
+              label="Paper Trading"
+              color="teal"
+              icon="edit_note"
+              to="/paper-trading"
+              outline
+            />
+            <q-btn
+              class="pill-nav-btn"
               label="Settings"
               color="deep-purple"
               icon="settings"
               to="/settings"
               outline
             />
-          </q-btn-group>
+          </div>
         </div>
       </q-card-section>
     </q-card>
@@ -1087,7 +1462,7 @@ export default defineComponent({
       <q-card class="alerts-card">
         <q-card-section>
           <div class="text-subtitle2 q-mb-xs">
-            Active Price Alerts for {{ selectedCoin.toUpperCase() }}:
+            Active Price Alerts for {{ selectedCoinLabel }}:
           </div>
           <div class="row q-gutter-sm">
             <q-chip
@@ -1102,7 +1477,7 @@ export default defineComponent({
                 :name="alert.triggered ? 'notifications_active' : 'notifications'"
                 class="q-mr-xs"
               />
-              {{ alert.price }}€
+              {{ alert.price }} {{ selectedAssetCurrency }}
               <q-tooltip v-if="alert.triggered">Alert triggered!</q-tooltip>
             </q-chip>
           </div>
@@ -1113,9 +1488,9 @@ export default defineComponent({
     <div class="chart-container">
       <div class="chart-header">
         <h3 v-if="selectedCoin">
-          {{ selectedCoin.toUpperCase() }} - Cryptocurrency Analysis
+          {{ selectedCoinLabel }} - Market Analysis
         </h3>
-        <h3 v-else>Select a cryptocurrency to view analysis</h3>
+        <h3 v-else>Select an asset to view market analysis</h3>
         <div class="chart-legend">
           <div class="legend-item" v-if="selectedChartType === 'candlestick'">
             <div class="legend-color bullish"></div>
@@ -1164,18 +1539,18 @@ export default defineComponent({
         <q-card-section>
           <div class="q-gutter-y-md">
             <div class="alert-coin-info">
-              <div class="text-subtitle2">Selected Coin:</div>
+              <div class="text-subtitle2">Selected Asset:</div>
               <div class="text-h6 text-primary">
-                {{ selectedCoin ? selectedCoin.toUpperCase() : "None" }}
+                {{ selectedCoin ? selectedCoinLabel : "None" }}
               </div>
             </div>
 
             <q-input
               v-model="newAlertPrice"
-              label="Target Price (€)"
+              :label="`Target Price (${selectedAssetCurrency})`"
               type="number"
               filled
-              placeholder="e.g., 45000"
+              placeholder="e.g., 150.00"
               :disable="!selectedCoin"
             />
 
@@ -1378,6 +1753,19 @@ export default defineComponent({
       min-width: 300px;
       max-width: 100%;
     }
+
+    .nav-action-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .pill-nav-btn {
+      border-radius: 9999px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    }
   }
 
   .alerts-section {
@@ -1525,6 +1913,10 @@ export default defineComponent({
     border-color: rgba(255, 255, 255, 0.1) !important;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
     color: #ffffff !important;
+  }
+
+  .controls-card .pill-nav-btn {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   }
 
   .alert-coin-info {

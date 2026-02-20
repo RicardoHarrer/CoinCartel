@@ -19,6 +19,9 @@ import {
   updateUserPreferences,
   getTransactionsWithCategoriesByUser,
   getCryptoData,
+  getMarketData,
+  searchMarketAssetsEndpoint,
+  getMarketWatchlistEndpoint,
   getGoalsByUser,
   getGoalProgress,
   createGoal,
@@ -66,6 +69,9 @@ router.get(
   '/transactions-with-categories/users/:id',
   asyncHandler(getTransactionsWithCategoriesByUser),
 );
+router.get('/api/market/watchlist', asyncHandler(getMarketWatchlistEndpoint));
+router.get('/api/market/search', asyncHandler(searchMarketAssetsEndpoint));
+router.get('/api/market/:symbol', asyncHandler(getMarketData));
 router.get('/api/crypto/:coin', asyncHandler(getCryptoData));
 router.get('/api/tips/:id', asyncHandler(getTipsForUser));
 

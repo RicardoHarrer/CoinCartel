@@ -51,9 +51,36 @@ export default defineComponent({
     const tipsError = ref("");
     const tipsItems = ref([]);
 
+    function formatDateForModel(date) {
+      if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatDateDMY(value) {
+      if (!value) return "";
+
+      if (typeof value === "string") {
+        const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (match) {
+          return `${match[3]}.${match[2]}.${match[1]}`;
+        }
+      }
+
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return `${String(date.getDate()).padStart(2, "0")}.${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}.${date.getFullYear()}`;
+    }
+
     const dateRangeString = computed(() => {
       if (dateRange.value.from && dateRange.value.to) {
-        return `${dateRange.value.from} - ${dateRange.value.to}`;
+        return `${formatDateDMY(dateRange.value.from)} - ${formatDateDMY(
+          dateRange.value.to
+        )}`;
       }
       return "";
     });
@@ -63,8 +90,8 @@ export default defineComponent({
       const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
       const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       dateRange.value = {
-        from: firstDay.toISOString().split("T")[0],
-        to: lastDay.toISOString().split("T")[0],
+        from: formatDateForModel(firstDay),
+        to: formatDateForModel(lastDay),
       };
     }
 
@@ -117,12 +144,18 @@ export default defineComponent({
         doc.text("Financial Report - Transaction Overview", 105, 20, { align: "center" });
 
         doc.setFontSize(10);
-        doc.text(`Date Range: ${dateRange.value.from} to ${dateRange.value.to}`, 20, 35);
+        doc.text(
+          `Date Range: ${formatDateDMY(dateRange.value.from)} to ${formatDateDMY(
+            dateRange.value.to
+          )}`,
+          20,
+          35
+        );
         doc.text(`Currency: ${currentCurrency.value}`, 20, 42);
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 49);
+        doc.text(`Generated: ${formatDateDMY(new Date())}`, 20, 49);
 
         const tableData = filteredTransactions.value.map((t) => [
-          t.date.split("T")[0],
+          formatDateDMY(t.date),
           t.description || "No description",
           getCategoryName(t.category_id),
           t.transaction_type === "Einnahme" ? "Income" : "Expense",
@@ -184,9 +217,15 @@ export default defineComponent({
         doc.text("Financial Report - Category Summary", 105, 20, { align: "center" });
 
         doc.setFontSize(10);
-        doc.text(`Date Range: ${dateRange.value.from} to ${dateRange.value.to}`, 20, 35);
+        doc.text(
+          `Date Range: ${formatDateDMY(dateRange.value.from)} to ${formatDateDMY(
+            dateRange.value.to
+          )}`,
+          20,
+          35
+        );
         doc.text(`Currency: ${currentCurrency.value}`, 20, 42);
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 49);
+        doc.text(`Generated: ${formatDateDMY(new Date())}`, 20, 49);
 
         const categoryData = computeCategorySummary();
         const tableData = categoryData.map((cat) => [
@@ -462,7 +501,7 @@ export default defineComponent({
           },
           formatter: (params) => {
             const date = new Date(params[0].value[0]);
-            let result = `<div style="color: ${textColor}">${date.toLocaleDateString()}<br/>`;
+            let result = `<div style="color: ${textColor}">${formatDateDMY(date)}<br/>`;
             params.forEach((item) => {
               result += `${item.marker} ${item.seriesName}: ${item.value[1].toFixed(
                 2
@@ -477,10 +516,7 @@ export default defineComponent({
           axisLabel: {
             color: textColor,
             formatter: (value) => {
-              const date = new Date(value);
-              return `${date.getFullYear()}-${(date.getMonth() + 1)
-                .toString()
-                .padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+              return formatDateDMY(value);
             },
           },
           axisLine: {
@@ -604,9 +640,6 @@ export default defineComponent({
       applyDateFilter();
     }
 
-    function resetToCurrentMonth() {
-      initDateRange();
-    }
 
     onMounted(async () => {
       try {
@@ -632,7 +665,6 @@ export default defineComponent({
       dateRangeString, // Neue computed property für die Anzeige
       chartOptions,
       updateChart,
-      resetToCurrentMonth,
       loading,
       error,
       userPreferences,
@@ -823,22 +855,14 @@ export default defineComponent({
             :dark="$q.dark.isActive"
           />
 
-          <q-btn
-            label="Reset to Current Month"
-            color="primary"
-            class="col-auto primary-action"
-            @click="resetToCurrentMonth"
-            outline
-          />
-
           <q-space />
 
           <q-btn-group class="col-auto primary-action nav-action-group">
             <q-btn
-              label="Crypto"
+              label="Market"
               color="secondary"
               icon="trending_up"
-              to="/crypto"
+              to="/market"
               outline
             />
             <q-btn

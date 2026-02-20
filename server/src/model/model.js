@@ -187,43 +187,199 @@ const COIN_ID_TO_SYMBOL = {
   sui: 'SUI',
 };
 
-const fetchCryptoDataFromYahoo = async (coin) => {
-  const symbol = COIN_ID_TO_SYMBOL[String(coin || '').toLowerCase()];
-  if (!symbol) {
-    throw new Error(`No Yahoo symbol mapping found for coin: ${coin}`);
-  }
+const QUOTE_TYPE_TO_ASSET_TYPE = {
+  cryptocurrency: 'crypto',
+  crypto: 'crypto',
+  equity: 'stock',
+  etf: 'etf',
+  mutualfund: 'fund',
+  currency: 'forex',
+  index: 'index',
+  futures: 'commodity',
+  commodity: 'commodity',
+};
 
-  const yahooTicker = `${symbol}-EUR`;
-  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooTicker}`;
-  const response = await axios.get(yahooUrl, {
-    params: { range: '1d', interval: '5m', includePrePost: false },
-    timeout: 10000,
-  });
+const makeAssetLabel = ({ name, symbol, assetType, exchange }) => {
+  const typeLabel = String(assetType || 'asset').toUpperCase();
+  const exchangePart = exchange ? ` - ${exchange}` : '';
+  return `${name} (${symbol}) - ${typeLabel}${exchangePart}`;
+};
 
-  const result = response?.data?.chart?.result?.[0];
-  const timestamps = result?.timestamp || [];
+const normalizeAssetType = (value = '') =>
+  QUOTE_TYPE_TO_ASSET_TYPE[String(value || '').toLowerCase()] || 'asset';
+
+const FALLBACK_WATCHLIST = [
+  { symbol: 'BTC-EUR', name: 'Bitcoin', assetType: 'crypto', currency: 'EUR', exchange: 'CCC' },
+  { symbol: 'ETH-EUR', name: 'Ethereum', assetType: 'crypto', currency: 'EUR', exchange: 'CCC' },
+  { symbol: 'SOL-EUR', name: 'Solana', assetType: 'crypto', currency: 'EUR', exchange: 'CCC' },
+  { symbol: 'AAPL', name: 'Apple', assetType: 'stock', currency: 'USD', exchange: 'NASDAQ' },
+  { symbol: 'MSFT', name: 'Microsoft', assetType: 'stock', currency: 'USD', exchange: 'NASDAQ' },
+  { symbol: 'NVDA', name: 'NVIDIA', assetType: 'stock', currency: 'USD', exchange: 'NASDAQ' },
+  { symbol: 'TSLA', name: 'Tesla', assetType: 'stock', currency: 'USD', exchange: 'NASDAQ' },
+  { symbol: 'SPY', name: 'SPDR S&P 500 ETF', assetType: 'etf', currency: 'USD', exchange: 'NYSE' },
+  { symbol: 'QQQ', name: 'Invesco QQQ Trust', assetType: 'etf', currency: 'USD', exchange: 'NASDAQ' },
+  { symbol: 'VWCE.DE', name: 'Vanguard FTSE All-World UCITS ETF', assetType: 'etf', currency: 'EUR', exchange: 'XETRA' },
+  { symbol: 'EURUSD=X', name: 'EUR/USD', assetType: 'forex', currency: 'USD', exchange: 'FX' },
+  { symbol: 'GBPUSD=X', name: 'GBP/USD', assetType: 'forex', currency: 'USD', exchange: 'FX' },
+  { symbol: 'USDJPY=X', name: 'USD/JPY', assetType: 'forex', currency: 'JPY', exchange: 'FX' },
+  { symbol: '^GSPC', name: 'S&P 500', assetType: 'index', currency: 'USD', exchange: 'INDEX' },
+  { symbol: '^NDX', name: 'NASDAQ 100', assetType: 'index', currency: 'USD', exchange: 'INDEX' },
+].map((asset) => ({
+  ...asset,
+  value: asset.symbol,
+  label: makeAssetLabel(asset),
+}));
+
+const parseYahooChartResult = (result, fallbackSymbol) => {
+  const timestamps = Array.isArray(result?.timestamp) ? result.timestamp : [];
   const quote = result?.indicators?.quote?.[0] || {};
-  const closes = quote.close || [];
-  const volumes = quote.volume || [];
+  const closes = Array.isArray(quote?.close) ? quote.close : [];
+  const opens = Array.isArray(quote?.open) ? quote.open : [];
+  const volumes = Array.isArray(quote?.volume) ? quote.volume : [];
+  const meta = result?.meta || {};
 
   const prices = [];
   const totalVolumes = [];
   for (let i = 0; i < timestamps.length; i += 1) {
     const ts = Number(timestamps[i]) * 1000;
     const close = Number(closes[i]);
-    if (Number.isFinite(ts) && Number.isFinite(close)) {
-      prices.push([ts, close]);
-      const vol = Number(volumes[i]);
-      totalVolumes.push([ts, Number.isFinite(vol) ? vol : 0]);
-    }
+    const open = Number(opens[i]);
+    const value = Number.isFinite(close) ? close : open;
+    if (!Number.isFinite(ts) || !Number.isFinite(value) || value <= 0) continue;
+
+    prices.push([ts, value]);
+    const vol = Number(volumes[i]);
+    totalVolumes.push([ts, Number.isFinite(vol) ? vol : 0]);
   }
 
-  if (!prices.length) {
-    throw new Error(`Yahoo fallback returned no data for ${coin}`);
-  }
-
-  return { prices, total_volumes: totalVolumes };
+  const symbol = meta.symbol || fallbackSymbol;
+  return {
+    prices,
+    total_volumes: totalVolumes,
+    asset: {
+      symbol,
+      name: meta.longName || meta.shortName || symbol,
+      assetType: normalizeAssetType(meta.instrumentType || meta.quoteType),
+      currency: meta.currency || 'USD',
+      exchange: meta.exchangeName || meta.fullExchangeName || '',
+    },
+  };
 };
+
+const fetchYahooChart = async (symbol, { range = '1d', interval = '5m' } = {}) => {
+  const normalizedSymbol = String(symbol || '').trim();
+  if (!normalizedSymbol) {
+    throw new Error('Missing symbol');
+  }
+
+  const allowedIntervals = new Set(['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d']);
+  const safeInterval = allowedIntervals.has(interval) ? interval : '5m';
+  const safeRange = String(range || '1d').trim() || '1d';
+
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(normalizedSymbol)}`;
+  const response = await axios.get(url, {
+    params: { range: safeRange, interval: safeInterval, includePrePost: false },
+    timeout: 10000,
+  });
+
+  const result = response?.data?.chart?.result?.[0];
+  if (!result) {
+    const details = response?.data?.chart?.error?.description || 'No chart result';
+    throw new Error(`Yahoo chart error for ${normalizedSymbol}: ${details}`);
+  }
+
+  const parsed = parseYahooChartResult(result, normalizedSymbol);
+  if (!parsed.prices.length) {
+    throw new Error(`No market data points available for ${normalizedSymbol}`);
+  }
+
+  return parsed;
+};
+
+const fetchCryptoDataFromYahoo = async (coin) => {
+  const symbol = COIN_ID_TO_SYMBOL[String(coin || '').toLowerCase()];
+  if (!symbol) {
+    throw new Error(`No Yahoo symbol mapping found for coin: ${coin}`);
+  }
+
+  return fetchYahooChart(`${symbol}-EUR`, { range: '1d', interval: '5m' });
+};
+
+const mapYahooSearchQuote = (quote = {}) => {
+  const symbol = String(quote.symbol || '').trim();
+  if (!symbol) return null;
+
+  const name = quote.shortname || quote.longname || quote.symbol;
+  const assetType = normalizeAssetType(
+    quote.quoteType || quote.typeDisp || quote.instrumentType || quote.quoteSourceName,
+  );
+  const exchange = quote.exchDisp || quote.exchange || quote.exchangeDisplay || '';
+  const currency = quote.currency || quote.financialCurrency || 'USD';
+
+  const mapped = {
+    value: symbol,
+    symbol,
+    name,
+    assetType,
+    exchange,
+    currency,
+  };
+
+  return {
+    ...mapped,
+    label: makeAssetLabel(mapped),
+  };
+};
+
+export const searchMarketAssets = async (queryText = '', limit = 40) => {
+  const queryValue = String(queryText || '').trim();
+  const normalizedLimit = Math.max(1, Math.min(100, Number(limit) || 40));
+
+  if (!queryValue) {
+    return FALLBACK_WATCHLIST.slice(0, normalizedLimit);
+  }
+
+  try {
+    const response = await axios.get('https://query1.finance.yahoo.com/v1/finance/search', {
+      params: {
+        q: queryValue,
+        quotesCount: Math.max(20, normalizedLimit),
+        newsCount: 0,
+        enableFuzzyQuery: false,
+      },
+      timeout: 10000,
+    });
+
+    const quotes = Array.isArray(response?.data?.quotes) ? response.data.quotes : [];
+    const mapped = quotes
+      .map((quote) => mapYahooSearchQuote(quote))
+      .filter(Boolean);
+
+    if (mapped.length) {
+      return mapped.slice(0, normalizedLimit);
+    }
+  } catch (error) {
+    console.error('Error searching market assets:', error.message);
+  }
+
+  const qLower = queryValue.toLowerCase();
+  return FALLBACK_WATCHLIST
+    .filter(
+      (item) =>
+        item.label.toLowerCase().includes(qLower)
+        || item.symbol.toLowerCase().includes(qLower)
+        || item.name.toLowerCase().includes(qLower),
+    )
+    .slice(0, normalizedLimit);
+};
+
+export const getMarketWatchlist = async (limit = 20) => {
+  const normalizedLimit = Math.max(1, Math.min(100, Number(limit) || 20));
+  return FALLBACK_WATCHLIST.slice(0, normalizedLimit);
+};
+
+export const fetchMarketData = async (symbol, options = {}) =>
+  fetchYahooChart(symbol, options);
 
 export const fetchCryptoData = async (coin) => {
   const url = `https://api.coingecko.com/api/v3/coins/${coin}/market_chart`;
