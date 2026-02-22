@@ -75,6 +75,17 @@
         </div>
       </div>
 
+      <div class="q-mb-md">
+        <q-btn
+          unelevated
+          icon="add_card"
+          color="primary"
+          label="Transaktionen hinzufügen"
+          class="full-width goal-transaction-button"
+          @click.stop="$emit('add-transaction', goal)"
+        />
+      </div>
+
       <div class="row items-center justify-between">
         <div class="row items-center">
           <q-icon name="event" size="xs" color="grey-6" class="q-mr-xs" />
@@ -103,7 +114,7 @@ export default defineComponent({
       required: true,
     },
   },
-  emits: ["click", "edit", "delete", "menu"],
+  emits: ["click", "edit", "delete", "menu", "add-transaction"],
   setup(props) {
     const statusColor = computed(() => {
       switch (props.goal.status) {
@@ -219,6 +230,12 @@ body.body--dark :deep(.goal-card .text-grey-6) {
 
 :deep(.q-linear-progress__model) {
   border-radius: 4px;
+}
+
+:deep(.goal-transaction-button) {
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: none;
 }
 </style>
 

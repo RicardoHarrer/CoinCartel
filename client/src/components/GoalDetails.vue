@@ -47,28 +47,107 @@
 
       <q-card flat class="bg-edit-card q-mb-lg">
         <q-card-section class="q-pa-md">
-          <div class="row items-center">
+          <div class="row items-start justify-between q-mb-md">
             <div class="col">
-              <div class="text-caption text-weight-medium text-dark">
-                Aktuellen Betrag anpassen
+              <div class="text-subtitle2 text-weight-bold text-dark">
+                Betrag aktualisieren
+              </div>
+              <div class="text-caption text-grey-7">
+                Passe den aktuellen Stand direkt an oder nutze Schnellaktionen.
               </div>
             </div>
             <div class="col-auto">
-              <q-input
-                v-model="currentAmount"
-                type="number"
-                dense
-                outlined
-                style="width: 120px"
-                @update:model-value="updateCurrentAmount"
-                class="amount-input"
-                :dark="$q.dark.isActive"
-              >
-                <template v-slot:prepend>
-                  <span class="text-caption text-grey-7">€</span>
-                </template>
-              </q-input>
+              <q-badge color="primary" class="text-caption text-weight-medium q-px-sm q-py-xs">
+                Live: €{{ formatNumber(goal.current_amount) }}
+              </q-badge>
             </div>
+          </div>
+
+          <div class="adjustment-controls">
+            <q-btn-group spread unelevated class="quick-step-buttons q-mb-sm">
+              <q-btn
+                color="grey-3"
+                text-color="dark"
+                label="-100"
+                :disable="savingCurrentAmount"
+                @click="nudgeCurrentAmount(-100)"
+              />
+              <q-btn
+                color="grey-3"
+                text-color="dark"
+                label="-50"
+                :disable="savingCurrentAmount"
+                @click="nudgeCurrentAmount(-50)"
+              />
+              <q-btn
+                color="grey-3"
+                text-color="dark"
+                label="+50"
+                :disable="savingCurrentAmount"
+                @click="nudgeCurrentAmount(50)"
+              />
+              <q-btn
+                color="grey-3"
+                text-color="dark"
+                label="+100"
+                :disable="savingCurrentAmount"
+                @click="nudgeCurrentAmount(100)"
+              />
+            </q-btn-group>
+
+            <q-input
+              v-model.number="currentAmount"
+              type="number"
+              dense
+              outlined
+              min="0"
+              step="0.01"
+              class="amount-input-full"
+              :dark="$q.dark.isActive"
+              :disable="savingCurrentAmount"
+              @keyup.enter="saveCurrentAmount"
+            >
+              <template v-slot:prepend>
+                <span class="text-caption text-grey-7">€</span>
+              </template>
+              <template v-slot:append>
+                <q-icon
+                  :name="isCurrentAmountValid ? 'check_circle' : 'error'"
+                  :color="isCurrentAmountValid ? 'positive' : 'negative'"
+                  size="18px"
+                />
+              </template>
+            </q-input>
+
+            <div class="row items-center justify-between q-mt-sm">
+              <div
+                class="text-caption text-weight-medium"
+                :class="amountDelta >= 0 ? 'text-positive' : 'text-negative'"
+              >
+                {{ amountDelta >= 0 ? "+" : "-" }}€{{ formatNumber(Math.abs(amountDelta)) }} Änderung
+              </div>
+              <q-btn
+                flat
+                dense
+                icon="restart_alt"
+                label="Zurücksetzen"
+                color="grey-7"
+                :disable="savingCurrentAmount || !hasAmountChanged"
+                @click="resetCurrentAmount"
+              />
+            </div>
+          </div>
+
+          <div class="row justify-end q-mt-md">
+            <q-btn
+              color="primary"
+              icon="save"
+              label="Betrag speichern"
+              class="save-amount-button"
+              :loading="savingCurrentAmount"
+              :disable="savingCurrentAmount || !isCurrentAmountValid || !hasAmountChanged"
+              @click="saveCurrentAmount"
+            />
           </div>
         </q-card-section>
       </q-card>
@@ -119,9 +198,12 @@
         </q-card-section>
       </q-card>
 
-      <q-card v-if="progress < 100" flat class="bg-motivation text-dark">
+      <q-card v-if="nextMilestone" flat class="bg-milestone text-dark">
         <q-card-section class="text-center q-py-sm">
-          <div class="text-caption">{{ motivationMessage }}</div>
+          <div class="text-caption">Nächster Meilenstein: {{ nextMilestone.percent }}%</div>
+          <div class="text-subtitle2 text-weight-bold text-primary">
+            Noch €{{ formatNumber(nextMilestone.missingAmount) }}
+          </div>
         </q-card-section>
       </q-card>
     </q-card-section>
@@ -148,10 +230,13 @@ export default defineComponent({
   setup(props, { emit }) {
     const $q = useQuasar();
 
-    const currentAmount = ref(props.goal.current_amount);
+    const currentAmount = ref(Number(props.goal.current_amount) || 0);
+    const savingCurrentAmount = ref(false);
 
     const progress = computed(() => {
-      return (props.goal.current_amount / props.goal.target_amount) * 100;
+      const targetAmount = Number(props.goal.target_amount) || 0;
+      if (targetAmount <= 0) return 0;
+      return (Number(props.goal.current_amount || 0) / targetAmount) * 100;
     });
 
     const progressColor = computed(() => {
@@ -159,28 +244,59 @@ export default defineComponent({
     });
 
     const remainingAmount = computed(() => {
-      return (props.goal.target_amount - props.goal.current_amount).toFixed(2);
+      const targetAmount = Number(props.goal.target_amount) || 0;
+      const currentSaved = Number(props.goal.current_amount) || 0;
+      return Math.max(0, Number((targetAmount - currentSaved).toFixed(2)));
     });
 
     const daysRemaining = computed(() => {
+      const targetDateValue = props.goal.target_date ? new Date(props.goal.target_date) : null;
+      if (!targetDateValue || Number.isNaN(targetDateValue.getTime())) return 0;
+
       const today = new Date();
-      const targetDate = new Date(props.goal.target_date);
-      const diffTime = targetDate - today;
+      const diffTime = targetDateValue - today;
       return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     });
 
     const dailySaving = computed(() => {
-      const remaining = props.goal.target_amount - props.goal.current_amount;
-      return daysRemaining.value > 0
-        ? (remaining / daysRemaining.value).toFixed(2)
-        : "0.00";
+      const remaining = remainingAmount.value;
+      return daysRemaining.value > 0 ? (remaining / daysRemaining.value).toFixed(2) : "0.00";
     });
 
-    const motivationMessage = computed(() => {
-      if (progress.value < 25) return "Du hast einen großartigen Start! Weiter so! 🚀";
-      if (progress.value < 50) return "Du bist auf dem besten Weg! Bleib dran! 💪";
-      if (progress.value < 75) return "Schon mehr als die Hälfte geschafft! 🤩";
-      return "Fast geschafft! Das letzte Stück ist am schwersten! 🎯";
+    const normalizedCurrentAmount = computed(() => {
+      const parsed = Number(currentAmount.value);
+      if (!Number.isFinite(parsed)) return null;
+      return Math.max(0, Number(parsed.toFixed(2)));
+    });
+
+    const isCurrentAmountValid = computed(() => normalizedCurrentAmount.value !== null);
+
+    const hasAmountChanged = computed(() => {
+      if (normalizedCurrentAmount.value === null) return false;
+      const currentSaved = Number(props.goal.current_amount || 0);
+      return Math.abs(normalizedCurrentAmount.value - currentSaved) >= 0.01;
+    });
+
+    const amountDelta = computed(() => {
+      if (normalizedCurrentAmount.value === null) return 0;
+      const currentSaved = Number(props.goal.current_amount || 0);
+      return Number((normalizedCurrentAmount.value - currentSaved).toFixed(2));
+    });
+
+    const nextMilestone = computed(() => {
+      const milestones = [25, 50, 75, 100];
+      const nextPercent = milestones.find((milestone) => progress.value < milestone);
+      if (!nextPercent) return null;
+
+      const targetAmount = Number(props.goal.target_amount || 0);
+      const currentSaved = Number(props.goal.current_amount || 0);
+      const milestoneAmount = targetAmount * (nextPercent / 100);
+      const missingAmount = Math.max(0, milestoneAmount - currentSaved);
+
+      return {
+        percent: nextPercent,
+        missingAmount: Number(missingAmount.toFixed(2)),
+      };
     });
 
     const formatDate = (dateString) => {
@@ -188,58 +304,97 @@ export default defineComponent({
     };
 
     const formatNumber = (number) => {
-      return new Intl.NumberFormat("de-DE").format(number);
+      return new Intl.NumberFormat("de-DE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(Number(number) || 0);
     };
 
-    const updateCurrentAmount = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:3000/api/goals/${props.goal.id}/amount`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              currentAmount: parseFloat(currentAmount.value),
-            }),
-          }
-        );
+    const resetCurrentAmount = () => {
+      currentAmount.value = Number(props.goal.current_amount) || 0;
+    };
 
-        if (response.ok) {
-          $q.notify({
-            type: "positive",
-            message: "Betrag erfolgreich aktualisiert",
-            position: "top",
-          });
-          emit("updated");
+    const nudgeCurrentAmount = (delta) => {
+      const baseValue =
+        normalizedCurrentAmount.value !== null
+          ? normalizedCurrentAmount.value
+          : Number(props.goal.current_amount || 0);
+      const nextValue = Math.max(0, baseValue + delta);
+      currentAmount.value = Number(nextValue.toFixed(2));
+    };
+
+    const saveCurrentAmount = async () => {
+      if (!isCurrentAmountValid.value) {
+        $q.notify({
+          type: "warning",
+          message: "Bitte gib einen gültigen Betrag ein",
+          position: "top",
+        });
+        return;
+      }
+
+      if (!hasAmountChanged.value) {
+        return;
+      }
+
+      savingCurrentAmount.value = true;
+      try {
+        const response = await fetch(`http://localhost:3000/api/goals/${props.goal.id}/amount`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            currentAmount: normalizedCurrentAmount.value,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "Fehler beim Aktualisieren");
         }
+
+        $q.notify({
+          type: "positive",
+          message: "Betrag erfolgreich aktualisiert",
+          position: "top",
+        });
+        emit("updated");
       } catch (error) {
         $q.notify({
           type: "negative",
-          message: "Fehler beim Aktualisieren",
+          message: error.message || "Fehler beim Aktualisieren",
+          position: "top",
         });
+      } finally {
+        savingCurrentAmount.value = false;
       }
     };
 
     watch(
       () => props.goal,
       (newGoal) => {
-        currentAmount.value = newGoal.current_amount;
+        currentAmount.value = Number(newGoal.current_amount) || 0;
       }
     );
 
     return {
       currentAmount,
+      savingCurrentAmount,
       progress,
       progressColor,
       remainingAmount,
       daysRemaining,
       dailySaving,
-      motivationMessage,
+      isCurrentAmountValid,
+      hasAmountChanged,
+      amountDelta,
+      nextMilestone,
       formatDate,
       formatNumber,
-      updateCurrentAmount,
+      resetCurrentAmount,
+      nudgeCurrentAmount,
+      saveCurrentAmount,
     };
   },
 });
@@ -270,10 +425,32 @@ export default defineComponent({
   transition: all 0.3s ease;
 }
 
-.bg-motivation {
-  background: linear-gradient(135deg, #e8f5e8, #c8e6c9) !important;
+.bg-milestone {
+  background: linear-gradient(135deg, #eaf4ff, #d9ebff) !important;
+  border: 1px solid rgba(25, 118, 210, 0.14) !important;
   border-radius: 12px;
   transition: all 0.3s ease;
+}
+
+.adjustment-controls {
+  border: 1px dashed rgba(25, 118, 210, 0.25);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.quick-step-buttons {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.amount-input-full {
+  width: 100%;
+}
+
+.save-amount-button {
+  border-radius: 10px;
+  font-weight: 600;
+  text-transform: none;
 }
 
 .close-button {
@@ -281,8 +458,12 @@ export default defineComponent({
   font-weight: 600;
 }
 
-:deep(.amount-input .q-field__control) {
-  border-radius: 6px;
+:deep(.amount-input-full .q-field__control) {
+  border-radius: 8px;
+}
+
+:deep(.quick-step-buttons .q-btn) {
+  font-weight: 600;
 }
 
 :deep(.q-circular-progress__text) {
@@ -313,12 +494,17 @@ body.body--dark .bg-detail-card {
   border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
-body.body--dark .bg-motivation {
-  background: linear-gradient(135deg, #1b5e20, #2e7d32) !important;
-  color: #ffffff !important;
+body.body--dark .bg-milestone {
+  background: linear-gradient(135deg, rgba(25, 118, 210, 0.2), rgba(21, 101, 192, 0.25)) !important;
+  border-color: rgba(66, 165, 245, 0.35) !important;
 }
 
-body.body--dark .bg-motivation.text-dark {
+body.body--dark .adjustment-controls {
+  border-color: rgba(66, 165, 245, 0.3);
+}
+
+body.body--dark :deep(.quick-step-buttons .q-btn) {
+  background: rgba(255, 255, 255, 0.08) !important;
   color: #ffffff !important;
 }
 
@@ -374,18 +560,8 @@ body.body--dark :deep(.bg-primary) {
     width: 95vw !important;
     margin: 0 auto;
   }
-  
-  .bg-edit-card .row.items-center {
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
-  }
-  
-  .bg-edit-card .col-auto {
-    width: 100%;
-  }
-  
-  .amount-input {
+
+  .amount-input-full {
     width: 100% !important;
   }
 }
@@ -393,7 +569,7 @@ body.body--dark :deep(.bg-primary) {
 .details-card,
 .bg-edit-card,
 .bg-detail-card,
-.bg-motivation,
+.bg-milestone,
 :deep(.q-field),
 :deep(.q-btn) {
   transition: all 0.3s ease;

@@ -79,6 +79,16 @@ export default defineComponent({
 
     const timeframeMinutes = ref(15);
     const currentDataRange = ref("1d");
+    const chartRef = ref(null);
+    const activeZoomContextKey = ref("");
+    const chartViewportState = ref({
+      contextKey: "",
+      isUserAdjusted: false,
+      xStart: 0,
+      xEnd: 100,
+      yStart: 0,
+      yEnd: 100,
+    });
 
     const toggleDarkMode = () => {
       $q.dark.set(!$q.dark.isActive);
@@ -354,6 +364,138 @@ export default defineComponent({
       if (minutes <= 10) return { min: 1, max: 3 };
       if (minutes <= 15) return { min: 1, max: 4 };
       return { min: 2, max: 8 };
+    }
+
+    function clampZoomPercentage(value, fallback = 0) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return fallback;
+      return Math.min(100, Math.max(0, numeric));
+    }
+
+    function normalizeZoomWindow(start, end, fallback = { start: 0, end: 100 }) {
+      let normalizedStart = clampZoomPercentage(start, fallback.start);
+      let normalizedEnd = clampZoomPercentage(end, fallback.end);
+
+      if (normalizedStart > normalizedEnd) {
+        [normalizedStart, normalizedEnd] = [normalizedEnd, normalizedStart];
+      }
+
+      if (normalizedEnd - normalizedStart < 0.1) {
+        normalizedStart = Math.max(0, normalizedEnd - 0.1);
+      }
+
+      return {
+        start: Number(normalizedStart.toFixed(2)),
+        end: Number(normalizedEnd.toFixed(2)),
+      };
+    }
+
+    function getTargetVisibleBars(timeframeMinutesValue, chartType) {
+      const minutes = Math.max(1, Number(timeframeMinutesValue) || 15);
+      if (chartType === "line") {
+        if (minutes <= 10) return 260;
+        if (minutes <= 15) return 220;
+        return 180;
+      }
+      if (minutes <= 10) return 180;
+      if (minutes <= 15) return 150;
+      return 120;
+    }
+
+    function hasSignificantTimeGaps(timestamps, timeframeMs) {
+      const sortedTimestamps = Array.isArray(timestamps)
+        ? [...timestamps]
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value))
+            .sort((a, b) => a - b)
+        : [];
+
+      if (sortedTimestamps.length < 3) return false;
+
+      const gaps = [];
+      for (let i = 1; i < sortedTimestamps.length; i += 1) {
+        const gap = sortedTimestamps[i] - sortedTimestamps[i - 1];
+        if (Number.isFinite(gap) && gap > 0) {
+          gaps.push(gap);
+        }
+      }
+
+      if (gaps.length < 2) return false;
+
+      const sortedGaps = [...gaps].sort((a, b) => a - b);
+      const medianGap = sortedGaps[Math.floor(sortedGaps.length / 2)];
+      const expectedGap = Math.max(1, Number(timeframeMs) || 1, Number(medianGap) || 1);
+      const gapAnomalyThreshold = expectedGap * 10;
+      const tailGap = gaps[gaps.length - 1];
+
+      const missingIntervals = gaps.reduce((sum, gap) => {
+        if (gap <= expectedGap * 1.5) return sum;
+        return sum + Math.max(0, Math.round(gap / expectedGap) - 1);
+      }, 0);
+      const missingRatio =
+        missingIntervals / Math.max(1, sortedTimestamps.length + missingIntervals);
+
+      const hasExtremeGap = gaps.some((gap) => gap >= gapAnomalyThreshold);
+      const hasSparseTail = tailGap >= expectedGap * 30;
+
+      return missingRatio >= 0.18 || hasExtremeGap || hasSparseTail;
+    }
+
+    function getSmartInitialXZoom(totalPoints, timeframeMinutesValue, chartType) {
+      const points = Math.max(0, Number(totalPoints) || 0);
+      if (points <= 0) return { start: 0, end: 100 };
+      if (points <= 90) return { start: 0, end: 100 };
+
+      const targetBars = getTargetVisibleBars(timeframeMinutesValue, chartType);
+      const visibleRatio = Math.min(1, Math.max(0.08, targetBars / points));
+      return normalizeZoomWindow(100 - visibleRatio * 100, 100, { start: 0, end: 100 });
+    }
+
+    function buildZoomContextKey({
+      coin,
+      timeframe,
+      chartType,
+      volumeEnabled,
+      compressedTimeAxis,
+    }) {
+      return [
+        String(coin || ""),
+        String(timeframe || ""),
+        String(chartType || ""),
+        volumeEnabled ? "volume:1" : "volume:0",
+        compressedTimeAxis ? "compressed:1" : "compressed:0",
+      ].join("|");
+    }
+
+    function readCurrentZoomFromChart() {
+      const chart = chartRef.value?.chart || chartRef.value;
+      if (!chart?.getOption) return null;
+
+      const option = chart.getOption();
+      const zoomEntries = Array.isArray(option?.dataZoom) ? option.dataZoom : [];
+      if (!zoomEntries.length) return null;
+
+      const xSlider = zoomEntries.find((entry) => entry?.id === "dz-x-slider");
+      const ySlider = zoomEntries.find((entry) => entry?.id === "dz-y-slider");
+
+      return {
+        xStart: clampZoomPercentage(xSlider?.start, 0),
+        xEnd: clampZoomPercentage(xSlider?.end, 100),
+        yStart: clampZoomPercentage(ySlider?.start, 0),
+        yEnd: clampZoomPercentage(ySlider?.end, 100),
+      };
+    }
+
+    function onChartDataZoom() {
+      const liveZoomState = readCurrentZoomFromChart();
+      if (!liveZoomState) return;
+
+      chartViewportState.value = {
+        ...chartViewportState.value,
+        ...liveZoomState,
+        contextKey: activeZoomContextKey.value,
+        isUserAdjusted: true,
+      };
     }
 
     function getVolumeUnitForAsset(assetType) {
@@ -828,16 +970,71 @@ export default defineComponent({
         .sort((a, b) => a - b);
 
       const selectedAssetType = String(selectedAssetMeta.value?.assetType || "asset").toLowerCase();
-      const compressTimeGapsForCandles =
-        selectedChartType.value === "candlestick" && selectedAssetType !== "crypto";
-      const categoryTimestamps = compressTimeGapsForCandles ? [...baseTimestamps] : [];
+      const hasSignificantGaps = hasSignificantTimeGaps(baseTimestamps, timeframeMs);
+      const shouldCompressCryptoCandles =
+        selectedChartType.value === "candlestick"
+        && selectedAssetType === "crypto"
+        && hasSignificantGaps;
+      const compressTimeGapsForSeries =
+        selectedChartType.value === "candlestick"
+          ? selectedAssetType !== "crypto" || shouldCompressCryptoCandles
+          : hasSignificantGaps;
+      const categoryTimestamps = compressTimeGapsForSeries ? [...baseTimestamps] : [];
+      const pointsForZoom = compressTimeGapsForSeries
+        ? categoryTimestamps.length
+        : baseTimestamps.length;
+      const zoomContextKey = buildZoomContextKey({
+        coin,
+        timeframe: timeframeMinutes.value,
+        chartType: selectedChartType.value,
+        volumeEnabled: showVolume.value,
+        compressedTimeAxis: compressTimeGapsForSeries,
+      });
+      activeZoomContextKey.value = zoomContextKey;
+
+      const isSameZoomContext = chartViewportState.value.contextKey === zoomContextKey;
+      const smartXZoom = getSmartInitialXZoom(
+        pointsForZoom,
+        timeframeMinutes.value,
+        selectedChartType.value
+      );
+      const fallbackYZoom = { start: 0, end: 100 };
+      const storedXZoom = normalizeZoomWindow(
+        chartViewportState.value.xStart,
+        chartViewportState.value.xEnd,
+        smartXZoom
+      );
+      const storedYZoom = normalizeZoomWindow(
+        chartViewportState.value.yStart,
+        chartViewportState.value.yEnd,
+        fallbackYZoom
+      );
+      const useStoredZoom = isSameZoomContext && chartViewportState.value.isUserAdjusted;
+      const activeXZoom = useStoredZoom ? storedXZoom : smartXZoom;
+      const activeYZoom = useStoredZoom ? storedYZoom : fallbackYZoom;
+      const xZoomMinSpan = pointsForZoom
+        ? Number(
+            Math.max(0.5, Math.min(80, (Math.max(8, timeframeMinutes.value <= 15 ? 12 : 8) / pointsForZoom) * 100)).toFixed(2)
+          )
+        : 1;
+
+      if (!useStoredZoom) {
+        chartViewportState.value = {
+          contextKey: zoomContextKey,
+          isUserAdjusted: false,
+          xStart: activeXZoom.start,
+          xEnd: activeXZoom.end,
+          yStart: activeYZoom.start,
+          yEnd: activeYZoom.end,
+        };
+      }
 
       const xAxisMin =
-        !compressTimeGapsForCandles && baseTimestamps.length
+        !compressTimeGapsForSeries && baseTimestamps.length
           ? baseTimestamps[0] - timeframeMs * 0.5
           : undefined;
       const xAxisMax =
-        !compressTimeGapsForCandles && baseTimestamps.length
+        !compressTimeGapsForSeries && baseTimestamps.length
           ? baseTimestamps[baseTimestamps.length - 1] + timeframeMs * 0.5
           : undefined;
 
@@ -868,8 +1065,14 @@ export default defineComponent({
         });
       }
 
-      const candleSeriesData = compressTimeGapsForCandles
+      const candleSeriesData = compressTimeGapsForSeries
         ? baseSeriesData.map((point) => [point[1], point[2], point[3], point[4]])
+        : baseSeriesData;
+      const lineSeriesData = compressTimeGapsForSeries
+        ? baseSeriesData.map((point) => {
+            const value = Number(point?.[1]);
+            return Number.isFinite(value) ? value : null;
+          })
         : baseSeriesData;
 
       if (selectedChartType.value === "candlestick") {
@@ -893,7 +1096,7 @@ export default defineComponent({
         series.push({
           name: coin.toUpperCase(),
           type: "line",
-          data: baseSeriesData,
+          data: lineSeriesData,
           symbol: "none",
           lineStyle: { color: color, width: 3 },
           itemStyle: { color: color },
@@ -923,7 +1126,7 @@ export default defineComponent({
 
           if (indicatorData.length > 0) {
             let normalizedIndicatorData = indicatorData;
-            if (compressTimeGapsForCandles) {
+            if (compressTimeGapsForSeries) {
               const indicatorByTimestamp = new Map(
                 indicatorData
                   .filter((point) => Array.isArray(point) && point.length >= 2)
@@ -963,11 +1166,11 @@ export default defineComponent({
         );
 
         const alignedTimestamps =
-          selectedChartType.value === "candlestick"
-            ? compressTimeGapsForCandles
-              ? categoryTimestamps
-              : baseSeriesData.map((point) => Number(point?.[0]))
-            : rawVolumeSeries.map((point) => Number(point?.[0]));
+          compressTimeGapsForSeries
+            ? categoryTimestamps
+            : selectedChartType.value === "candlestick"
+              ? baseSeriesData.map((point) => Number(point?.[0]))
+              : rawVolumeSeries.map((point) => Number(point?.[0]));
 
         const uniqueTimestamps = [...new Set(alignedTimestamps)]
           .filter((timestamp) => Number.isFinite(timestamp))
@@ -985,7 +1188,7 @@ export default defineComponent({
                 : "rgba(99, 102, 241, 0.45)";
 
           return {
-            value: compressTimeGapsForCandles ? normalizedVolume : [timestamp, normalizedVolume],
+            value: compressTimeGapsForSeries ? normalizedVolume : [timestamp, normalizedVolume],
             itemStyle: {
               color: hasVolumeFromProvider ? barColor : "rgba(107, 114, 128, 0.25)",
               borderRadius: [2, 2, 0, 0],
@@ -1065,7 +1268,7 @@ export default defineComponent({
       };
 
       const xAxisConfig = showVolume.value
-        ? compressTimeGapsForCandles
+        ? compressTimeGapsForSeries
           ? [
               {
                 type: "category",
@@ -1140,7 +1343,7 @@ export default defineComponent({
                 axisLabel: { show: false, color: axisLabelColor },
               },
             ]
-        : compressTimeGapsForCandles
+        : compressTimeGapsForSeries
           ? {
               type: "category",
               data: categoryTimestamps,
@@ -1181,8 +1384,9 @@ export default defineComponent({
 
       chartOptions.value = {
         backgroundColor,
-        animation: false,
-        animationDurationUpdate: 120,
+        animation: baseSeriesData.length < 800,
+        animationDurationUpdate: baseSeriesData.length < 800 ? 180 : 80,
+        animationEasingUpdate: "cubicOut",
         tooltip: {
           trigger: "axis",
           backgroundColor: tooltipBackground,
@@ -1299,6 +1503,7 @@ export default defineComponent({
         },
         axisPointer: {
           link: [{ xAxisIndex: "all" }],
+          snap: selectedChartType.value === "candlestick",
         },
         grid: gridConfig,
         xAxis: xAxisConfig,
@@ -1365,11 +1570,13 @@ export default defineComponent({
             },
         dataZoom: [
           {
+            id: "dz-x-slider",
             type: "slider",
             xAxisIndex: showVolume.value ? [0, 1] : [0],
-            filterMode: "none",
-            start: 0,
-            end: 100,
+            filterMode: "filter",
+            start: activeXZoom.start,
+            end: activeXZoom.end,
+            minSpan: xZoomMinSpan,
             bottom: showVolume.value ? "4%" : "8%",
             height: 18,
             backgroundColor,
@@ -1383,19 +1590,54 @@ export default defineComponent({
             textStyle: { color: axisLabelColor },
           },
           {
+            id: "dz-x-inside",
             type: "inside",
             xAxisIndex: showVolume.value ? [0, 1] : [0],
-            filterMode: "none",
+            filterMode: "filter",
+            start: activeXZoom.start,
+            end: activeXZoom.end,
+            minSpan: xZoomMinSpan,
             zoomOnMouseWheel: true,
             moveOnMouseMove: true,
             moveOnMouseWheel: true,
           },
           {
+            id: "dz-y-inside",
             type: "inside",
             yAxisIndex: [0],
             filterMode: "none",
+            start: activeYZoom.start,
+            end: activeYZoom.end,
             zoomOnMouseWheel: "shift",
-            moveOnMouseMove: true,
+            moveOnMouseMove: false,
+            moveOnMouseWheel: "shift",
+          },
+          {
+            id: "dz-y-slider",
+            type: "slider",
+            yAxisIndex: [0],
+            filterMode: "none",
+            start: activeYZoom.start,
+            end: activeYZoom.end,
+            right: "0.8%",
+            top: showVolume.value ? "12%" : "12%",
+            bottom: showVolume.value ? "30%" : "16%",
+            width: 12,
+            showDetail: false,
+            showDataShadow: false,
+            backgroundColor,
+            borderColor: gridColor,
+            fillerColor: isDark ? "rgba(99,102,241,0.18)" : "rgba(99,102,241,0.14)",
+            dataBackground: {
+              lineStyle: { color: gridColor },
+              areaStyle: {
+                color: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
+              },
+            },
+            handleStyle: {
+              color: isDark ? "#94a3b8" : "#64748b",
+              borderColor: gridColor,
+            },
           },
         ],
         series,
@@ -1492,6 +1734,8 @@ export default defineComponent({
       filterCoins,
       onCoinPopupShow,
       fetchData,
+      chartRef,
+      onChartDataZoom,
       timeframeOptions,
       timeframeMinutes,
       toggleDarkMode,
@@ -1646,7 +1890,11 @@ export default defineComponent({
             emit-value
             map-options
             filled
-          />
+          >
+            <template v-slot:prepend>
+              <span class="indicator-select-marker" aria-hidden="true">📈</span>
+            </template>
+          </q-select>
 
           <q-toggle v-model="showVolume" label="Show Volume" color="primary" />
 
@@ -1747,10 +1995,12 @@ export default defineComponent({
 
       <div class="chart-wrapper">
         <v-chart
+          ref="chartRef"
           class="main-chart"
           :option="chartOptions"
           autoresize
           :loading="loading"
+          @datazoom="onChartDataZoom"
         />
       </div>
     </div>
@@ -1993,6 +2243,13 @@ export default defineComponent({
       overflow: hidden;
       box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
     }
+
+    .indicator-select-marker {
+      font-size: 1.05rem;
+      line-height: 1;
+      opacity: 0.9;
+      user-select: none;
+    }
   }
 
   .alerts-section {
@@ -2144,6 +2401,10 @@ export default defineComponent({
 
   .controls-card .pill-nav-btn {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+
+  .controls-card .indicator-select-marker {
+    opacity: 1;
   }
 
   .alert-coin-info {

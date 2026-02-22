@@ -116,6 +116,7 @@
                 @click="openGoalDetails(goal)"
                 @edit="editGoal(goal)"
                 @delete="confirmDeleteGoal(goal)"
+                @add-transaction="openGoalTransactionDialog"
               />
             </div>
           </div>
@@ -169,6 +170,124 @@
           @close="showDetailsDialog = false"
           @updated="fetchGoals"
         />
+      </q-dialog>
+
+      <q-dialog v-model="showAddTransactionDialog" persistent>
+        <q-card class="goal-transaction-dialog">
+          <q-card-section class="row items-center q-pb-none">
+            <div class="text-h6 text-weight-bold">Transaktion hinzufügen</div>
+            <q-space />
+            <q-btn icon="close" flat round dense @click="closeGoalTransactionDialog" />
+          </q-card-section>
+
+          <q-card-section class="q-pt-sm">
+            <div class="text-subtitle2 q-mb-sm">
+              Ziel: <strong>{{ selectedGoalForTransaction?.title || "-" }}</strong>
+            </div>
+
+            <q-btn
+              outline
+              color="primary"
+              icon="playlist_add"
+              label="Bereits bestehende Transaktion hinzufügen"
+              class="full-width q-mb-md existing-transaction-toggle"
+              :disable="savingGoalTransaction"
+              @click="openExistingTransactionPicker"
+            />
+
+            <div v-if="showExistingTransactionPicker" class="existing-transaction-box q-mb-md">
+              <q-select
+                v-model="selectedExistingTransactionId"
+                :options="filteredExistingTransactionOptions"
+                option-label="label"
+                option-value="value"
+                emit-value
+                map-options
+                filled
+                label="Gespeicherte Transaktion auswählen"
+                hint="Suche nach Datum, Betrag, Beschreibung oder ID"
+                use-input
+                fill-input
+                hide-selected
+                clearable
+                input-debounce="0"
+                :loading="loadingExistingTransactions"
+                :disable="savingGoalTransaction || loadingExistingTransactions"
+                no-error-icon
+                @filter="filterExistingTransactions"
+              />
+
+              <div class="row justify-end q-mt-sm">
+                <q-btn
+                  color="primary"
+                  icon="add_task"
+                  label="Ausgewählte Transaktion übernehmen"
+                  :disable="savingGoalTransaction || loadingExistingTransactions"
+                  :loading="savingGoalTransaction"
+                  @click="addExistingTransactionToGoal"
+                />
+              </div>
+            </div>
+
+            <div class="text-caption text-grey-6 q-mb-sm">Oder neue Transaktion anlegen</div>
+
+            <q-form class="q-gutter-md" @submit.prevent="addGoalTransaction">
+              <q-input
+                v-model.number="goalTransactionForm.amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                filled
+                label="Betrag"
+                :disable="savingGoalTransaction"
+              >
+                <template v-slot:prepend>€</template>
+              </q-input>
+
+              <q-input
+                v-model="goalTransactionForm.date"
+                type="date"
+                filled
+                label="Datum"
+                :disable="savingGoalTransaction"
+              />
+
+              <q-input
+                v-model="goalTransactionForm.currency"
+                filled
+                label="Währung"
+                maxlength="5"
+                :disable="savingGoalTransaction"
+              />
+
+              <q-input
+                v-model="goalTransactionForm.description"
+                filled
+                label="Beschreibung (optional)"
+                :disable="savingGoalTransaction"
+              />
+
+              <div class="row justify-end q-gutter-sm">
+                <q-btn
+                  flat
+                  label="Abbrechen"
+                  color="grey-7"
+                  :disable="savingGoalTransaction"
+                  @click="closeGoalTransactionDialog"
+                />
+                <q-btn
+                  color="primary"
+                  label="Transaktion speichern"
+                  icon="save"
+                  type="submit"
+                  :loading="savingGoalTransaction"
+                  :disable="savingGoalTransaction"
+                  class="goal-transaction-submit"
+                />
+              </div>
+            </q-form>
+          </q-card-section>
+        </q-card>
       </q-dialog>
 
       <q-dialog v-model="showDeleteDialog">
@@ -226,9 +345,25 @@ export default defineComponent({
     const showCreateDialog = ref(false);
     const showDetailsDialog = ref(false);
     const showDeleteDialog = ref(false);
+    const showAddTransactionDialog = ref(false);
     const selectedGoal = ref(null);
     const editingGoal = ref(null);
     const deletingGoal = ref(null);
+    const selectedGoalForTransaction = ref(null);
+    const savingGoalTransaction = ref(false);
+    const showExistingTransactionPicker = ref(false);
+    const loadingExistingTransactions = ref(false);
+    const selectedExistingTransactionId = ref(null);
+    const existingTransactions = ref([]);
+    const existingTransactionsLoaded = ref(false);
+    const allExistingTransactionOptions = ref([]);
+    const filteredExistingTransactionOptions = ref([]);
+    const goalTransactionForm = ref({
+      amount: null,
+      date: new Date().toISOString().split("T")[0],
+      currency: "EUR",
+      description: "",
+    });
 
     const userId = ref(null);
 
@@ -304,6 +439,43 @@ export default defineComponent({
       }
     });
 
+    const normalizeSearchText = (value) =>
+      String(value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+    const formatTransactionAmount = (amount, currency) => {
+      const normalizedAmount = Math.abs(Number(amount) || 0);
+      const normalizedCurrency = String(currency || "EUR").trim().toUpperCase() || "EUR";
+      try {
+        return normalizedAmount.toLocaleString("de-DE", {
+          style: "currency",
+          currency: normalizedCurrency,
+        });
+      } catch (error) {
+        return `${normalizedAmount.toLocaleString("de-DE")} ${normalizedCurrency}`;
+      }
+    };
+
+    const mapTransactionToOption = (transaction) => {
+      const transactionId = String(transaction.id ?? "").trim();
+      const transactionDate = transaction.date
+        ? new Date(transaction.date).toLocaleDateString("de-DE")
+        : "-";
+      const transactionDescription = String(transaction.description || "Ohne Beschreibung").trim();
+      const amountLabel = formatTransactionAmount(transaction.amount, transaction.currency);
+      const label = `${transactionDate} • ${amountLabel} • ${transactionDescription}`;
+
+      return {
+        label,
+        value: transactionId,
+        searchText: normalizeSearchText(
+          `${label} ${transactionId} ${transactionDescription} ${transaction.currency || ""} ${transaction.date || ""}`
+        ),
+      };
+    };
+
     const fetchGoals = async () => {
       if (!userId.value) {
         goals.value = [];
@@ -333,9 +505,286 @@ export default defineComponent({
       }
     };
 
+    const resetGoalTransactionForm = (goal = null) => {
+      goalTransactionForm.value = {
+        amount: null,
+        date: new Date().toISOString().split("T")[0],
+        currency: "EUR",
+        description: goal?.title ? `Sparziel Beitrag: ${goal.title}` : "",
+      };
+      selectedExistingTransactionId.value = null;
+      showExistingTransactionPicker.value = false;
+      filteredExistingTransactionOptions.value = allExistingTransactionOptions.value.slice(0, 200);
+    };
+
     const openGoalDetails = (goal) => {
       selectedGoal.value = goal;
       showDetailsDialog.value = true;
+    };
+
+    const openGoalTransactionDialog = (goal) => {
+      if (!goal?.id) return;
+      selectedGoalForTransaction.value = goal;
+      resetGoalTransactionForm(goal);
+      showAddTransactionDialog.value = true;
+    };
+
+    const closeGoalTransactionDialog = () => {
+      showAddTransactionDialog.value = false;
+      selectedGoalForTransaction.value = null;
+      resetGoalTransactionForm();
+    };
+
+    const fetchExistingTransactions = async () => {
+      if (!userId.value) return;
+      loadingExistingTransactions.value = true;
+      try {
+        const response = await fetch(`http://localhost:3000/transactions/users/${userId.value}`);
+        if (!response.ok) {
+          throw new Error(`Fehler beim Laden: ${response.status}`);
+        }
+        const payload = await response.json();
+        existingTransactions.value = Array.isArray(payload)
+          ? payload
+              .map((transaction) => ({
+                ...transaction,
+                amount: Number(transaction.amount) || 0,
+              }))
+              .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+          : [];
+        allExistingTransactionOptions.value = existingTransactions.value.map(mapTransactionToOption);
+        filteredExistingTransactionOptions.value = allExistingTransactionOptions.value.slice(0, 200);
+        existingTransactionsLoaded.value = true;
+      } catch (error) {
+        console.error("Error fetching existing transactions:", error);
+        $q.notify({
+          type: "negative",
+          message: "Gespeicherte Transaktionen konnten nicht geladen werden",
+          position: "top",
+        });
+      } finally {
+        loadingExistingTransactions.value = false;
+      }
+    };
+
+    const openExistingTransactionPicker = async () => {
+      showExistingTransactionPicker.value = true;
+      if (!existingTransactionsLoaded.value) {
+        await fetchExistingTransactions();
+      } else if (filteredExistingTransactionOptions.value.length === 0) {
+        filteredExistingTransactionOptions.value = allExistingTransactionOptions.value.slice(0, 200);
+      }
+    };
+
+    const filterExistingTransactions = (inputValue, update) => {
+      update(() => {
+        const needle = normalizeSearchText(inputValue);
+        if (!needle) {
+          filteredExistingTransactionOptions.value = allExistingTransactionOptions.value.slice(0, 200);
+          return;
+        }
+
+        filteredExistingTransactionOptions.value = allExistingTransactionOptions.value
+          .filter((option) => option.searchText.includes(needle))
+          .slice(0, 200);
+      });
+    };
+
+    const addExistingTransactionToGoal = async () => {
+      if (!userId.value) {
+        $q.notify({
+          type: "negative",
+          message: "Bitte erneut einloggen",
+          position: "top",
+        });
+        return;
+      }
+
+      if (!selectedGoalForTransaction.value?.id) {
+        $q.notify({
+          type: "negative",
+          message: "Kein Sparziel ausgewählt",
+          position: "top",
+        });
+        return;
+      }
+
+      const selectedTransactionId = String(selectedExistingTransactionId.value || "").trim();
+      const selectedTransaction = existingTransactions.value.find(
+        (transaction) => String(transaction.id ?? "").trim() === selectedTransactionId
+      );
+      if (!selectedTransaction) {
+        $q.notify({
+          type: "warning",
+          message: "Bitte zuerst eine gespeicherte Transaktion auswählen",
+          position: "top",
+        });
+        return;
+      }
+
+      const transactionAmount = Math.abs(Number(selectedTransaction.amount));
+      if (!Number.isFinite(transactionAmount) || transactionAmount <= 0) {
+        $q.notify({
+          type: "warning",
+          message: "Die ausgewählte Transaktion hat keinen gültigen Betrag",
+          position: "top",
+        });
+        return;
+      }
+
+      savingGoalTransaction.value = true;
+      try {
+        const nextCurrentAmount =
+          Number(selectedGoalForTransaction.value.current_amount || 0) + transactionAmount;
+        const updateGoalResponse = await fetch(
+          `http://localhost:3000/api/goals/${selectedGoalForTransaction.value.id}/amount`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentAmount: nextCurrentAmount }),
+          }
+        );
+
+        if (!updateGoalResponse.ok) {
+          const errorText = await updateGoalResponse.text();
+          throw new Error(errorText || "Sparziel konnte nicht aktualisiert werden");
+        }
+
+        await fetchGoals();
+
+        if (selectedGoal.value?.id) {
+          const refreshedSelectedGoal = goals.value.find((item) => item.id === selectedGoal.value.id);
+          if (refreshedSelectedGoal) {
+            selectedGoal.value = refreshedSelectedGoal;
+          }
+        }
+
+        $q.notify({
+          type: "positive",
+          message: "Bestehende Transaktion wurde dem Sparziel hinzugefügt",
+          position: "top",
+        });
+
+        closeGoalTransactionDialog();
+      } catch (error) {
+        console.error("Error adding existing transaction to goal:", error);
+        $q.notify({
+          type: "negative",
+          message: error.message || "Fehler beim Hinzufügen der bestehenden Transaktion",
+          position: "top",
+        });
+      } finally {
+        savingGoalTransaction.value = false;
+      }
+    };
+
+    const addGoalTransaction = async () => {
+      if (!userId.value) {
+        $q.notify({
+          type: "negative",
+          message: "Bitte erneut einloggen",
+          position: "top",
+        });
+        return;
+      }
+
+      if (!selectedGoalForTransaction.value?.id) {
+        $q.notify({
+          type: "negative",
+          message: "Kein Sparziel ausgewählt",
+          position: "top",
+        });
+        return;
+      }
+
+      const categoryId = Number(selectedGoalForTransaction.value.category_id);
+      if (!Number.isInteger(categoryId) || categoryId <= 0) {
+        $q.notify({
+          type: "negative",
+          message: "Dieses Sparziel hat keine gültige Kategorie",
+          position: "top",
+        });
+        return;
+      }
+
+      const amount = Number(goalTransactionForm.value.amount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        $q.notify({
+          type: "warning",
+          message: "Bitte einen gültigen Betrag eingeben",
+          position: "top",
+        });
+        return;
+      }
+
+      savingGoalTransaction.value = true;
+      try {
+        const transactionPayload = {
+          userId: userId.value,
+          categoryId,
+          amount: Math.abs(amount),
+          transactionType: "Ausgabe",
+          currency: String(goalTransactionForm.value.currency || "EUR").trim().toUpperCase() || "EUR",
+          date: `${goalTransactionForm.value.date || new Date().toISOString().split("T")[0]}T00:00:00`,
+          description:
+            String(goalTransactionForm.value.description || "").trim()
+            || `Sparziel Beitrag: ${selectedGoalForTransaction.value.title}`,
+        };
+
+        const transactionResponse = await fetch("http://localhost:3000/transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(transactionPayload),
+        });
+
+        if (!transactionResponse.ok) {
+          const errorText = await transactionResponse.text();
+          throw new Error(errorText || "Transaktion konnte nicht gespeichert werden");
+        }
+
+        const nextCurrentAmount =
+          Number(selectedGoalForTransaction.value.current_amount || 0) + Math.abs(amount);
+
+        const updateGoalResponse = await fetch(
+          `http://localhost:3000/api/goals/${selectedGoalForTransaction.value.id}/amount`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentAmount: nextCurrentAmount }),
+          }
+        );
+
+        if (!updateGoalResponse.ok) {
+          const errorText = await updateGoalResponse.text();
+          throw new Error(errorText || "Sparziel konnte nicht aktualisiert werden");
+        }
+
+        await fetchGoals();
+
+        if (selectedGoal.value?.id) {
+          const refreshedSelectedGoal = goals.value.find((item) => item.id === selectedGoal.value.id);
+          if (refreshedSelectedGoal) {
+            selectedGoal.value = refreshedSelectedGoal;
+          }
+        }
+
+        $q.notify({
+          type: "positive",
+          message: "Transaktion gespeichert und Sparziel aktualisiert",
+          position: "top",
+        });
+
+        closeGoalTransactionDialog();
+      } catch (error) {
+        console.error("Error adding goal transaction:", error);
+        $q.notify({
+          type: "negative",
+          message: error.message || "Fehler beim Hinzufügen der Transaktion",
+          position: "top",
+        });
+      } finally {
+        savingGoalTransaction.value = false;
+      }
     };
 
     const editGoal = (goal) => {
@@ -413,9 +862,17 @@ export default defineComponent({
       showCreateDialog,
       showDetailsDialog,
       showDeleteDialog,
+      showAddTransactionDialog,
       selectedGoal,
       editingGoal,
       deletingGoal,
+      selectedGoalForTransaction,
+      goalTransactionForm,
+      savingGoalTransaction,
+      showExistingTransactionPicker,
+      loadingExistingTransactions,
+      selectedExistingTransactionId,
+      filteredExistingTransactionOptions,
       userId,
       stats,
       filteredGoals,
@@ -425,6 +882,12 @@ export default defineComponent({
       editGoal,
       confirmDeleteGoal,
       deleteGoal,
+      openGoalTransactionDialog,
+      closeGoalTransactionDialog,
+      openExistingTransactionPicker,
+      filterExistingTransactions,
+      addGoalTransaction,
+      addExistingTransactionToGoal,
       handleGoalSaved,
       closeDialogs,
       fetchGoals,
@@ -651,6 +1114,33 @@ export default defineComponent({
   background: white;
 }
 
+.goal-transaction-dialog {
+  border-radius: 16px;
+  width: min(520px, 92vw);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  border: 2px solid #dee2e6 !important;
+  background: white;
+}
+
+.goal-transaction-submit {
+  border-radius: 8px;
+  text-transform: none;
+  font-weight: 600;
+}
+
+.existing-transaction-toggle {
+  text-transform: none;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+.existing-transaction-box {
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fbff;
+}
+
 .warning-icon {
   width: 90px;
   height: 90px;
@@ -801,6 +1291,17 @@ body.body--dark .delete-dialog {
   background: #1e1e1e !important;
   border-color: rgba(255, 255, 255, 0.15) !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.body--dark .goal-transaction-dialog {
+  background: #1e1e1e !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.body--dark .existing-transaction-box {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 body.body--dark .delete-dialog .text-dark {
