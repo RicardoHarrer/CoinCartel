@@ -464,16 +464,12 @@ export default defineComponent({
     function buildZoomContextKey({
       coin,
       timeframe,
-      chartType,
       volumeEnabled,
-      compressedTimeAxis,
     }) {
       return [
         String(coin || ""),
         String(timeframe || ""),
-        String(chartType || ""),
         volumeEnabled ? "volume:1" : "volume:0",
-        compressedTimeAxis ? "compressed:1" : "compressed:0",
       ].join("|");
     }
 
@@ -1201,7 +1197,7 @@ export default defineComponent({
             value: compressTimeGapsForSeries ? normalizedVolume : [timestamp, normalizedVolume],
             itemStyle: {
               color: hasVolumeFromProvider ? barColor : "rgba(107, 114, 128, 0.25)",
-              borderRadius: [2, 2, 0, 0],
+              borderRadius: 0,
             },
           };
         });
