@@ -23,7 +23,7 @@
               <div class="text-h5 text-weight-bold text-primary">
                 {{ progress.toFixed(1) }}%
               </div>
-              <div class="text-caption text-grey-7">erreicht</div>
+              <div class="text-caption text-grey-7">reached</div>
             </div>
           </q-circular-progress>
         </div>
@@ -31,14 +31,14 @@
 
       <div class="row justify-between items-center q-mb-lg">
         <div class="text-center">
-          <div class="text-caption text-grey-7">Gespart</div>
+          <div class="text-caption text-grey-7">Saved</div>
           <div class="text-h4 text-weight-bold text-primary">
             €{{ formatNumber(goal.current_amount) }}
           </div>
         </div>
         <q-icon name="arrow_forward" size="sm" :color="$q.dark.isActive ? 'grey-6' : 'grey-5'" />
         <div class="text-center">
-          <div class="text-caption text-grey-7">Ziel</div>
+          <div class="text-caption text-grey-7">Goal</div>
           <div class="text-h4 text-weight-bold text-dark">
             €{{ formatNumber(goal.target_amount) }}
           </div>
@@ -50,10 +50,10 @@
           <div class="row items-start justify-between q-mb-md">
             <div class="col">
               <div class="text-subtitle2 text-weight-bold text-dark">
-                Betrag aktualisieren
+                Update amount
               </div>
               <div class="text-caption text-grey-7">
-                Passe den aktuellen Stand direkt an oder nutze Schnellaktionen.
+                Adjust the current amount directly or use quick actions.
               </div>
             </div>
             <div class="col-auto">
@@ -124,13 +124,13 @@
                 class="text-caption text-weight-medium"
                 :class="amountDelta >= 0 ? 'text-positive' : 'text-negative'"
               >
-                {{ amountDelta >= 0 ? "+" : "-" }}€{{ formatNumber(Math.abs(amountDelta)) }} Änderung
+                {{ amountDelta >= 0 ? "+" : "-" }}€{{ formatNumber(Math.abs(amountDelta)) }} change
               </div>
               <q-btn
                 flat
                 dense
                 icon="restart_alt"
-                label="Zurücksetzen"
+                label="Reset"
                 color="grey-7"
                 :disable="savingCurrentAmount || !hasAmountChanged"
                 @click="resetCurrentAmount"
@@ -142,7 +142,7 @@
             <q-btn
               color="primary"
               icon="save"
-              label="Betrag speichern"
+              label="Save amount"
               class="save-amount-button"
               :loading="savingCurrentAmount"
               :disable="savingCurrentAmount || !isCurrentAmountValid || !hasAmountChanged"
@@ -157,12 +157,12 @@
           <q-card flat class="bg-detail-card">
             <q-card-section class="q-pa-md text-center">
               <q-icon name="event" size="sm" color="primary" class="q-mb-xs" />
-              <div class="text-caption text-weight-medium text-dark">Ziel-Datum</div>
+              <div class="text-caption text-weight-medium text-dark">Target date</div>
               <div class="text-caption text-grey-7">
                 {{ formatDate(goal.target_date) }}
               </div>
               <div class="text-caption text-primary text-weight-medium">
-                {{ daysRemaining }} Tage
+                {{ daysRemaining }} days
               </div>
             </q-card-section>
           </q-card>
@@ -171,11 +171,11 @@
           <q-card flat class="bg-detail-card">
             <q-card-section class="q-pa-md text-center">
               <q-icon name="savings" size="sm" color="primary" class="q-mb-xs" />
-              <div class="text-caption text-weight-medium text-dark">Täglich sparen</div>
+              <div class="text-caption text-weight-medium text-dark">Daily savings</div>
               <div class="text-caption text-primary text-weight-medium">
                 €{{ dailySaving }}
               </div>
-              <div class="text-caption text-grey-7">für Ziel</div>
+              <div class="text-caption text-grey-7">for this goal</div>
             </q-card-section>
           </q-card>
         </div>
@@ -183,9 +183,9 @@
 
       <div v-if="goal.category_name" class="row items-center justify-center q-mb-lg">
         <q-icon name="category" size="sm" :color="$q.dark.isActive ? 'grey-5' : 'grey-6'" class="q-mr-sm" />
-        <div class="text-caption text-grey-7">Kategorie:</div>
+        <div class="text-caption text-grey-7">Category:</div>
         <q-badge
-          :label="goal.category_name"
+          :label="toEnglishCategoryName(goal.category_name)"
           color="accent"
           class="q-ml-sm text-caption"
         />
@@ -193,23 +193,23 @@
 
       <q-card flat class="bg-primary text-white q-mb-md">
         <q-card-section class="text-center q-py-sm">
-          <div class="text-caption">Noch zu sparen</div>
+          <div class="text-caption">Remaining to save</div>
           <div class="text-h5 text-weight-bold">€{{ formatNumber(remainingAmount) }}</div>
         </q-card-section>
       </q-card>
 
       <q-card v-if="nextMilestone" flat class="bg-milestone text-dark">
         <q-card-section class="text-center q-py-sm">
-          <div class="text-caption">Nächster Meilenstein: {{ nextMilestone.percent }}%</div>
+          <div class="text-caption">Next milestone: {{ nextMilestone.percent }}%</div>
           <div class="text-subtitle2 text-weight-bold text-primary">
-            Noch €{{ formatNumber(nextMilestone.missingAmount) }}
+            Remaining €{{ formatNumber(nextMilestone.missingAmount) }}
           </div>
         </q-card-section>
       </q-card>
     </q-card-section>
 
     <q-card-actions align="center" class="q-pa-md">
-      <q-btn flat label="Schließen" color="primary" v-close-popup class="close-button" />
+      <q-btn flat label="Close" color="primary" v-close-popup class="close-button" />
     </q-card-actions>
   </q-card>
 </template>
@@ -217,6 +217,7 @@
 <script>
 import { defineComponent, ref, computed, watch } from "vue";
 import { useQuasar } from "quasar";
+import { toEnglishCategoryName } from "../utils/displayText.js";
 
 export default defineComponent({
   name: "GoalDetails",
@@ -300,11 +301,11 @@ export default defineComponent({
     });
 
     const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString("de-DE");
+      return new Date(dateString).toLocaleDateString("en-US");
     };
 
     const formatNumber = (number) => {
-      return new Intl.NumberFormat("de-DE", {
+      return new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(Number(number) || 0);
@@ -327,7 +328,7 @@ export default defineComponent({
       if (!isCurrentAmountValid.value) {
         $q.notify({
           type: "warning",
-          message: "Bitte gib einen gültigen Betrag ein",
+          message: "Please enter a valid amount",
           position: "top",
         });
         return;
@@ -351,19 +352,19 @@ export default defineComponent({
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(errorText || "Fehler beim Aktualisieren");
+          throw new Error(errorText || "Error while updating");
         }
 
         $q.notify({
           type: "positive",
-          message: "Betrag erfolgreich aktualisiert",
+          message: "Amount updated successfully",
           position: "top",
         });
         emit("updated");
       } catch (error) {
         $q.notify({
           type: "negative",
-          message: error.message || "Fehler beim Aktualisieren",
+          message: error.message || "Error while updating",
           position: "top",
         });
       } finally {
@@ -395,6 +396,7 @@ export default defineComponent({
       resetCurrentAmount,
       nudgeCurrentAmount,
       saveCurrentAmount,
+      toEnglishCategoryName,
     };
   },
 });

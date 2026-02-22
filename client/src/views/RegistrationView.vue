@@ -147,7 +147,7 @@
                 color="primary"
               >
                 <span>
-                  Ich stimme der
+                  I agree to the
                   <a
                     href="/datenschutz"
                     target="_blank"
@@ -155,9 +155,9 @@
                     class="consent-link"
                     @click.stop
                   >
-                    Datenschutzerklaerung
+                    Privacy Policy
                   </a>
-                  zu.
+                  .
                 </span>
               </q-checkbox>
 
@@ -168,7 +168,7 @@
                 color="primary"
               >
                 <span>
-                  Ich akzeptiere die
+                  I accept the
                   <a
                     href="/agb"
                     target="_blank"
@@ -176,7 +176,7 @@
                     class="consent-link"
                     @click.stop
                   >
-                    Nutzungsbedingungen (AGB)
+                    Terms of Use
                   </a>.
                 </span>
               </q-checkbox>
@@ -265,7 +265,7 @@ export default {
       if (trimmedUsername.length > 16) {
         $q.notify({
           type: 'warning',
-          message: 'Username darf maximal 16 Zeichen haben.',
+          message: 'Username can be at most 16 characters long.',
           position: 'top'
         });
         return;
@@ -273,7 +273,7 @@ export default {
       if (!acceptPrivacyPolicy.value || !acceptTerms.value) {
         $q.notify({
           type: 'warning',
-          message: 'Bitte stimme Datenschutz und AGB zu, um dich zu registrieren.',
+          message: 'Please accept the Privacy Policy and Terms of Use to register.',
           position: 'top'
         });
         return;

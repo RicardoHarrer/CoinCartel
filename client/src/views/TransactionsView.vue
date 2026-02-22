@@ -64,10 +64,10 @@
               color="primary"
               style="width: 100%"
             />
-            <div class="text-caption text-center q-mt-xs">Amount Range (€)</div>
+            <div class="text-caption text-center q-mt-xs">Amount Range (EUR)</div>
             <div class="row justify-between q-mt-xs">
-              <div class="text-caption">{{ amountRange.min }} €</div>
-              <div class="text-caption">{{ amountRange.max }} €</div>
+              <div class="text-caption">{{ amountRange.min }} EUR</div>
+              <div class="text-caption">{{ amountRange.max }} EUR</div>
             </div>
           </div>
 
@@ -126,10 +126,10 @@
           <q-card-section class="text-center">
             <div class="text-h6">{{ cat.category }}</div>
             <div class="q-mt-sm">
-              <div style="color: green">Income: +{{ cat.income.toFixed(2) }} €</div>
-              <div style="color: red">Expenses: -{{ cat.expense.toFixed(2) }} €</div>
+              <div style="color: green">Income: +{{ cat.income.toFixed(2) }} EUR</div>
+              <div style="color: red">Expenses: -{{ cat.expense.toFixed(2) }} EUR</div>
               <div :style="{ color: cat.income - cat.expense >= 0 ? 'green' : 'red' }">
-                Balance: {{ (cat.income - cat.expense).toFixed(2) }} €
+                Balance: {{ (cat.income - cat.expense).toFixed(2) }} EUR
               </div>
             </div>
           </q-card-section>
@@ -146,7 +146,7 @@
             <div>
               {{ t.date }} - {{ t.title }} -
               <span :style="{ color: t.type === 'income' ? 'green' : 'red' }">
-                {{ t.type === 'income' ? '+' : '-' }}{{ t.amount }} €
+                {{ t.type === 'income' ? '+' : '-' }}{{ t.amount }} EUR
               </span>
             </div>
           </div>
@@ -165,6 +165,7 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { useQuasar } from 'quasar';
 import { auth } from '@/utils/auth';
+import { toEnglishCategoryName } from '@/utils/displayText';
 
 export default defineComponent({
   setup() {
@@ -191,11 +192,11 @@ export default defineComponent({
     ];
 
     const categoryOptions = computed(() =>
-      categories.value.map((c) => ({ label: c.name, value: c.id })),
+      categories.value.map((c) => ({ label: toEnglishCategoryName(c.name), value: c.id })),
     );
     const categoryNameById = computed(() => {
       const map = new Map();
-      categories.value.forEach((c) => map.set(c.id, c.name));
+      categories.value.forEach((c) => map.set(c.id, toEnglishCategoryName(c.name)));
       return map;
     });
 
@@ -233,7 +234,7 @@ export default defineComponent({
           ...t,
           amount: Number(t.amount) || 0,
           dateTs: new Date(t.date).getTime(),
-          date: new Date(t.date).toLocaleDateString(),
+          date: new Date(t.date).toLocaleDateString('en-US'),
         }));
       } catch (err) {
         console.error(err);
@@ -277,7 +278,7 @@ export default defineComponent({
         category: categoryNameById.value.get(t.category_id) || 'Unknown',
         amount: t.amount,
         type: t.transaction_type === 'Einnahme' ? 'income' : 'expense',
-        currency: t.currency || '€',
+        currency: t.currency || 'EUR',
         date: t.date,
       }));
     });

@@ -23,7 +23,7 @@
             class="q-mr-sm"
           />
           <div>
-            <h1 class="text-h4 text-weight-bold text-dark q-mb-xs">🏦 Bank Import</h1>
+            <h1 class="text-h4 text-weight-bold text-dark q-mb-xs">Bank Import</h1>
             <p class="text-subtitle1 text-grey-7">Import transactions from Austrian banks</p>
           </div>
         </div>
@@ -50,7 +50,7 @@
   v-if="!bankConnected"
   color="primary"
   icon="account_balance"
-  label="Bank verbinden (Online)"
+  label="Connect bank (online)"
   class="q-mb-md full-width"
   @click="connectBank"
 />
@@ -61,7 +61,7 @@
   rounded
   class="bg-positive text-white q-mb-md"
 >
-  ✅ Bank erfolgreich verbunden
+  ✅ Bank connected successfully
 </q-banner>
 
             </q-card-section>
@@ -179,10 +179,10 @@
                   <q-select
                     filled
                     v-model.number="manualTransaction.category_id"
-                    :options="categories"
+                    :options="categoryOptions"
                     label="Category"
-                    option-label="name"
-                    option-value="id"
+                    
+                    
                     dense
                     required
                     emit-value
@@ -353,7 +353,7 @@
                   }}</q-item-label>
                   <q-item-label caption>
                     {{ formatDate(tx.date) }}
-                    <span v-if="tx.payment_method">• {{ tx.payment_method }}</span>
+                    <span v-if="tx.payment_method"> - {{ toEnglishPaymentMethod(tx.payment_method) }}</span>
                   </q-item-label>
                 </q-item-section>
                 <q-item-section side>
@@ -381,6 +381,11 @@ import { auth } from "@/utils/auth";
 import { jwtDecode } from "jwt-decode";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import {
+  toEnglishCategoryName,
+  toEnglishTransactionType,
+  toEnglishPaymentMethod,
+} from "@/utils/displayText";
 
 export default {
   name: "AustrianBankImport",
@@ -417,37 +422,37 @@ export default {
     const sortOption = ref("date_desc");
 
     const typeOptions = [
-      { label: "Einnahme", value: "Einnahme" },
-      { label: "Ausgabe", value: "Ausgabe" },
+      { label: "Income", value: "Einnahme" },
+      { label: "Expense", value: "Ausgabe" },
     ];
 
     const sortOptions = [
-      { label: "Datum (Neueste zuerst)", value: "date_desc" },
-      { label: "Datum (Älteste zuerst)", value: "date_asc" },
-      { label: "Betrag (Höchste zuerst)", value: "amount_desc" },
-      { label: "Betrag (Niedrigste zuerst)", value: "amount_asc" },
+      { label: "Date (Newest first)", value: "date_desc" },
+      { label: "Date (Oldest first)", value: "date_asc" },
+      { label: "Amount (Highest first)", value: "amount_desc" },
+      { label: "Amount (Lowest first)", value: "amount_asc" },
     ];
 
     const categoryOptions = computed(() =>
-      categories.value.map((c) => ({ label: c.name, value: c.id }))
+      categories.value.map((c) => ({ label: toEnglishCategoryName(c.name), value: c.id }))
     );
 
     const DEFAULT_CATEGORIES = [
-      { name: "Lebensmittel", description: "Einkaeufe im Supermarkt, Restaurant, etc." },
-      { name: "Miete", description: "Monatliche Miete fuer Wohnung/Haus" },
-      { name: "Freizeit", description: "Ausgaben fuer Hobbys, Reisen, etc." },
-      { name: "Kleidung", description: "Ausgaben fuer Kleidung" },
-      { name: "Transport", description: "Oeffentliche Verkehrsmittel, Taxi, Benzin, etc." },
-      { name: "Versicherungen", description: "Krankenversicherung, Haftpflicht, etc." },
-      { name: "Strom/Gas", description: "Monatliche Energiekosten" },
-      { name: "Internet/Telefon", description: "Monatliche Kommunikationskosten" },
-      { name: "Gesundheit", description: "Arztbesuche, Medikamente, etc." },
-      { name: "Bildung", description: "Buecher, Kurse, Schulmaterial, etc." },
-      { name: "Sparen", description: "Ersparnisse, Investitionen" },
-      { name: "Gehalt", description: "Regelmaessiges Einkommen" },
-      { name: "Geschenke", description: "Geschenke fuer Freunde und Familie" },
-      { name: "Gastronomie", description: "Restaurants, Bars, Festivitaeten etc." },
-      { name: "Sonstiges", description: "Verschiedene Ausgaben/Einnahmen" },
+      { name: "Lebensmittel", description: "Groceries and supermarket purchases." },
+      { name: "Miete", description: "Monthly rent for apartment or house." },
+      { name: "Freizeit", description: "Leisure expenses like hobbies or trips." },
+      { name: "Kleidung", description: "Clothing expenses." },
+      { name: "Transport", description: "Public transport, taxi, fuel, and mobility costs." },
+      { name: "Versicherungen", description: "Insurance costs (health, liability, etc.)." },
+      { name: "Strom/Gas", description: "Monthly energy costs." },
+      { name: "Internet/Telefon", description: "Monthly communication costs." },
+      { name: "Gesundheit", description: "Health expenses, doctors, medication, and care." },
+      { name: "Bildung", description: "Education, books, courses, and learning materials." },
+      { name: "Sparen", description: "Savings and investments." },
+      { name: "Gehalt", description: "Regular salary income." },
+      { name: "Geschenke", description: "Gifts for friends and family." },
+      { name: "Gastronomie", description: "Restaurants, bars, and dining out." },
+      { name: "Sonstiges", description: "Miscellaneous income and expenses." },
     ];
 
     const categorySummary = ref({
@@ -468,84 +473,84 @@ export default {
       {
         id: "erste",
         name: "Erste Bank und Sparkassen",
-        format: "Datum;Buchungstext;Betrag",
+        format: "Date;Booking text;Amount",
         instruction:
-          'Im Online-Banking: "Kontoauszug exportieren" > "CSV Format" auswählen',
+          'In online banking: select "Export account statement" > "CSV format".',
       },
       {
         id: "raiffeisen",
         name: "Raiffeisen Bank",
-        format: "Buchungstag;Valuta;Buchungstext;Betrag",
-        instruction: 'Im Raiffeisen Online-Banking: "Umsätze exportieren" > CSV',
+        format: "Booking day;Value date;Booking text;Amount",
+        instruction: 'In Raiffeisen online banking: "Export transactions" > CSV.',
       },
       {
         id: "bawag",
         name: "BAWAG PSK",
-        format: "Buchungsdatum;Betrag;Verwendungszweck",
-        instruction: 'BAWAG Online-Banking: "Kontoauszug" > "Exportieren" > CSV',
+        format: "Booking date;Amount;Purpose",
+        instruction: 'In BAWAG online banking: "Account statement" > "Export" > CSV.',
       },
       {
         id: "volksbank",
         name: "Volksbanken",
-        format: "Datum;Text;Soll;Haben",
-        instruction: "Volksbank Online-Banking: Umsatzübersicht exportieren",
+        format: "Date;Text;Debit;Credit",
+        instruction: "In Volksbank online banking: export transaction overview as CSV.",
       },
       {
         id: "other",
-        name: "Andere österreichische Bank",
-        format: "Datum;Beschreibung;Betrag",
-        instruction: "CSV-Datei mit Datum, Beschreibung und Betrag hochladen",
+        name: "Other Austrian bank",
+        format: "Date;Description;Amount",
+        instruction: "Upload a CSV file with date, description, and amount.",
       },
     ]);
 
     const transactionTypes = ref([
-      { label: "💰 Einnahme", value: "Einnahme" },
-      { label: "💸 Ausgabe", value: "Ausgabe" },
+      { label: "Income", value: "Einnahme" },
+      { label: "Expense", value: "Ausgabe" },
     ]);
 
     const paymentMethods = ref([
-      { label: "💳 Karte", value: "Karte" },
-      { label: "💵 Bar", value: "Bar" },
-      { label: "🏦 Überweisung", value: "Überweisung" },
-      { label: "🔄 Dauerauftrag", value: "Dauerauftrag" },
-      { label: "📱 Online", value: "Online" },
-      { label: "🏦 Bank", value: "Bank" },
+      { label: "Card", value: "Karte" },
+      { label: "Cash", value: "Bar" },
+      { label: "Transfer", value: "Ueberweisung" },
+      { label: "Standing order", value: "Dauerauftrag" },
+      { label: "Online", value: "Online" },
+      { label: "Bank", value: "Bank" },
     ]);
 
     const quickTransactions = ref([
       {
-        label: "🏠 Miete",
+        label: "Rent",
         amount: -850,
         category_name: "Miete",
         transaction_type: "Ausgabe",
-        description: "Monatsmiete",
-        payment_method: "Überweisung",
+        description: "Monthly rent",
+        payment_method: "Ueberweisung",
         color: "blue",
       },
       {
-        label: "🛒 Einkauf",
+        label: "Groceries",
         amount: -120,
         category_name: "Lebensmittel",
         transaction_type: "Ausgabe",
-        description: "Wocheneinkauf",
+        description: "Weekly shopping",
         payment_method: "Karte",
         color: "green",
       },
       {
-        label: "💼 Gehalt",
+        label: "Salary",
         amount: 2500,
         category_name: "Gehalt",
         transaction_type: "Einnahme",
-        description: "Monatsgehalt",
-        payment_method: "Überweisung",
+        description: "Monthly salary",
+        payment_method: "Ueberweisung",
         color: "positive",
       },
       {
-        label: "🚗 Tanken",
+        label: "Fuel",
         amount: -80,
         category_name: "Transport",
         transaction_type: "Ausgabe",
-        description: "Tankfüllung",
+        description: "Fuel refill",
         payment_method: "Karte",
         color: "orange",
       },
@@ -573,7 +578,7 @@ const getAuthHeader = () => {
 const connectBank = () => {
   const userId = getUserId();
   if (!userId) {
-    $q.notify({ type: "negative", message: "Bitte zuerst einloggen" });
+    $q.notify({ type: "negative", message: "Please log in first" });
     return;
   }
 
@@ -643,22 +648,22 @@ const checkBankConnection = async () => {
 
     const getBankName = (bankId) => {
       const bank = austrianBanks.value.find((b) => b.id === bankId);
-      return bank ? bank.name : "Unbekannte Bank";
+      return bank ? bank.name : "Unknown bank";
     };
 
     const getBankInstructions = (bankId) => {
       const bank = austrianBanks.value.find((b) => b.id === bankId);
-      return bank ? bank.instruction : "CSV-Datei mit Transaktionen hochladen";
+      return bank ? bank.instruction : "Upload a CSV file with transactions";
     };
 
     const getBankFormat = (bankId) => {
       const bank = austrianBanks.value.find((b) => b.id === bankId);
-      return bank ? bank.format : "Datum;Beschreibung;Betrag";
+      return bank ? bank.format : "Date;Description;Amount";
     };
 
     const getCategoryName = (categoryId) => {
       const category = categories.value.find((c) => Number(c.id) === Number(categoryId));
-      return category ? category.name : "Unkategorisiert";
+      return category ? toEnglishCategoryName(category.name) : "Uncategorized";
     };
 
     const filteredTransactions = computed(() => {
@@ -780,7 +785,7 @@ const checkBankConnection = async () => {
       if (file.size > 5 * 1024 * 1024) {
         $q.notify({
           type: "negative",
-          message: "Datei zu groß. Maximal 5MB erlaubt.",
+          message: "File is too large. Maximum size is 5MB.",
           timeout: 5000,
         });
         return;
@@ -798,7 +803,7 @@ const checkBankConnection = async () => {
           if (transactions.length === 0) {
             $q.notify({
               type: "warning",
-              message: "Keine gültigen Transaktionen in der CSV-Datei gefunden.",
+              message: "No valid transactions were found in the CSV file.",
               timeout: 5000,
             });
             return;
@@ -826,10 +831,10 @@ const checkBankConnection = async () => {
 
           $q.notify({
             type: successCount > 0 ? "positive" : "warning",
-            message: `${successCount} Transaktionen importiert (Einnahmen: ${formatCurrency(
+            message: `${successCount} transactions imported (Income: ${formatCurrency(
               totalIncome
-            )}, Ausgaben: ${formatCurrency(totalExpenses)})${
-              errorCount > 0 ? `, ${errorCount} Fehler` : ""
+            )}, Expenses: ${formatCurrency(totalExpenses)})${
+              errorCount > 0 ? `, ${errorCount} errors` : ""
             }`,
             timeout: 6000,
           });
@@ -839,7 +844,7 @@ const checkBankConnection = async () => {
           console.error("Error parsing CSV:", error);
           $q.notify({
             type: "negative",
-            message: "Fehler beim Import der CSV-Datei. Bitte Format überprüfen.",
+            message: "Error importing CSV file. Please verify the format.",
             timeout: 5000,
           });
         } finally {
@@ -856,10 +861,11 @@ const checkBankConnection = async () => {
 
       for (let i = 0; i < lines.length; i++) {
         try {
+          const header = lines[i].toLowerCase();
           if (
             i === 0 &&
-            lines[i].toLowerCase().includes("datum") &&
-            lines[i].toLowerCase().includes("betrag")
+            (header.includes("datum") || header.includes("date")) &&
+            (header.includes("betrag") || header.includes("amount"))
           ) {
             continue;
           }
@@ -1001,12 +1007,12 @@ const checkBankConnection = async () => {
         if (columns[i] && columns[i].trim()) {
           const cleanColumn = columns[i].replace(/"/g, "").trim();
           if (!cleanColumn.match(/^-?\d+([.,]\d+)?$/)) {
-            return cleanColumn.substring(0, 100) || "Banktransaktion";
+            return cleanColumn.substring(0, 100) || "Bank transaction";
           }
         }
       }
 
-      return "Banktransaktion";
+      return "Bank transaction";
     };
 
     const autoCategorize = (description) => {
@@ -1210,7 +1216,7 @@ const checkBankConnection = async () => {
       if (!userId) {
         $q.notify({
           type: "negative",
-          message: "Bitte einloggen um Transaktionen zu speichern",
+          message: "Please log in to save transactions",
         });
         return;
       }
@@ -1220,7 +1226,7 @@ const checkBankConnection = async () => {
         if (!manualTransaction.value.category_id) {
           $q.notify({
             type: "warning",
-            message: "Bitte eine Kategorie auswahlen",
+            message: "Please select a category",
           });
           return;
         }
@@ -1239,7 +1245,7 @@ const checkBankConnection = async () => {
 
         $q.notify({
           type: "positive",
-          message: "Transaktion erfolgreich gespeichert",
+          message: "Transaction saved successfully",
           icon: "check",
         });
 
@@ -1258,7 +1264,7 @@ const checkBankConnection = async () => {
         $q.notify({
           type: "negative",
           message:
-            "Fehler beim Speichern der Transaktion: " +
+            "Error saving transaction: " +
             (error.response?.data?.message || error.message),
         });
       } finally {
@@ -1282,7 +1288,7 @@ const checkBankConnection = async () => {
       if (!resolvedCategoryId) {
         $q.notify({
           type: "warning",
-          message: `Kategorie fur "${quickTx.label}" nicht gefunden. Bitte Kategorie auswahlen.`,
+          message: `Category for "${quickTx.label}" was not found. Please select a category.`,
         });
       }
     };
@@ -1326,12 +1332,12 @@ const checkBankConnection = async () => {
 
     const exportCSV = () => {
       try {
-        const headers = ["Datum", "Beschreibung", "Kategorie", "Typ", "Betrag"];
+        const headers = ["Date", "Description", "Category", "Type", "Amount"];
         const data = filteredTransactions.value.map((t) => ({
           date: t.date,
           description: t.description,
           category: getCategoryName(t.category_id),
-          type: t.transaction_type === "Einnahme" ? "Einnahme" : "Ausgabe",
+          type: toEnglishTransactionType(t.transaction_type),
           amount: `${t.transaction_type === "Einnahme" ? "+" : "-"}${t.amount} ${
             t.currency || "€"
           }`,
@@ -1348,43 +1354,43 @@ const checkBankConnection = async () => {
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `transaktionen_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.download = `transactions_${new Date().toISOString().slice(0, 10)}.csv`;
         link.click();
 
-        $q.notify({ type: "positive", message: "CSV erfolgreich exportiert" });
+        $q.notify({ type: "positive", message: "CSV exported successfully" });
       } catch (err) {
         console.error(err);
-        $q.notify({ type: "negative", message: "Fehler beim CSV-Export" });
+        $q.notify({ type: "negative", message: "Error exporting CSV" });
       }
     };
 
     const exportPDF = () => {
       try {
         const doc = new jsPDF();
-        doc.text("Transaktionsbericht", 105, 20, { align: "center" });
+        doc.text("Transaction Report", 105, 20, { align: "center" });
         const tableData = filteredTransactions.value.map((t) => [
           t.date,
-          t.description || "Keine Beschreibung",
+          t.description || "No description",
           getCategoryName(t.category_id),
-          t.transaction_type === "Einnahme" ? "Einnahme" : "Ausgabe",
+          toEnglishTransactionType(t.transaction_type),
           `${t.amount} ${t.currency || "€"}`,
         ]);
         autoTable(doc, {
-          head: [["Datum", "Beschreibung", "Kategorie", "Typ", "Betrag"]],
+          head: [["Date", "Description", "Category", "Type", "Amount"]],
           body: tableData,
           startY: 30,
         });
-        doc.save(`transaktionen_${new Date().toISOString().slice(0, 10)}.pdf`);
-        $q.notify({ type: "positive", message: "PDF-Bericht erfolgreich generiert" });
+        doc.save(`transactions_${new Date().toISOString().slice(0, 10)}.pdf`);
+        $q.notify({ type: "positive", message: "PDF report generated successfully" });
       } catch (err) {
         console.error(err);
-        $q.notify({ type: "negative", message: "Fehler beim PDF-Export" });
+        $q.notify({ type: "negative", message: "Error exporting PDF" });
       }
     };
 
     const exportCategoryCSV = () => {
       try {
-        const headers = ["Kategorie", "Einnahmen", "Ausgaben", "Saldo"];
+        const headers = ["Category", "Income", "Expenses", "Balance"];
         const data = categorySummaries.value.map((cat) => ({
           category: cat.name,
           income: cat.income.toFixed(2),
@@ -1401,19 +1407,19 @@ const checkBankConnection = async () => {
         const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `kategorie_bericht_${new Date().toISOString().slice(0, 10)}.csv`;
+        link.download = `category_report_${new Date().toISOString().slice(0, 10)}.csv`;
         link.click();
-        $q.notify({ type: "positive", message: "CSV erfolgreich exportiert" });
+        $q.notify({ type: "positive", message: "CSV exported successfully" });
       } catch (err) {
         console.error(err);
-        $q.notify({ type: "negative", message: "Fehler beim CSV-Export" });
+        $q.notify({ type: "negative", message: "Error exporting CSV" });
       }
     };
 
     const exportCategoryPDF = () => {
       try {
         const doc = new jsPDF();
-        doc.text("Kategorie-Zusammenfassung", 105, 20, { align: "center" });
+        doc.text("Category Summary", 105, 20, { align: "center" });
         const tableData = categorySummaries.value.map((cat) => [
           cat.name,
           cat.income.toFixed(2),
@@ -1421,27 +1427,27 @@ const checkBankConnection = async () => {
           (cat.income - cat.expenses).toFixed(2),
         ]);
         autoTable(doc, {
-          head: [["Kategorie", "Einnahmen", "Ausgaben", "Saldo"]],
+          head: [["Category", "Income", "Expenses", "Balance"]],
           body: tableData,
           startY: 30,
         });
-        doc.save(`kategorie_bericht_${new Date().toISOString().slice(0, 10)}.pdf`);
-        $q.notify({ type: "positive", message: "PDF-Bericht erfolgreich generiert" });
+        doc.save(`category_report_${new Date().toISOString().slice(0, 10)}.pdf`);
+        $q.notify({ type: "positive", message: "PDF report generated successfully" });
       } catch (err) {
         console.error(err);
-        $q.notify({ type: "negative", message: "Fehler beim PDF-Export" });
+        $q.notify({ type: "negative", message: "Error exporting PDF" });
       }
     };
 
     const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString("de-AT");
+      return new Date(dateString).toLocaleDateString("en-US");
     };
 
     const formatCurrency = (amount) => {
       if (amount === null || amount === undefined || isNaN(amount)) {
-        return "0,00";
+        return "0.00";
       }
-      return new Intl.NumberFormat("de-AT", {
+      return new Intl.NumberFormat("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(amount);
@@ -1453,30 +1459,30 @@ const checkBankConnection = async () => {
       switch (bankId) {
         case "erste":
           sampleContent =
-            '"Datum";"Buchungstext";"Betrag"\n"30.09.2025";"MPREIS FILIALE 1234 WIEN";"-45,67"\n"29.09.2025";"GEHALT FIRMA GMBH";"2450,00"';
+            '"Date";"Booking Text";"Amount"\n"30.09.2025";"MPREIS FILIALE 1234 WIEN";"-45,67"\n"29.09.2025";"GEHALT FIRMA GMBH";"2450,00"';
           break;
         case "raiffeisen":
           sampleContent =
-            '"Buchungstag";"Valuta";"Buchungstext";"Betrag"\n"30.09.2025";"30.09.2025";"TANKE SPAR 1234";"-78,90"';
+            '"Booking Day";"Value Date";"Booking Text";"Amount"\n"30.09.2025";"30.09.2025";"TANKE SPAR 1234";"-78,90"';
           break;
         case "bawag":
           sampleContent =
-            '"Buchungsdatum";"Betrag";"Verwendungszweck"\n"30.09.2025";"-120,50";"BILLA EINKAUF 1234"';
+            '"Booking Date";"Amount";"Purpose"\n"30.09.2025";"-120,50";"BILLA EINKAUF 1234"';
           break;
         case "volksbank":
           sampleContent =
-            '"Datum";"Text";"Soll";"Haben"\n"30.09.2025";"ONLINE SHOPPING";"89,99";""';
+            '"Date";"Text";"Debit";"Credit"\n"30.09.2025";"ONLINE SHOPPING";"89,99";""';
           break;
         default:
           sampleContent =
-            '"Datum";"Beschreibung";"Betrag"\n"30.09.2025";"Beispiel Transaktion";"-99,99"';
+            '"Date";"Description";"Amount"\n"30.09.2025";"Sample Transaction";"-99,99"';
       }
 
       const blob = new Blob([sampleContent], { type: "text/csv;charset=utf-8" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `beispiel_${bankId}.csv`;
+      a.download = `sample_${bankId}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
     };

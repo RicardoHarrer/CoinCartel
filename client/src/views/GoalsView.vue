@@ -16,15 +16,15 @@
         <div class="row items-center justify-between q-mb-lg">
           <div class="col">
             <div class="header-content">
-              <h1 class="text-h3 text-weight-bold text-dark q-mb-xs">Sparziele</h1>
+              <h1 class="text-h3 text-weight-bold text-dark q-mb-xs">Savings Goals</h1>
               <p class="text-subtitle1 text-grey-7">
-                Verwalte und verfolge deine finanziellen Ziele
+                Manage and track your financial goals
               </p>
             </div>
           </div>
           <div class="col-auto">
             <q-btn
-              label="Neues Ziel"
+              label="New Goal"
               icon="add"
               color="primary"
               class="create-button"
@@ -41,7 +41,7 @@
                   <q-icon name="trending_up" color="white" />
                 </div>
                 <div class="text-h2 text-weight-bold text-primary">{{ stats.active }}</div>
-                <div class="text-subtitle2 text-grey-7">Aktive Ziele</div>
+                <div class="text-subtitle2 text-grey-7">Active Goals</div>
               </q-card-section>
             </q-card>
           </div>
@@ -52,7 +52,7 @@
                   <q-icon name="check_circle" color="white" />
                 </div>
                 <div class="text-h2 text-weight-bold text-positive">{{ stats.completed }}</div>
-                <div class="text-subtitle2 text-grey-7">Erreicht</div>
+                <div class="text-subtitle2 text-grey-7">Completed</div>
               </q-card-section>
             </q-card>
           </div>
@@ -63,7 +63,7 @@
                   <q-icon name="warning" color="white" />
                 </div>
                 <div class="text-h2 text-weight-bold text-negative">{{ stats.overdue }}</div>
-                <div class="text-subtitle2 text-grey-7">Überfällig</div>
+                <div class="text-subtitle2 text-grey-7">Overdue</div>
               </q-card-section>
             </q-card>
           </div>
@@ -79,19 +79,19 @@
             <q-tab
               name="active"
               icon="schedule"
-              :label="`Aktiv (${stats.active + stats.overdue})`"
+              :label="`Active (${stats.active + stats.overdue})`"
               class="text-weight-medium"
             />
             <q-tab
               name="completed"
               icon="check_circle"
-              :label="`Erreicht (${stats.completed})`"
+              :label="`Completed (${stats.completed})`"
               class="text-weight-medium"
             />
             <q-tab
               name="overdue"
               icon="warning"
-              :label="`Überfällig (${stats.overdue})`"
+              :label="`Overdue (${stats.overdue})`"
               class="text-weight-medium"
             />
           </q-tabs>
@@ -101,7 +101,7 @@
       <div class="content-section">
         <div v-if="loading" class="loading-section text-center q-py-xl">
           <q-spinner size="50px" color="primary" class="loading-spinner" />
-          <div class="text-h6 text-grey-7 q-mt-md">Lade Ziele...</div>
+          <div class="text-h6 text-grey-7 q-mt-md">Loading goals...</div>
         </div>
 
         <div v-else-if="filteredGoals.length > 0" class="goals-grid">
@@ -135,7 +135,7 @@
             </p>
             <q-btn
               v-if="activeTab === 'active'"
-              label="Erstes Ziel erstellen"
+              label="Create first goal"
               color="primary"
               icon="add"
               class="empty-state-button"
@@ -175,21 +175,21 @@
       <q-dialog v-model="showAddTransactionDialog" persistent>
         <q-card class="goal-transaction-dialog">
           <q-card-section class="row items-center q-pb-none">
-            <div class="text-h6 text-weight-bold">Transaktion hinzufügen</div>
+            <div class="text-h6 text-weight-bold">Add transaction</div>
             <q-space />
             <q-btn icon="close" flat round dense @click="closeGoalTransactionDialog" />
           </q-card-section>
 
           <q-card-section class="q-pt-sm">
             <div class="text-subtitle2 q-mb-sm">
-              Ziel: <strong>{{ selectedGoalForTransaction?.title || "-" }}</strong>
+              Goal: <strong>{{ selectedGoalForTransaction?.title || "-" }}</strong>
             </div>
 
             <q-btn
               outline
               color="primary"
               icon="playlist_add"
-              label="Bereits bestehende Transaktion hinzufügen"
+              label="Add existing transaction"
               class="full-width q-mb-md existing-transaction-toggle"
               :disable="savingGoalTransaction"
               @click="openExistingTransactionPicker"
@@ -204,8 +204,8 @@
                 emit-value
                 map-options
                 filled
-                label="Gespeicherte Transaktion auswählen"
-                hint="Suche nach Datum, Betrag, Beschreibung oder ID"
+                label="Select saved transaction"
+                hint="Search by date, amount, description or ID"
                 use-input
                 fill-input
                 hide-selected
@@ -221,7 +221,7 @@
                 <q-btn
                   color="primary"
                   icon="add_task"
-                  label="Ausgewählte Transaktion übernehmen"
+                  label="Use selected transaction"
                   :disable="savingGoalTransaction || loadingExistingTransactions"
                   :loading="savingGoalTransaction"
                   @click="addExistingTransactionToGoal"
@@ -229,7 +229,7 @@
               </div>
             </div>
 
-            <div class="text-caption text-grey-6 q-mb-sm">Oder neue Transaktion anlegen</div>
+            <div class="text-caption text-grey-6 q-mb-sm">Or create a new transaction</div>
 
             <q-form class="q-gutter-md" @submit.prevent="addGoalTransaction">
               <q-input
@@ -238,7 +238,7 @@
                 min="0.01"
                 step="0.01"
                 filled
-                label="Betrag"
+                label="Amount"
                 :disable="savingGoalTransaction"
               >
                 <template v-slot:prepend>€</template>
@@ -248,14 +248,14 @@
                 v-model="goalTransactionForm.date"
                 type="date"
                 filled
-                label="Datum"
+                label="Date"
                 :disable="savingGoalTransaction"
               />
 
               <q-input
                 v-model="goalTransactionForm.currency"
                 filled
-                label="Währung"
+                label="Currency"
                 maxlength="5"
                 :disable="savingGoalTransaction"
               />
@@ -263,21 +263,21 @@
               <q-input
                 v-model="goalTransactionForm.description"
                 filled
-                label="Beschreibung (optional)"
+                label="Description (optional)"
                 :disable="savingGoalTransaction"
               />
 
               <div class="row justify-end q-gutter-sm">
                 <q-btn
                   flat
-                  label="Abbrechen"
+                  label="Cancel"
                   color="grey-7"
                   :disable="savingGoalTransaction"
                   @click="closeGoalTransactionDialog"
                 />
                 <q-btn
                   color="primary"
-                  label="Transaktion speichern"
+                  label="Save transaction"
                   icon="save"
                   type="submit"
                   :loading="savingGoalTransaction"
@@ -296,23 +296,23 @@
             <div class="warning-icon">
               <q-icon name="warning" />
             </div>
-            <div class="text-h6 text-weight-bold text-dark q-mb-sm">Ziel löschen</div>
+            <div class="text-h6 text-weight-bold text-dark q-mb-sm">Delete goal</div>
             <p class="text-grey-7">
-              Bist du sicher, dass du das Ziel<br />
-              <strong>"{{ deletingGoal?.title }}"</strong> löschen möchtest?
+              Are you sure you want to delete the goal<br />
+              <strong>"{{ deletingGoal?.title }}"</strong>?
             </p>
           </q-card-section>
 
           <q-card-actions align="center" class="q-pb-xl">
             <q-btn 
               flat 
-              label="Abbrechen" 
+              label="Cancel" 
               color="grey-6" 
               v-close-popup 
               class="cancel-button"
             />
             <q-btn
-              label="Löschen"
+              label="Delete"
               color="negative"
               @click="deleteGoal"
               class="delete-confirm-button"
@@ -332,6 +332,7 @@ import { auth } from "@/utils/auth";
 import GoalCard from "../components/GoalCard.vue";
 import GoalCreator from "../components/GoalCreator.vue";
 import GoalDetails from "../components/GoalDetails.vue";
+import { toEnglishCategoryName } from "@/utils/displayText";
 
 export default defineComponent({
   name: "GoalsView",
@@ -382,6 +383,7 @@ export default defineComponent({
 
     const normalizeGoal = (goal) => ({
       ...goal,
+      category_name: toEnglishCategoryName(goal.category_name),
       target_amount: Number(goal.target_amount) || 0,
       current_amount: Number(goal.current_amount) || 0,
       progress_percentage: Number(goal.progress_percentage) || 0,
@@ -416,26 +418,26 @@ export default defineComponent({
     const emptyStateMessage = computed(() => {
       switch (activeTab.value) {
         case "active":
-          return "Noch keine Ziele";
+          return "No goals yet";
         case "completed":
-          return "Keine erreichten Ziele";
+          return "No completed goals";
         case "overdue":
-          return "Keine überfälligen Ziele";
+          return "No overdue goals";
         default:
-          return "Keine Ziele gefunden";
+          return "No goals found";
       }
     });
 
     const emptyStateDescription = computed(() => {
       switch (activeTab.value) {
         case "active":
-          return "Beginne deine Sparreise, indem du dein erstes Ziel erstellst.";
+          return "Start by creating your first goal.";
         case "completed":
-          return "Du hast noch keine Ziele erfolgreich abgeschlossen.";
+          return "You have not completed any goals yet.";
         case "overdue":
-          return "Glückwunsch! Alle Ziele sind aktuell im Zeitplan.";
+          return "Great. All goals are currently on track.";
         default:
-          return "Keine Ziele in dieser Kategorie vorhanden.";
+          return "No goals in this category.";
       }
     });
 
@@ -449,21 +451,21 @@ export default defineComponent({
       const normalizedAmount = Math.abs(Number(amount) || 0);
       const normalizedCurrency = String(currency || "EUR").trim().toUpperCase() || "EUR";
       try {
-        return normalizedAmount.toLocaleString("de-DE", {
+        return normalizedAmount.toLocaleString("en-US", {
           style: "currency",
           currency: normalizedCurrency,
         });
       } catch (error) {
-        return `${normalizedAmount.toLocaleString("de-DE")} ${normalizedCurrency}`;
+        return `${normalizedAmount.toLocaleString("en-US")} ${normalizedCurrency}`;
       }
     };
 
     const mapTransactionToOption = (transaction) => {
       const transactionId = String(transaction.id ?? "").trim();
       const transactionDate = transaction.date
-        ? new Date(transaction.date).toLocaleDateString("de-DE")
+        ? new Date(transaction.date).toLocaleDateString("en-US")
         : "-";
-      const transactionDescription = String(transaction.description || "Ohne Beschreibung").trim();
+      const transactionDescription = String(transaction.description || "No description").trim();
       const amountLabel = formatTransactionAmount(transaction.amount, transaction.currency);
       const label = `${transactionDate} • ${amountLabel} • ${transactionDescription}`;
 
@@ -497,7 +499,7 @@ export default defineComponent({
         console.error("Error fetching goals:", error);
         $q.notify({
           type: "negative",
-          message: "Fehler beim Laden der Ziele",
+          message: "Error loading goals",
           position: "top",
         });
       } finally {
@@ -510,7 +512,7 @@ export default defineComponent({
         amount: null,
         date: new Date().toISOString().split("T")[0],
         currency: "EUR",
-        description: goal?.title ? `Sparziel Beitrag: ${goal.title}` : "",
+        description: goal?.title ? `Goal contribution: ${goal.title}` : "",
       };
       selectedExistingTransactionId.value = null;
       showExistingTransactionPicker.value = false;
@@ -541,7 +543,7 @@ export default defineComponent({
       try {
         const response = await fetch(`http://localhost:3000/transactions/users/${userId.value}`);
         if (!response.ok) {
-          throw new Error(`Fehler beim Laden: ${response.status}`);
+          throw new Error(`Error while loading: ${response.status}`);
         }
         const payload = await response.json();
         existingTransactions.value = Array.isArray(payload)
@@ -559,7 +561,7 @@ export default defineComponent({
         console.error("Error fetching existing transactions:", error);
         $q.notify({
           type: "negative",
-          message: "Gespeicherte Transaktionen konnten nicht geladen werden",
+          message: "Could not load saved transactions",
           position: "top",
         });
       } finally {
@@ -594,7 +596,7 @@ export default defineComponent({
       if (!userId.value) {
         $q.notify({
           type: "negative",
-          message: "Bitte erneut einloggen",
+          message: "Please log in again",
           position: "top",
         });
         return;
@@ -603,7 +605,7 @@ export default defineComponent({
       if (!selectedGoalForTransaction.value?.id) {
         $q.notify({
           type: "negative",
-          message: "Kein Sparziel ausgewählt",
+          message: "No savings goal selected",
           position: "top",
         });
         return;
@@ -616,7 +618,7 @@ export default defineComponent({
       if (!selectedTransaction) {
         $q.notify({
           type: "warning",
-          message: "Bitte zuerst eine gespeicherte Transaktion auswählen",
+          message: "Please select a saved transaction first",
           position: "top",
         });
         return;
@@ -626,7 +628,7 @@ export default defineComponent({
       if (!Number.isFinite(transactionAmount) || transactionAmount <= 0) {
         $q.notify({
           type: "warning",
-          message: "Die ausgewählte Transaktion hat keinen gültigen Betrag",
+          message: "The selected transaction has an invalid amount",
           position: "top",
         });
         return;
@@ -647,7 +649,7 @@ export default defineComponent({
 
         if (!updateGoalResponse.ok) {
           const errorText = await updateGoalResponse.text();
-          throw new Error(errorText || "Sparziel konnte nicht aktualisiert werden");
+          throw new Error(errorText || "Could not update savings goal");
         }
 
         await fetchGoals();
@@ -661,7 +663,7 @@ export default defineComponent({
 
         $q.notify({
           type: "positive",
-          message: "Bestehende Transaktion wurde dem Sparziel hinzugefügt",
+          message: "Existing transaction added to savings goal",
           position: "top",
         });
 
@@ -670,7 +672,7 @@ export default defineComponent({
         console.error("Error adding existing transaction to goal:", error);
         $q.notify({
           type: "negative",
-          message: error.message || "Fehler beim Hinzufügen der bestehenden Transaktion",
+          message: error.message || "Error while adding existing transaction",
           position: "top",
         });
       } finally {
@@ -682,7 +684,7 @@ export default defineComponent({
       if (!userId.value) {
         $q.notify({
           type: "negative",
-          message: "Bitte erneut einloggen",
+          message: "Please log in again",
           position: "top",
         });
         return;
@@ -691,7 +693,7 @@ export default defineComponent({
       if (!selectedGoalForTransaction.value?.id) {
         $q.notify({
           type: "negative",
-          message: "Kein Sparziel ausgewählt",
+          message: "No savings goal selected",
           position: "top",
         });
         return;
@@ -701,7 +703,7 @@ export default defineComponent({
       if (!Number.isInteger(categoryId) || categoryId <= 0) {
         $q.notify({
           type: "negative",
-          message: "Dieses Sparziel hat keine gültige Kategorie",
+          message: "This savings goal has no valid category",
           position: "top",
         });
         return;
@@ -711,7 +713,7 @@ export default defineComponent({
       if (!Number.isFinite(amount) || amount <= 0) {
         $q.notify({
           type: "warning",
-          message: "Bitte einen gültigen Betrag eingeben",
+          message: "Please enter a valid amount",
           position: "top",
         });
         return;
@@ -728,7 +730,7 @@ export default defineComponent({
           date: `${goalTransactionForm.value.date || new Date().toISOString().split("T")[0]}T00:00:00`,
           description:
             String(goalTransactionForm.value.description || "").trim()
-            || `Sparziel Beitrag: ${selectedGoalForTransaction.value.title}`,
+            || `Goal contribution: ${selectedGoalForTransaction.value.title}`,
         };
 
         const transactionResponse = await fetch("http://localhost:3000/transactions", {
@@ -739,7 +741,7 @@ export default defineComponent({
 
         if (!transactionResponse.ok) {
           const errorText = await transactionResponse.text();
-          throw new Error(errorText || "Transaktion konnte nicht gespeichert werden");
+          throw new Error(errorText || "Could not save transaction");
         }
 
         const nextCurrentAmount =
@@ -756,7 +758,7 @@ export default defineComponent({
 
         if (!updateGoalResponse.ok) {
           const errorText = await updateGoalResponse.text();
-          throw new Error(errorText || "Sparziel konnte nicht aktualisiert werden");
+          throw new Error(errorText || "Could not update savings goal");
         }
 
         await fetchGoals();
@@ -770,7 +772,7 @@ export default defineComponent({
 
         $q.notify({
           type: "positive",
-          message: "Transaktion gespeichert und Sparziel aktualisiert",
+          message: "Transaction saved and savings goal updated",
           position: "top",
         });
 
@@ -779,7 +781,7 @@ export default defineComponent({
         console.error("Error adding goal transaction:", error);
         $q.notify({
           type: "negative",
-          message: error.message || "Fehler beim Hinzufügen der Transaktion",
+          message: error.message || "Error while adding transaction",
           position: "top",
         });
       } finally {
@@ -807,7 +809,7 @@ export default defineComponent({
         if (response.ok) {
           $q.notify({
             type: "positive",
-            message: "Ziel erfolgreich gelöscht",
+            message: "Goal deleted successfully",
             position: "top",
           });
           fetchGoals();
@@ -815,7 +817,7 @@ export default defineComponent({
       } catch (error) {
         $q.notify({
           type: "negative",
-          message: "Fehler beim Löschen des Ziels",
+          message: "Error while deleting goal",
           position: "top",
         });
       } finally {
@@ -829,7 +831,7 @@ export default defineComponent({
       fetchGoals();
       $q.notify({
         type: "positive",
-        message: editingGoal.value ? "Ziel aktualisiert" : "Ziel erstellt",
+        message: editingGoal.value ? "Goal updated" : "Goal created",
         position: "top",
       });
     };
@@ -845,7 +847,7 @@ export default defineComponent({
       if (!userId.value) {
         $q.notify({
           type: "negative",
-          message: "Session ungültig. Bitte erneut einloggen.",
+          message: "Session invalid. Please log in again.",
           position: "top",
         });
         loading.value = false;

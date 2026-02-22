@@ -1,28 +1,30 @@
 <template>
   <q-page class="legal-page q-pa-lg q-pa-md-xl">
     <div class="legal-wrapper">
-      <h1 class="text-h4 q-mb-md">Allgemeine Geschaeftsbedingungen (AGB)</h1>
+      <h1 class="text-h4 q-mb-md">Terms of Use</h1>
       <p class="text-body1 q-mb-md">
-        Diese allgemeinen Nutzungsbedingungen regeln die Nutzung von CoinCartel zwischen Betreiber und Nutzer.
+        These terms of use govern the use of Vaultly between the operator and the user.
       </p>
       <p class="text-body1 q-mb-md">
-        Mit der Registrierung bestaetigt der Nutzer, die AGB gelesen zu haben und die Bedingungen zu akzeptieren.
+        By registering, the user confirms they have read and accepted these terms.
       </p>
       <p class="text-body1 q-mb-md">
-        Der Dienst wird nach Verfuegbarkeit bereitgestellt. Es besteht kein Anspruch auf eine bestimmte Verfuegbarkeit oder Funktion.
+        The service is provided based on availability. No specific availability or
+        functionality is guaranteed.
       </p>
       <p class="text-body1 q-mb-md">
-        Nutzer sind verpflichtet, Zugangsdaten vertraulich zu behandeln und keine rechtswidrigen Inhalte bereitzustellen.
+        Users must keep access credentials confidential and must not provide unlawful
+        content.
       </p>
       <p class="text-body2 text-grey-7">
-        Hinweis: Diese Seite ist eine allgemeine Vorlage und sollte rechtlich final geprueft werden.
+        Note: This page is a general template and should be legally reviewed before
+        production use.
       </p>
     </div>
   </q-page>
 </template>
 
-<script setup>
-</script>
+<script setup></script>
 
 <style scoped>
 .legal-page {

@@ -283,7 +283,7 @@ export default {
         const rawTarget = counter.getAttribute("data-target");
         const target = Number(rawTarget);
 
-        if (!Number.isFinite(target)) return; // z.B. "24/7" oder "A+" -> überspringen
+        if (!Number.isFinite(target)) return; // e.g. "24/7" or "A+" -> skip
 
         const increment = target / speed;
 

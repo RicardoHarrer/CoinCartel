@@ -72,6 +72,16 @@ export default defineComponent({
     ]);
     const selectedIndicators = ref([]);
 
+    const INDICATOR_LABELS = {
+      ema20: "EMA 20",
+      sma50: "SMA 50",
+      ema50: "EMA 50",
+    };
+
+    const getIndicatorLabel = (indicator) =>
+      INDICATOR_LABELS[String(indicator || "").toLowerCase()] ||
+      String(indicator || "").toUpperCase();
+
     const priceAlerts = ref([]);
     const newAlertPrice = ref("");
     const notifications = ref([]);
@@ -1144,7 +1154,7 @@ export default defineComponent({
             }
 
             series.push({
-              name: `${coin.toUpperCase()} ${indicator.toUpperCase()}`,
+              name: `${coin.toUpperCase()} ${getIndicatorLabel(indicator)}`,
               type: "line",
               data: normalizedIndicatorData,
               symbol: "none",
@@ -1731,6 +1741,7 @@ export default defineComponent({
       removeAlert,
       removeNotification,
       getIndicatorColor,
+      getIndicatorLabel,
       filterCoins,
       onCoinPopupShow,
       fetchData,
@@ -1988,7 +1999,7 @@ export default defineComponent({
               class="legend-color"
               :style="{ backgroundColor: getIndicatorColor(indicator) }"
             ></div>
-            <span>{{ indicator.toUpperCase() }}</span>
+            <span>{{ getIndicatorLabel(indicator) }}</span>
           </div>
         </div>
       </div>

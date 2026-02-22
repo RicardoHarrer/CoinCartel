@@ -4,6 +4,7 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { useQuasar } from 'quasar';
 import { auth } from '../utils/auth.js';
+import { toEnglishCategoryName } from '../utils/displayText.js';
 
 export default {
   emits: ['transaction-added'],
@@ -21,6 +22,10 @@ export default {
     });
 
     const categories = ref([]);
+    const transactionTypeOptions = [
+      { label: 'Income', value: 'Einnahme' },
+      { label: 'Expense', value: 'Ausgabe' },
+    ];
 
     const getUserId = () => {
       const token = auth.getToken();
@@ -40,7 +45,7 @@ export default {
         const response = await axios.get('http://localhost:3000/categories');
         categories.value = response.data;
       } catch (err) {
-        console.error('Fehler beim Laden der Kategorien:', err);
+        console.error('Error loading categories:', err);
         $q.notify({
           type: 'negative',
           message: 'Failed to load categories',
@@ -130,6 +135,8 @@ export default {
     return {
       newTransaction,
       categories,
+      transactionTypeOptions,
+      toEnglishCategoryName,
       onSubmit,
     };
   },
@@ -167,7 +174,9 @@ export default {
           filled
           v-model="newTransaction.transaction_type"
           label="Type"
-          :options="['Einnahme', 'Ausgabe']"
+          :options="transactionTypeOptions"
+          emit-value
+          map-options
           stack-label
           required
         />
@@ -176,7 +185,7 @@ export default {
           filled
           v-model.number="newTransaction.category_id"
           label="Category"
-          :options="categories.map((c) => ({ label: c.name, value: c.id }))"
+          :options="categories.map((c) => ({ label: toEnglishCategoryName(c.name), value: c.id }))"
           option-value="value"
           option-label="label"
           emit-value

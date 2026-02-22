@@ -24,13 +24,13 @@
                   <q-item-section avatar>
                     <q-icon name="edit" size="xs" />
                   </q-item-section>
-                  <q-item-section>Bearbeiten</q-item-section>
+                  <q-item-section>Edit</q-item-section>
                 </q-item>
                 <q-item clickable @click="$emit('delete', goal)" class="goal-delete-item">
                   <q-item-section avatar>
                     <q-icon name="delete" size="xs" />
                   </q-item-section>
-                  <q-item-section>Löschen</q-item-section>
+                  <q-item-section>Delete</q-item-section>
                 </q-item>
               </q-list>
             </q-menu>
@@ -47,13 +47,13 @@
           {{ statusText }}
         </q-badge>
         <q-badge v-if="goal.category_name" outline color="accent" class="text-caption">
-          {{ goal.category_name }}
+          {{ toEnglishCategoryName(goal.category_name) }}
         </q-badge>
       </div>
 
       <div class="q-mb-md">
         <div class="row justify-between items-center q-mb-xs">
-          <div class="text-caption text-grey-6">Fortschritt</div>
+          <div class="text-caption text-grey-6">Progress</div>
           <div class="text-caption text-weight-bold text-primary">
             {{ progressPercentage.toFixed(1) }}%
           </div>
@@ -80,7 +80,7 @@
           unelevated
           icon="add_card"
           color="primary"
-          label="Transaktionen hinzufügen"
+          label="Add transactions"
           class="full-width goal-transaction-button"
           @click.stop="$emit('add-transaction', goal)"
         />
@@ -90,7 +90,7 @@
         <div class="row items-center">
           <q-icon name="event" size="xs" color="grey-6" class="q-mr-xs" />
           <div class="text-caption text-grey-6">
-            Bis {{ formatDate(goal.target_date) }}
+            Due {{ formatDate(goal.target_date) }}
           </div>
         </div>
         <q-icon
@@ -105,6 +105,7 @@
 
 <script>
 import { defineComponent, computed } from "vue";
+import { toEnglishCategoryName } from "../utils/displayText.js";
 
 export default defineComponent({
   name: "GoalCard",
@@ -145,11 +146,11 @@ export default defineComponent({
     const statusText = computed(() => {
       switch (props.goal.status) {
         case "completed":
-          return "Erreicht";
+          return "Completed";
         case "overdue":
-          return "Überfällig";
+          return "Overdue";
         default:
-          return "In Bearbeitung";
+          return "In progress";
       }
     });
 
@@ -162,11 +163,11 @@ export default defineComponent({
     });
 
     const formatDate = (dateString) => {
-      return new Date(dateString).toLocaleDateString("de-DE");
+      return new Date(dateString).toLocaleDateString("en-US");
     };
 
     const formatNumber = (number) => {
-      return new Intl.NumberFormat("de-DE").format(number);
+      return new Intl.NumberFormat("en-US").format(number);
     };
 
     return {
@@ -178,6 +179,7 @@ export default defineComponent({
       formatDate,
       progressPercentage,
       formatNumber,
+      toEnglishCategoryName,
     };
   },
 });

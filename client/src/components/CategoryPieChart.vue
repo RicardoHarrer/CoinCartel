@@ -6,6 +6,7 @@ import { TooltipComponent, LegendComponent } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 import VChart from "vue-echarts";
 import { useQuasar } from "quasar";
+import { toEnglishCategoryName, toEnglishTransactionType } from "@/utils/displayText";
 
 use([CanvasRenderer, PieChart, TooltipComponent, LegendComponent]);
 
@@ -46,13 +47,13 @@ export default defineComponent({
     const formatAmount = (value, decimals = 2) => {
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) {
-        return Number(0).toLocaleString("de-DE", {
+        return Number(0).toLocaleString("en-US", {
           minimumFractionDigits: decimals,
           maximumFractionDigits: decimals,
         });
       }
 
-      return numeric.toLocaleString("de-DE", {
+      return numeric.toLocaleString("en-US", {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       });
@@ -61,18 +62,9 @@ export default defineComponent({
     const formatDateDMY = (value) => {
       if (!value) return "";
 
-      if (typeof value === "string") {
-        const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (match) {
-          return `${match[3]}.${match[2]}.${match[1]}`;
-        }
-      }
-
       const date = value instanceof Date ? value : new Date(value);
       if (Number.isNaN(date.getTime())) return "";
-      return `${String(date.getDate()).padStart(2, "0")}.${String(
-        date.getMonth() + 1
-      ).padStart(2, "0")}.${date.getFullYear()}`;
+      return date.toLocaleDateString("en-US");
     };
 
     const formattedDateRange = computed(() => {
@@ -84,7 +76,7 @@ export default defineComponent({
 
     const getCategoryName = (categoryId) => {
       const category = props.categories.find((c) => c.id === categoryId);
-      return category ? category.name : "Uncategorized";
+      return category ? toEnglishCategoryName(category.name) : "Uncategorized";
     };
 
     const categoryData = computed(() => {
@@ -401,6 +393,7 @@ export default defineComponent({
       formatTransactionAmount,
       openCategoryTransactions,
       onCategoryDialogHide,
+      toEnglishTransactionType,
     };
   },
 });
@@ -527,7 +520,7 @@ export default defineComponent({
                 </q-item-label>
                 <q-item-label caption>
                   {{ formatDateDMY(transaction.date) }} | {{
-                    transaction.transaction_type || "Transaction"
+                    toEnglishTransactionType(transaction.transaction_type) || "Transaction"
                   }}
                 </q-item-label>
               </q-item-section>

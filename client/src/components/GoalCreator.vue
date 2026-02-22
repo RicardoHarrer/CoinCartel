@@ -2,7 +2,7 @@
   <q-card class="creator-card bg-surface">
     <q-card-section class="q-pb-none">
       <div class="text-h5 text-weight-bold text-dark">
-        {{ editGoal ? "Ziel bearbeiten" : "Neues Sparziel" }}
+        {{ editGoal ? "Edit goal" : "New savings goal" }}
       </div>
     </q-card-section>
 
@@ -10,7 +10,7 @@
       <q-form @submit="submitGoal" class="q-gutter-y-md">
         <div v-if="!editGoal" class="q-mb-lg">
           <div class="text-subtitle1 text-weight-medium text-dark q-mb-sm">
-            Schnellauswahl
+            Quick picks
           </div>
           <div class="row q-col-gutter-sm">
             <div
@@ -39,9 +39,9 @@
 
         <q-input
           v-model="formData.title"
-          label="Ziel-Titel"
-          placeholder="z.B. Neues Auto, Urlaub, Notgroschen..."
-          :rules="[(val) => !!val || 'Titel ist erforderlich']"
+          label="Goal title"
+          placeholder="e.g. New car, vacation, emergency fund..."
+          :rules="[(val) => !!val || 'Title is required']"
           filled
           class="input-field"
           color="primary"
@@ -52,11 +52,11 @@
           <div class="col-6">
             <q-input
               v-model="formData.target_amount"
-              label="Zielbetrag (€)"
+              label="Target amount (€)"
               type="number"
               :rules="[
-                (val) => !!val || 'Zielbetrag ist erforderlich',
-                (val) => val > 0 || 'Betrag muss positiv sein',
+                (val) => !!val || 'Target amount is required',
+                (val) => val > 0 || 'Amount must be positive',
               ]"
               filled
               class="input-field"
@@ -67,7 +67,7 @@
           <div class="col-6">
             <q-input
               v-model="formData.current_amount"
-              label="Aktueller Betrag (€)"
+              label="Current amount (€)"
               type="number"
               filled
               class="input-field"
@@ -79,9 +79,9 @@
 
         <q-input
           v-model="formData.target_date"
-          label="Ziel-Datum"
+          label="Target date"
           type="date"
-          :rules="[(val) => !!val || 'Datum ist erforderlich']"
+          :rules="[(val) => !!val || 'Date is required']"
           filled
           class="input-field"
           color="primary"
@@ -91,10 +91,10 @@
         <q-select
           v-model="formData.category_id"
           :options="categoryOptions"
-          label="Kategorie"
+          label="Category"
           :loading="categoriesLoading"
           :disable="categoriesLoading"
-          :rules="[(val) => !!val || 'Kategorie ist erforderlich']"
+          :rules="[(val) => !!val || 'Category is required']"
           emit-value
           map-options
           filled
@@ -105,7 +105,7 @@
 
         <q-input
           v-model="formData.description"
-          label="Beschreibung"
+          label="Description"
           type="textarea"
           rows="2"
           filled
@@ -121,16 +121,16 @@
         >
           <q-card-section class="q-pa-md">
             <div class="text-subtitle2 text-weight-medium text-dark q-mb-sm">
-              Sparplan
+              Savings plan
             </div>
             <div class="row justify-between items-center q-mb-sm">
-              <div class="text-caption text-grey-7">Monatliche Sparrate:</div>
+              <div class="text-caption text-grey-7">Monthly savings rate:</div>
               <div class="text-h6 text-primary">€{{ monthlySaving }}</div>
             </div>
 
             <div v-if="currentProgress > 0" class="q-mt-md">
               <div class="row justify-between items-center q-mb-xs">
-                <div class="text-caption text-grey-7">Fortschritt:</div>
+                <div class="text-caption text-grey-7">Progress:</div>
                 <div class="text-caption text-weight-bold text-primary">
                   {{ currentProgress.toFixed(1) }}%
                 </div>
@@ -147,7 +147,7 @@
 
         <div class="row justify-end q-gutter-sm q-mt-lg">
           <q-btn
-            label="Abbrechen"
+            label="Cancel"
             color="grey-6"
             flat
             v-close-popup
@@ -155,7 +155,7 @@
             class="cancel-button"
           />
           <q-btn
-            :label="editGoal ? 'Aktualisieren' : 'Erstellen'"
+            :label="editGoal ? 'Update' : 'Create'"
             type="submit"
             color="primary"
             :loading="loading"
@@ -170,6 +170,7 @@
 <script>
 import { defineComponent, ref, computed, watch, onMounted } from "vue";
 import { useQuasar } from "quasar";
+import { toEnglishCategoryName } from "../utils/displayText.js";
 
 export default defineComponent({
   name: "GoalCreator",
@@ -201,28 +202,28 @@ export default defineComponent({
 
     const goalSuggestions = [
       {
-        title: "Notgroschen",
+        title: "Emergency fund",
         target_amount: 3000,
-        category: "Sparen",
-        description: "3 Nettogehälter als Sicherheit",
+        category: "Savings",
+        description: "3 net salaries as backup",
       },
       {
-        title: "Urlaubsgeld",
+        title: "Vacation fund",
         target_amount: 1500,
-        category: "Sparen",
-        description: "Für den nächsten Sommerurlaub",
+        category: "Savings",
+        description: "For your next summer vacation",
       },
       {
         title: "Smartphone",
         target_amount: 800,
-        category: "Technik",
-        description: "Aktuelles Modell ersetzen",
+        category: "Tech",
+        description: "Replace your current model",
       },
       {
-        title: "Auto-Reparatur",
+        title: "Car repair",
         target_amount: 1200,
-        category: "Auto",
-        description: "Jährliche Wartungskosten",
+        category: "Car",
+        description: "Annual maintenance costs",
       },
     ];
 
@@ -248,7 +249,7 @@ export default defineComponent({
         const payload = await response.json();
         categoryOptions.value = Array.isArray(payload)
           ? payload.map((category) => ({
-              label: category.name,
+              label: toEnglishCategoryName(category.name),
               value: category.id,
             }))
           : [];
@@ -256,7 +257,7 @@ export default defineComponent({
         categoryOptions.value = [];
         $q.notify({
           type: "negative",
-          message: "Kategorien konnten nicht geladen werden",
+          message: "Could not load categories",
         });
       } finally {
         categoriesLoading.value = false;
@@ -308,7 +309,7 @@ export default defineComponent({
     };
 
     const formatNumber = (number) => {
-      return new Intl.NumberFormat("de-DE").format(number);
+      return new Intl.NumberFormat("en-US").format(number);
     };
 
     const submitGoal = async () => {
@@ -316,7 +317,7 @@ export default defineComponent({
       if (!Number.isInteger(normalizedCategoryId) || normalizedCategoryId <= 0) {
         $q.notify({
           type: "warning",
-          message: "Bitte eine Kategorie auswählen",
+          message: "Please select a category",
         });
         return;
       }
@@ -352,7 +353,7 @@ export default defineComponent({
       } catch (error) {
         $q.notify({
           type: "negative",
-          message: "Fehler beim Speichern des Ziels",
+          message: "Error saving goal",
         });
       } finally {
         loading.value = false;

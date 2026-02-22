@@ -1,28 +1,31 @@
 <template>
   <q-page class="legal-page q-pa-lg q-pa-md-xl">
     <div class="legal-wrapper">
-      <h1 class="text-h4 q-mb-md">Datenschutzerklaerung</h1>
+      <h1 class="text-h4 q-mb-md">Privacy Policy</h1>
       <p class="text-body1 q-mb-md">
-        Diese allgemeine Datenschutzerklaerung erklaert, welche personenbezogenen Daten bei der Nutzung von CoinCartel verarbeitet werden.
+        This general privacy policy explains which personal data is processed when using
+        Vaultly.
       </p>
       <p class="text-body1 q-mb-md">
-        Verarbeitet werden insbesondere Registrierungsdaten, technische Nutzungsdaten und freiwillig bereitgestellte Inhalte.
+        This includes registration data, technical usage data, and content you provide
+        voluntarily.
       </p>
       <p class="text-body1 q-mb-md">
-        Die Verarbeitung erfolgt ausschliesslich zu Zwecken der Bereitstellung, Sicherheit und Verbesserung des Dienstes.
+        Data is processed only for service delivery, security, and service improvement.
       </p>
       <p class="text-body1 q-mb-md">
-        Betroffene Personen haben die gesetzlichen Rechte auf Auskunft, Berichtigung, Loeschung, Einschraenkung, Datenuebertragbarkeit und Widerspruch.
+        Data subjects have legal rights of access, correction, deletion, restriction,
+        portability, and objection.
       </p>
       <p class="text-body2 text-grey-7">
-        Hinweis: Diese Seite ist eine allgemeine Vorlage und sollte rechtlich final geprueft werden.
+        Note: This page is a general template and should be legally reviewed before
+        production use.
       </p>
     </div>
   </q-page>
 </template>
 
-<script setup>
-</script>
+<script setup></script>
 
 <style scoped>
 .legal-page {

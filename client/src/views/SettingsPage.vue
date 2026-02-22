@@ -2,10 +2,10 @@
   <q-page class="q-pa-lg bg-page responsive-page-padding">
     <div class="modern-settings">
       <div class="dark-mode-toggle">
-        <q-btn 
-          round 
-          :color="$q.dark.isActive ? 'grey-9' : 'yellow-9'" 
-          :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'" 
+        <q-btn
+          round
+          :color="$q.dark.isActive ? 'grey-9' : 'yellow-9'"
+          :icon="$q.dark.isActive ? 'dark_mode' : 'light_mode'"
           class="toggle-btn"
           @click="toggleDarkMode"
           size="lg"
@@ -14,7 +14,9 @@
 
       <div class="settings-header q-mb-xl">
         <h1 class="text-h3 text-weight-bold text-dark q-mb-xs">Settings</h1>
-        <p class="text-subtitle1 text-grey-7">Customize your financial dashboard experience</p>
+        <p class="text-subtitle1 text-grey-7">
+          Customize your financial dashboard experience
+        </p>
       </div>
 
       <div class="settings-grid">
@@ -24,7 +26,9 @@
               <q-icon name="tune" size="24px" class="text-primary" />
               <h3 class="text-h6 text-weight-medium">Financial Preferences</h3>
             </div>
-            <p class="text-caption text-grey-6 q-mb-lg">Configure your currency and budget settings</p>
+            <p class="text-caption text-grey-6 q-mb-lg">
+              Configure your currency and budget settings
+            </p>
 
             <q-form @submit="savePreferences" class="settings-form">
               <div class="form-row">
@@ -100,14 +104,18 @@
               <q-icon name="translate" size="24px" class="text-primary" />
               <h3 class="text-h6 text-weight-medium">Language & Translation</h3>
             </div>
-            <p class="text-caption text-grey-6 q-mb-lg">Translate the website to your preferred language</p>
+            <p class="text-caption text-grey-6 q-mb-lg">
+              Translate the website to your preferred language
+            </p>
 
             <div class="translation-info">
               <div class="info-icon">
                 <q-icon name="language" size="48px" color="primary" />
               </div>
               <div class="info-content">
-                <h4 class="text-h6 text-weight-medium q-mb-sm">Google Translate Widget</h4>
+                <h4 class="text-h6 text-weight-medium q-mb-sm">
+                  Google Translate Widget
+                </h4>
                 <p class="text-body2 text-grey-7 q-mb-lg">
                   Use the Google Translate widget in the top right corner to translate the
                   entire website to your preferred language.
@@ -133,13 +141,6 @@
 
       <q-card class="settings-card settings-card--full q-mt-lg">
         <q-card-section class="card-section">
-          <div class="section-header">
-            <q-icon name="account_balance" size="24px" class="text-primary" />
-            <h3 class="text-h6 text-weight-medium">Bank Import</h3>
-          </div>
-          <p class="text-caption text-grey-6 q-mb-md">
-            Alle Bank-Import-Funktionen sind jetzt direkt in den Settings verfugbar.
-          </p>
           <BankImportView :embedded="true" />
         </q-card-section>
       </q-card>
@@ -670,7 +671,11 @@ body.body--dark .currency-badge {
   }
 }
 
-.q-btn, .settings-card, .example-item, .toggle-btn, .save-btn {
+.q-btn,
+.settings-card,
+.example-item,
+.toggle-btn,
+.save-btn {
   transition: all 0.3s ease;
 }
 </style>

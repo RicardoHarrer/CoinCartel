@@ -18,6 +18,7 @@ import CategoryPieChart from "@/components/CategoryPieChart.vue";
 import { auth } from "@/utils/auth";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { toEnglishCategoryName, toEnglishTransactionType } from "@/utils/displayText";
 
 use([
   CanvasRenderer,
@@ -51,6 +52,125 @@ export default defineComponent({
     const tipsError = ref("");
     const tipsItems = ref([]);
 
+    const decodeMojibake = (value) => {
+      let text = String(value ?? "");
+      const fixes = [
+        ["Ã¤", "ä"],
+        ["Ã¶", "ö"],
+        ["Ã¼", "ü"],
+        ["ÃŸ", "ß"],
+        ["Ã„", "Ä"],
+        ["Ã–", "Ö"],
+        ["Ãœ", "Ü"],
+        ["â‚¬", "€"],
+        ["â€“", "-"],
+        ["â€”", "-"],
+        ["â€œ", '"'],
+        ["â€", '"'],
+        ["â€ž", '"'],
+        ["â†’", "->"],
+        ["â‰¥", ">="],
+        ["â‰ˆ", "≈"],
+        ["Ã—", "x"],
+        ["Ã˜", "Ø"],
+      ];
+      for (const [from, to] of fixes) {
+        text = text.split(from).join(to);
+      }
+      return text;
+    };
+
+    const TIP_TRANSLATIONS = [
+      [/Noch keine Daten/gi, "No data yet"],
+      [/Im ausgewählten Zeitraum wurden keine Transaktionen gefunden\./gi, "No transactions were found in the selected date range."],
+      [/Nächster Schritt:/gi, "Next step:"],
+      [/Budget überschritten/gi, "Budget exceeded"],
+      [/Budget-Pacing: nahe am Limit/gi, "Budget pacing: near the limit"],
+      [/Budget-Pacing aktivieren/gi, "Enable budget pacing"],
+      [/Cashflow ist negativ/gi, "Cashflow is negative"],
+      [/Automatisiere Sparen/gi, "Automate savings"],
+      [/Notgroschen als nächster Step/gi, "Emergency fund as the next step"],
+      [/Größter steuerbarer Hebel/gi, "Largest controllable lever"],
+      [/Mikro-Leak erkannt/gi, "Micro leak detected"],
+      [/Wochenenden treiben die Ausgaben/gi, "Weekends drive spending"],
+      [/Händler-Fokus/gi, "Merchant focus"],
+      [/Ausgaben-Spike/gi, "Spending spike"],
+      [/Transport-Kostenhebel/gi, "Transport cost lever"],
+      [/Trend: steuerbare Ausgaben gestiegen/gi, "Trend: controllable spending increased"],
+      [/Trend: du bist besser geworden/gi, "Trend: you improved"],
+      [/Ziel\(e\) überfällig/gi, "Goal(s) overdue"],
+      [/Ziel-Fortschritt niedrig/gi, "Goal progress is low"],
+      [/Schneller Hebel: 24h-Regel/gi, "Quick win: 24-hour rule"],
+      [/Monatlicher Fixposten/gi, "Monthly recurring expense"],
+      [/Wöchentlicher Fixposten/gi, "Weekly recurring expense"],
+      [/Regelmäßiger Fixposten/gi, "Recurring expense"],
+      [/Du bist bei/gi, "You are at"],
+      [/Fokus: steuerbare Posten deckeln\./gi, "Focus: cap controllable spending."],
+      [/Für den Rest: Tageslimit setzen \+ keine Spontankäufe\./gi, "For the rest of the month: set a daily limit and avoid impulse purchases."],
+      [/Ab jetzt nur geplante Ausgaben, keine „weil gerade Bock“\./gi, "From now on, only planned spending and no impulse buys."],
+      [/Orientierung: 3 Monats-Fixkosten ≈/gi, "Reference point: 3 months of fixed costs ≈"],
+      [/Danach Investieren priorisieren\./gi, "Then prioritize investing."],
+      [/Ausgaben ≤/gi, "expenses <="],
+      [/summieren sich auf/gi, "add up to"],
+      [/Tipp: Kleinzeug-Limit oder Cash-Envelope\./gi, "Tip: set a small-purchases limit or use a cash envelope."],
+      [/Am Wochenende entstehen/gi, "On weekends, "],
+      [/deiner steuerbaren Ausgaben/gi, "of your controllable expenses"],
+      [/Wochenend-Budget setzen\./gi, "set a weekend budget."],
+      [/Smart-Cap fürs nächste Monat:/gi, "Smart cap for next month:"],
+      [/Rücklage-Idee:/gi, "Reserve idea:"],
+      [/für 6 Monate\./gi, "for 6 months."],
+      [/Ticket\/Monatskarte prüfen \+ klare Taxi-Regel\./gi, "Check ticket/monthly pass options and define a clear taxi rule."],
+      [/Aktion: kündigen\/downgraden oder Zielwert/gi, "Action: cancel/downgrade or set a target of"],
+      [/Vormonat:/gi, "Previous month:"],
+      [/jetzt:/gi, "now:"],
+      [/Fokus: Abos\/Recurring \+ Wochenenden \+ Mikro-Leaks\./gi, "Focus: subscriptions/recurring costs + weekends + micro leaks."],
+      [/Steuerbare Ausgaben sind um/gi, "Controllable expenses are down by"],
+      [/gesunken/gi, "decreased"],
+      [/Fixbetrag\/Monat \+ automatisieren\./gi, "Set a fixed monthly amount + automate it."],
+      [/Bei nicht notwendigen Ausgaben >50€: 24h warten\. Reduziert Impulskäufe extrem\./gi, "For non-essential purchases over €50: wait 24h. This strongly reduces impulse spending."],
+      [/Sofort spürbar/gi, "Immediately noticeable"],
+      [/Sehr wichtig/gi, "Very important"],
+      [/Routine & Stabilität/gi, "Routine & stability"],
+      [/Langfristig/gi, "Long-term"],
+      [/Spikes planbar machen/gi, "Make spending spikes predictable"],
+      [/variabel/gi, "variable"],
+      [/Sehr gut/gi, "Very good"],
+      [/Zielerreichung/gi, "Goal achievement"],
+      [/Impuls reduzieren/gi, "Reduce impulse spending"],
+      [/möglich/gi, "possible"],
+    ];
+
+    const toEnglishTipText = (value) => {
+      let text = decodeMojibake(value);
+      for (const [pattern, replacement] of TIP_TRANSLATIONS) {
+        text = text.replace(pattern, replacement);
+      }
+      return text;
+    };
+
+    const localizedTipsItems = computed(() => {
+      return (tipsItems.value || []).map((tip) => ({
+        ...tip,
+        title: toEnglishTipText(tip?.title || ""),
+        message: toEnglishTipText(tip?.message || tip?.text || ""),
+        text: toEnglishTipText(tip?.text || ""),
+        reason: toEnglishTipText(tip?.reason || ""),
+        action: toEnglishTipText(tip?.action || ""),
+        impact: toEnglishTipText(tip?.impact || ""),
+        priority:
+          tip?.priority === "hoch"
+            ? "high"
+            : tip?.priority === "mittel"
+              ? "medium"
+              : tip?.priority || "info",
+      }));
+    });
+
+    const isIncomeType = (type) => {
+      const normalized = String(type || "").trim().toLowerCase();
+      return normalized === "einnahme" || normalized === "income";
+    };
+
     function formatDateForModel(date) {
       if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
       const year = date.getFullYear();
@@ -63,29 +183,32 @@ export default defineComponent({
       if (!value) return "";
 
       if (typeof value === "string") {
-        const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (match) {
-          return `${match[3]}.${match[2]}.${match[1]}`;
+        const isoDateMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (isoDateMatch) {
+          const [, year, month, day] = isoDateMatch;
+          return `${day}.${month}.${year}`;
         }
       }
 
       const date = value instanceof Date ? value : new Date(value);
       if (Number.isNaN(date.getTime())) return "";
-      return `${String(date.getDate()).padStart(2, "0")}.${String(
-        date.getMonth() + 1
-      ).padStart(2, "0")}.${date.getFullYear()}`;
+
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}.${month}.${year}`;
     }
 
     function formatAmount(value, decimals = 2) {
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) {
-        return Number(0).toLocaleString("de-DE", {
+        return Number(0).toLocaleString("en-US", {
           minimumFractionDigits: decimals,
           maximumFractionDigits: decimals,
         });
       }
 
-      return numeric.toLocaleString("de-DE", {
+      return numeric.toLocaleString("en-US", {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
       });
@@ -146,7 +269,7 @@ export default defineComponent({
         tipsItems.value = Array.isArray(response.data?.tips) ? response.data.tips : [];
       } catch (err) {
         console.error("Error fetching tips:", err);
-        tipsError.value = "Tips konnten nicht geladen werden.";
+        tipsError.value = "Could not load tips.";
         tipsItems.value = [];
       } finally {
         tipsLoading.value = false;
@@ -173,10 +296,10 @@ export default defineComponent({
           formatDateDMY(t.date),
           t.description || "No description",
           getCategoryName(t.category_id),
-          t.transaction_type === "Einnahme" ? "Income" : "Expense",
-          `${t.transaction_type === "Einnahme" ? "+" : "-"}${t.amount} ${
-            t.currency || currentCurrency.value
-          }`,
+	          toEnglishTransactionType(t.transaction_type),
+	          `${isIncomeType(t.transaction_type) ? "+" : "-"}${t.amount} ${
+	            t.currency || currentCurrency.value
+	          }`,
         ]);
 
         autoTable(doc, {
@@ -300,10 +423,10 @@ export default defineComponent({
       }
     };
 
-    const getCategoryName = (categoryId) => {
-      const category = categories.value.find((c) => c.id === categoryId);
-      return category ? category.name : "Uncategorized";
-    };
+	    const getCategoryName = (categoryId) => {
+	      const category = categories.value.find((c) => c.id === categoryId);
+	      return category ? toEnglishCategoryName(category.name) : "Uncategorized";
+	    };
 
     const computeCategorySummary = () => {
       const categoryMap = new Map();
@@ -326,10 +449,10 @@ export default defineComponent({
 
         const category = categoryMap.get(categoryId);
 
-        if (tx.transaction_type === "Einnahme") {
-          category.income += Number(tx.amount);
-        } else {
-          category.expenses += Number(tx.amount);
+	        if (isIncomeType(tx.transaction_type)) {
+	          category.income += Number(tx.amount);
+	        } else {
+	          category.expenses += Number(tx.amount);
         }
         category.transactionCount++;
       });
@@ -416,12 +539,12 @@ export default defineComponent({
       const categoryMap = new Map();
       filteredTransactions.value.forEach((t) => {
         if (t.category_id && !categoryMap.has(t.category_id)) {
-          categoryMap.set(t.category_id, {
-            id: t.category_id,
-            name: t.category_name,
-            description: t.category_description,
-          });
-        }
+	          categoryMap.set(t.category_id, {
+	            id: t.category_id,
+	            name: toEnglishCategoryName(t.category_name),
+	            description: t.category_description,
+	          });
+	        }
       });
       categories.value = Array.from(categoryMap.values());
     };
@@ -446,9 +569,9 @@ export default defineComponent({
         const rate =
           exchangeRates.value[currentCurrency.value] /
           (exchangeRates.value[t.currency] || 1);
-        if (t.transaction_type === "Einnahme") {
-          groupedData[dateKey].income += t.amount * rate;
-        } else {
+	        if (isIncomeType(t.transaction_type)) {
+	          groupedData[dateKey].income += t.amount * rate;
+	        } else {
           groupedData[dateKey].expense += t.amount * rate;
         }
       });
@@ -679,7 +802,7 @@ export default defineComponent({
 
     return {
       dateRange,
-      dateRangeString, // Neue computed property für die Anzeige
+      dateRangeString, // Computed property for date range display
       chartOptions,
       updateChart,
       loading,
@@ -706,6 +829,7 @@ export default defineComponent({
       tipsLoading,
       tipsError,
       tipsItems,
+      localizedTipsItems,
     };
   },
 });
@@ -759,7 +883,7 @@ export default defineComponent({
           </div>
           <div v-else-if="tipsError" class="text-negative">{{ tipsError }}</div>
           <q-list v-else separator>
-            <q-item v-for="(tip, idx) in tipsItems" :key="`tip-${idx}`">
+            <q-item v-for="(tip, idx) in localizedTipsItems" :key="`tip-${idx}`">
               <q-item-section avatar>
                 <q-icon :name="tip.icon || 'tips_and_updates'" color="primary" />
               </q-item-section>
@@ -772,7 +896,7 @@ export default defineComponent({
                 </q-item-label>
               </q-item-section>
             </q-item>
-            <div v-if="!tipsItems.length" class="text-grey-6">Keine Tipps verfugbar.</div>
+            <div v-if="!localizedTipsItems.length" class="text-grey-6">No tips available.</div>
           </q-list>
         </q-card-section>
       </q-card>

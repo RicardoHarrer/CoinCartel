@@ -513,14 +513,14 @@ export const fetchCryptoData = async (coin) => {
       || err.code === 'SELF_SIGNED_CERT_IN_CHAIN'
     );
 
-    console.error(`Fehler beim Abrufen von ${coin}:`, status ?? err.code, details);
+    console.error(`Error fetching ${coin}:`, status ?? err.code, details);
 
     if (isOpenDnsBlock || isTlsIssue || status === 429 || status >= 500) {
       console.warn(`Using Yahoo fallback for ${coin}.`);
       return fetchCryptoDataFromYahoo(coin);
     }
 
-    throw new Error(`Fehler beim Abrufen von ${coin}: ${err.message}`);
+    throw new Error(`Error fetching ${coin}: ${err.message}`);
   }
 };
 
