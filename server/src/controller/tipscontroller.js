@@ -40,15 +40,18 @@ const getTipsForUser = async (req, res) => {
     const defaultActionForTip = (tip) => {
       const t = norm(tip?.title);
 
-      if (t.includes('budget')) return 'Setze ein fixes Tageslimit und pausiere Spontankäufe bis Monatsende.';
-      if (t.includes('cashflow')) return 'Senke diese Woche 1-2 variable Kategorien, bis der Cashflow wieder positiv ist.';
+      if (t.includes('budget'))
+        return 'Setze ein fixes Tageslimit und pausiere Spontankäufe bis Monatsende.';
+      if (t.includes('cashflow'))
+        return 'Senke diese Woche 1-2 variable Kategorien, bis der Cashflow wieder positiv ist.';
       if (t.includes('sparen') || t.includes('notgroschen'))
         return 'Richte einen automatischen Spar-Transfer direkt nach Einnahmen ein.';
       if (t.includes('wochenende')) return 'Lege ein Wochenend-Budget fest und tracke es separat.';
       if (t.includes('mikro')) return 'Setze ein Kleinbetrags-Limit pro Woche (z. B. 15-25 EUR).';
       if (t.includes('handler') || t.includes('hebel') || t.includes('trend'))
         return 'Definiere ein konkretes Monatslimit und prüfe den Fortschritt jede Woche.';
-      if (t.includes('ziel')) return 'Lege einen Fixbetrag pro Monat fest und automatisiere die Buchung.';
+      if (t.includes('ziel'))
+        return 'Lege einen Fixbetrag pro Monat fest und automatisiere die Buchung.';
       return 'Wähle einen Betrag als Limit und prüfe in 7 Tagen, ob du darunter bleibst.';
     };
 
@@ -271,11 +274,11 @@ const getTipsForUser = async (req, res) => {
       if (!n) return null;
 
       if (
-        n.includes('essen')
-        || n.includes('food')
-        || n.includes('restaurant')
-        || n.includes('takeaway')
-        || n.includes('lebensmittel')
+        n.includes('essen') ||
+        n.includes('food') ||
+        n.includes('restaurant') ||
+        n.includes('takeaway') ||
+        n.includes('lebensmittel')
       ) {
         return {
           icon: 'restaurant',
@@ -284,12 +287,12 @@ const getTipsForUser = async (req, res) => {
       }
 
       if (
-        n.includes('freizeit')
-        || n.includes('entertain')
-        || n.includes('kino')
-        || n.includes('party')
-        || n.includes('events')
-        || n.includes('games')
+        n.includes('freizeit') ||
+        n.includes('entertain') ||
+        n.includes('kino') ||
+        n.includes('party') ||
+        n.includes('events') ||
+        n.includes('games')
       ) {
         return {
           icon: 'local_activity',
@@ -298,12 +301,12 @@ const getTipsForUser = async (req, res) => {
       }
 
       if (
-        n.includes('shopping')
-        || n.includes('kleidung')
-        || n.includes('amazon')
-        || n.includes('mode')
-        || n.includes('electronics')
-        || n.includes('technik')
+        n.includes('shopping') ||
+        n.includes('kleidung') ||
+        n.includes('amazon') ||
+        n.includes('mode') ||
+        n.includes('electronics') ||
+        n.includes('technik')
       ) {
         return {
           icon: 'shopping_bag',
@@ -312,14 +315,14 @@ const getTipsForUser = async (req, res) => {
       }
 
       if (
-        n.includes('transport')
-        || n.includes('uber')
-        || n.includes('taxi')
-        || n.includes('auto')
-        || n.includes('benzin')
-        || n.includes('fuel')
-        || n.includes('bahn')
-        || n.includes('ticket')
+        n.includes('transport') ||
+        n.includes('uber') ||
+        n.includes('taxi') ||
+        n.includes('auto') ||
+        n.includes('benzin') ||
+        n.includes('fuel') ||
+        n.includes('bahn') ||
+        n.includes('ticket')
       ) {
         return {
           icon: 'directions_car',
@@ -328,13 +331,13 @@ const getTipsForUser = async (req, res) => {
       }
 
       if (
-        n.includes('abo')
-        || n.includes('subscription')
-        || n.includes('stream')
-        || n.includes('netflix')
-        || n.includes('spotify')
-        || n.includes('prime')
-        || n.includes('gym')
+        n.includes('abo') ||
+        n.includes('subscription') ||
+        n.includes('stream') ||
+        n.includes('netflix') ||
+        n.includes('spotify') ||
+        n.includes('prime') ||
+        n.includes('gym')
       ) {
         return {
           icon: 'repeat',
@@ -343,11 +346,11 @@ const getTipsForUser = async (req, res) => {
       }
 
       if (
-        n.includes('gesund')
-        || n.includes('health')
-        || n.includes('apotheke')
-        || n.includes('arzt')
-        || n.includes('fitness')
+        n.includes('gesund') ||
+        n.includes('health') ||
+        n.includes('apotheke') ||
+        n.includes('arzt') ||
+        n.includes('fitness')
       ) {
         return {
           icon: 'health_and_safety',
@@ -356,11 +359,11 @@ const getTipsForUser = async (req, res) => {
       }
 
       if (
-        n.includes('bildung')
-        || n.includes('education')
-        || n.includes('kurs')
-        || n.includes('course')
-        || n.includes('lernen')
+        n.includes('bildung') ||
+        n.includes('education') ||
+        n.includes('kurs') ||
+        n.includes('course') ||
+        n.includes('lernen')
       ) {
         return {
           icon: 'school',
@@ -378,7 +381,9 @@ const getTipsForUser = async (req, res) => {
       if (usage >= 1) {
         addTip(tips, {
           title: 'Budget überschritten',
-          reason: `Du bist bei ${pct(usage)} (${totalExpense.toFixed(2)} / ${budget.toFixed(2)} ${currency}). Fokus: steuerbare Posten deckeln.`,
+          reason: `Du bist bei ${pct(usage)} (${totalExpense.toFixed(2)} / ${budget.toFixed(
+            2,
+          )} ${currency}). Fokus: steuerbare Posten deckeln.`,
           priority: 'hoch',
           impact: 'Sofort spürbar',
           icon: 'report_problem',
@@ -387,7 +392,9 @@ const getTipsForUser = async (req, res) => {
       } else if (usage >= 0.9) {
         addTip(tips, {
           title: 'Budget-Pacing: nahe am Limit',
-          reason: `Du bist bei ${pct(usage)}. Für den Rest: Tageslimit setzen + keine Spontankäufe.`,
+          reason: `Du bist bei ${pct(
+            usage,
+          )}. Für den Rest: Tageslimit setzen + keine Spontankäufe.`,
           priority: 'hoch',
           impact: '10–150€ möglich',
           icon: 'speed',
@@ -396,7 +403,9 @@ const getTipsForUser = async (req, res) => {
       } else if (usage >= 0.75) {
         addTip(tips, {
           title: 'Budget-Pacing aktivieren',
-          reason: `Du bist bei ${pct(usage)}. Ab jetzt nur geplante Ausgaben, keine “weil gerade Bock”.`,
+          reason: `Du bist bei ${pct(
+            usage,
+          )}. Ab jetzt nur geplante Ausgaben, keine “weil gerade Bock”.`,
           priority: 'mittel',
           impact: '10–80€ möglich',
           icon: 'tune',
@@ -409,7 +418,9 @@ const getTipsForUser = async (req, res) => {
       if (netCashflow < 0) {
         addTip(tips, {
           title: 'Cashflow ist negativ',
-          reason: `Du bist bei ${netCashflow.toFixed(2)} ${currency}. Quick-Fix: steuerbare Kategorien deckeln (bis wieder ≥ 0).`,
+          reason: `Du bist bei ${netCashflow.toFixed(
+            2,
+          )} ${currency}. Quick-Fix: steuerbare Kategorien deckeln (bis wieder ≥ 0).`,
           priority: 'hoch',
           impact: 'Sehr wichtig',
           icon: 'trending_down',
@@ -419,7 +430,9 @@ const getTipsForUser = async (req, res) => {
         if (savingSum === 0) {
           addTip(tips, {
             title: 'Automatisiere Sparen',
-            reason: `Du hast +${netCashflow.toFixed(2)} ${currency} übrig. Auto-Transfer (Kategorie 11) direkt nach Einnahmen (z.B. 10%).`,
+            reason: `Du hast +${netCashflow.toFixed(
+              2,
+            )} ${currency} übrig. Auto-Transfer (Kategorie 11) direkt nach Einnahmen (z.B. 10%).`,
             priority: 'mittel',
             impact: 'Routine & Stabilität',
             icon: 'auto_mode',
@@ -431,7 +444,9 @@ const getTipsForUser = async (req, res) => {
           if (emergencyTarget > 0) {
             addTip(tips, {
               title: 'Notgroschen als nächster Step',
-              reason: `Orientierung: 3 Monats-Fixkosten ≈ ${emergencyTarget.toFixed(2)} ${currency}. Danach Investieren priorisieren.`,
+              reason: `Orientierung: 3 Monats-Fixkosten ≈ ${emergencyTarget.toFixed(
+                2,
+              )} ${currency}. Danach Investieren priorisieren.`,
               priority: 'info',
               impact: 'Langfristig',
               icon: 'shield',
@@ -447,9 +462,9 @@ const getTipsForUser = async (req, res) => {
       const pb = playbookByName(topVariableCat.name);
       addTip(tips, {
         title: 'Größter steuerbarer Hebel',
-        reason: `${topVariableCat.name}: ${topVariableCat.amount.toFixed(2)} ${currency} (${pct(shareVar)} steuerbar). ${
-          pb?.text || 'Hebel: Monatslimit setzen und wöchentlich tracken.'
-        }`,
+        reason: `${topVariableCat.name}: ${topVariableCat.amount.toFixed(2)} ${currency} (${pct(
+          shareVar,
+        )} steuerbar). ${pb?.text || 'Hebel: Monatslimit setzen und wöchentlich tracken.'}`,
         priority: shareVar >= 0.3 ? 'hoch' : 'mittel',
         impact: shareVar >= 0.3 ? '20–200€ möglich' : '10–120€ möglich',
         icon: pb?.icon || 'tune',
@@ -460,7 +475,11 @@ const getTipsForUser = async (req, res) => {
     if (micro.length >= 12 && microSum >= 25) {
       addTip(tips, {
         title: 'Mikro-Leak erkannt',
-        reason: `${micro.length} Ausgaben ≤ ${microThreshold}€ summieren sich auf ${microSum.toFixed(2)} ${currency}. Tipp: Kleinzeug-Limit oder Cash-Envelope.`,
+        reason: `${
+          micro.length
+        } Ausgaben ≤ ${microThreshold}€ summieren sich auf ${microSum.toFixed(
+          2,
+        )} ${currency}. Tipp: Kleinzeug-Limit oder Cash-Envelope.`,
         priority: 'mittel',
         impact: '10–80€ möglich',
         icon: 'local_cafe',
@@ -471,7 +490,11 @@ const getTipsForUser = async (req, res) => {
     if (weekendVarRatio >= 0.45 && weekendVarSum > 0) {
       addTip(tips, {
         title: 'Wochenenden treiben die Ausgaben',
-        reason: `Am Wochenende entstehen ${pct(weekendVarRatio)} deiner steuerbaren Ausgaben (${weekendVarSum.toFixed(2)} ${currency}). Wochenend-Budget setzen.`,
+        reason: `Am Wochenende entstehen ${pct(
+          weekendVarRatio,
+        )} deiner steuerbaren Ausgaben (${weekendVarSum.toFixed(
+          2,
+        )} ${currency}). Wochenend-Budget setzen.`,
         priority: 'mittel',
         impact: '10–150€ möglich',
         icon: 'event',
@@ -485,7 +508,9 @@ const getTipsForUser = async (req, res) => {
         const suggestedCap = Math.max(10, Math.round((topMerchant.amount * 0.75) / 5) * 5);
         addTip(tips, {
           title: 'Händler-Fokus',
-          reason: `„${topMerchant.sample}“: ${topMerchant.count}×, ${topMerchant.amount.toFixed(2)} ${currency} (${pct(
+          reason: `„${topMerchant.sample}“: ${topMerchant.count}×, ${topMerchant.amount.toFixed(
+            2,
+          )} ${currency} (${pct(
             mShareVar,
           )}). Smart-Cap fürs nächste Monat: ${suggestedCap} ${currency}.`,
           priority: 'mittel',
@@ -499,10 +524,13 @@ const getTipsForUser = async (req, res) => {
     if (spikes.length) {
       const s = spikes[0];
       const spikeName = s.description || 'Große Ausgabe';
-      const spikeCat =        s.category_name || categoryById.get(Number(s.category_id))?.name || 'Kategorie';
+      const spikeCat =
+        s.category_name || categoryById.get(Number(s.category_id))?.name || 'Kategorie';
       addTip(tips, {
         title: 'Ausgaben-Spike',
-        reason: `„${spikeName}“ (${spikeCat}): ${s.amount.toFixed(2)} ${currency}. Rücklage-Idee: ${Math.max(
+        reason: `„${spikeName}“ (${spikeCat}): ${s.amount.toFixed(
+          2,
+        )} ${currency}. Rücklage-Idee: ${Math.max(
           20,
           Math.round(s.amount / 6 / 5) * 5,
         )} ${currency}/Monat für 6 Monate.`,
@@ -516,7 +544,9 @@ const getTipsForUser = async (req, res) => {
     if (transportSum >= 120) {
       addTip(tips, {
         title: 'Transport-Kostenhebel',
-        reason: `Transport: ${transportSum.toFixed(2)} ${currency}. Ticket/Monatskarte prüfen + klare Taxi-Regel.`,
+        reason: `Transport: ${transportSum.toFixed(
+          2,
+        )} ${currency}. Ticket/Monatskarte prüfen + klare Taxi-Regel.`,
         priority: 'info',
         impact: '5–60€ möglich',
         icon: 'directions_bus',
@@ -526,15 +556,18 @@ const getTipsForUser = async (req, res) => {
 
     const recurringWithInterval = recurringSorted.filter((r) => r.interval);
     for (const r of recurringWithInterval.slice(0, 3)) {
-      const label =        r.interval === 'monthly'
+      const label =
+        r.interval === 'monthly'
           ? 'Monatlicher Fixposten'
           : r.interval === 'weekly'
-            ? 'Wöchentlicher Fixposten'
-            : 'Regelmäßiger Fixposten';
+          ? 'Wöchentlicher Fixposten'
+          : 'Regelmäßiger Fixposten';
       const cap = Math.max(5, Math.round((r.avg * 0.85) / 5) * 5);
       addTip(tips, {
         title: `${label} prüfen`,
-        reason: `„${r.description}“ (${r.count}×, Ø ${r.avg.toFixed(2)} ${currency}). Aktion: kündigen/downgraden oder Zielwert ${cap} ${currency}.`,
+        reason: `„${r.description}“ (${r.count}×, Ø ${r.avg.toFixed(
+          2,
+        )} ${currency}). Aktion: kündigen/downgraden oder Zielwert ${cap} ${currency}.`,
         priority: r.avg >= 15 ? 'hoch' : 'mittel',
         impact: r.interval === 'monthly' ? `${r.avg.toFixed(2)} ${currency}/Monat` : 'variabel',
         icon: 'repeat',
@@ -544,10 +577,11 @@ const getTipsForUser = async (req, res) => {
 
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
-    const isMonthlyRange =      start
-      && end
-      && start.getFullYear() === end.getFullYear()
-      && start.getMonth() === end.getMonth();
+    const isMonthlyRange =
+      start &&
+      end &&
+      start.getFullYear() === end.getFullYear() &&
+      start.getMonth() === end.getMonth();
 
     if (isMonthlyRange) {
       const prevStart = new Date(start);
@@ -584,9 +618,9 @@ const getTipsForUser = async (req, res) => {
         if (change >= 0.2) {
           addTip(tips, {
             title: 'Trend: steuerbare Ausgaben gestiegen',
-            reason: `Vormonat: ${prevVar.toFixed(2)} → jetzt: ${variableSum.toFixed(2)} ${currency} (${pct(
-              change,
-            )}). Fokus: Abos/Recurring + Wochenenden + Mikro-Leaks.`,
+            reason: `Vormonat: ${prevVar.toFixed(2)} → jetzt: ${variableSum.toFixed(
+              2,
+            )} ${currency} (${pct(change)}). Fokus: Abos/Recurring + Wochenenden + Mikro-Leaks.`,
             priority: 'hoch',
             impact: '20–200€ möglich',
             icon: 'trending_up',
@@ -595,9 +629,9 @@ const getTipsForUser = async (req, res) => {
         } else if (change <= -0.15) {
           addTip(tips, {
             title: 'Trend: du bist besser geworden',
-            reason: `Steuerbare Ausgaben sind um ${pct(Math.abs(change))} gesunken (${prevVar.toFixed(
-              2,
-            )} → ${variableSum.toFixed(2)} ${currency}).`,
+            reason: `Steuerbare Ausgaben sind um ${pct(
+              Math.abs(change),
+            )} gesunken (${prevVar.toFixed(2)} → ${variableSum.toFixed(2)} ${currency}).`,
             priority: 'info',
             impact: 'Sehr gut',
             icon: 'thumb_up',
@@ -626,7 +660,9 @@ const getTipsForUser = async (req, res) => {
     for (const g of lowProgress) {
       addTip(tips, {
         title: 'Ziel-Fortschritt niedrig',
-        reason: `„${g.title}“: ${Math.round(toNum(g.progress_percentage))}%. Fixbetrag/Monat + automatisieren.`,
+        reason: `„${g.title}“: ${Math.round(
+          toNum(g.progress_percentage),
+        )}%. Fixbetrag/Monat + automatisieren.`,
         priority: 'mittel',
         impact: 'Zielerreichung',
         icon: 'flag_circle',
